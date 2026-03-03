@@ -28,6 +28,7 @@ import {
   PRODUCT_VARIANT_TYPES
 } from "@/modules/products/product.constants";
 import ProductEditorDrawer from "@/modules/products/ProductEditorDrawer";
+import SunglassesEditorDrawer from "@/modules/products/SunglassesEditorDrawer";
 import {
   deleteProduct,
   getAccessories,
@@ -96,7 +97,10 @@ function ProductList({ variantType }) {
   const [lensSubType, setLensSubType] = useState(LENS_SUB_TYPES.SINGLE_VISION);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [sunglassesDrawerOpen, setSunglassesDrawerOpen] = useState(false);
+  const [editingSunglassesId, setEditingSunglassesId] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const isSunglassesView = variantType === PRODUCT_VARIANT_TYPES.SUNGLASSES;
 
   const lensSubtabsQuery = useQuery({
     queryKey: ["products", "lenses", "subtabs"],
@@ -205,12 +209,17 @@ function ProductList({ variantType }) {
           <Button
             className="w-full sm:w-auto"
             onClick={() => {
+              if (isSunglassesView) {
+                setEditingSunglassesId(null);
+                setSunglassesDrawerOpen(true);
+                return;
+              }
               setEditingId(null);
               setDrawerOpen(true);
             }}
           >
             <Plus className="mr-2 h-4 w-4" />
-            Add Product
+            {isSunglassesView ? "Add Sunglasses" : "Add Product"}
           </Button>
         </div>
       </CardHeader>
@@ -336,6 +345,11 @@ function ProductList({ variantType }) {
                               <DropdownMenuItem
                                 disabled={!identifier}
                                 onClick={() => {
+                                  if (isSunglassesView) {
+                                    setEditingSunglassesId(identifier);
+                                    setSunglassesDrawerOpen(true);
+                                    return;
+                                  }
                                   setEditingId(identifier);
                                   setDrawerOpen(true);
                                 }}
@@ -388,13 +402,22 @@ function ProductList({ variantType }) {
         </DialogContent>
       </Dialog>
 
-      <ProductEditorDrawer
-        open={drawerOpen}
-        productId={editingId}
-        defaultVariantType={variantType}
-        onClose={() => setDrawerOpen(false)}
-        onSaved={() => queryClient.invalidateQueries({ queryKey: ["products"] })}
-      />
+      {isSunglassesView ? (
+        <SunglassesEditorDrawer
+          open={sunglassesDrawerOpen}
+          sunglassesId={editingSunglassesId}
+          onClose={() => setSunglassesDrawerOpen(false)}
+          onSaved={() => queryClient.invalidateQueries({ queryKey: ["products"] })}
+        />
+      ) : (
+        <ProductEditorDrawer
+          open={drawerOpen}
+          productId={editingId}
+          defaultVariantType={variantType}
+          onClose={() => setDrawerOpen(false)}
+          onSaved={() => queryClient.invalidateQueries({ queryKey: ["products"] })}
+        />
+      )}
     </Card>
   );
 }

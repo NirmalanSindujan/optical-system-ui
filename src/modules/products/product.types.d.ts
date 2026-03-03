@@ -127,3 +127,30 @@ export interface ProductApiErrorResponse {
   error?: string;
   message?: string;
 }
+
+export interface SupplierSearchItem {
+  id: number;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  pendingAmount: number | null;
+}
+
+export interface SupplierSearchResponse {
+  items: SupplierSearchItem[];
+  totalCounts: number;
+  page: number;
+  size: number;
+  totalPages: number;
+}
+
+export interface CreateSunglassesRequest {
+  companyName: string;
+  name: string;
+  description: string;
+  quantity: number;
+  purchasePrice: number;
+  sellingPrice: number;
+  notes: string;
+  supplierId: number;
+}
