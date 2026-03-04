@@ -1,6 +1,5 @@
 import { z } from "zod";
-import { PRODUCT_VARIANT_TYPES } from "@/modules/products/product.constants";
-import type { CreateProductRequest, CreateSunglassesRequest } from "@/modules/products/product.types";
+import type { CreateSunglassesRequest } from "@/modules/products/product.types";
 
 const requiredText = (label: string) => z.string().trim().min(1, `${label} is required`);
 
@@ -24,21 +23,7 @@ export const sunglassesFormSchema = z.object({
   purchasePrice: requiredNonNegativeNumberString("Purchase price"),
   sellingPrice: requiredNonNegativeNumberString("Selling price"),
   notes: z.string().optional(),
-  supplierId: z.preprocess(
-    (value) => {
-      if (value === "" || value === null || typeof value === "undefined") return undefined;
-      if (typeof value === "number") return value;
-      if (typeof value === "string") return Number(value);
-      return value;
-    },
-    z
-      .number({
-        required_error: "Supplier is required",
-        invalid_type_error: "Supplier is required"
-      })
-      .int("Supplier is required")
-      .positive("Supplier is required")
-  )
+  supplierIds: z.array(z.number().int().positive()).min(1, "At least one supplier is required")
 });
 
 export type SunglassesFormValues = z.input<typeof sunglassesFormSchema>;
@@ -51,7 +36,7 @@ export const sunglassesFormDefaultValues: {
   purchasePrice: string;
   sellingPrice: string;
   notes: string;
-  supplierId: undefined;
+  supplierIds: number[];
 } = {
   companyName: "",
   name: "",
@@ -60,16 +45,32 @@ export const sunglassesFormDefaultValues: {
   purchasePrice: "",
   sellingPrice: "",
   notes: "",
-  supplierId: undefined
+  supplierIds: []
 };
 
 const toTrimmedString = (value: unknown) => (typeof value === "string" ? value.trim() : "");
-const toNullableString = (value: unknown) => {
-  const trimmed = toTrimmedString(value);
-  return trimmed.length > 0 ? trimmed : null;
+const toNonNegativeNumber = (value: unknown, fallback: number) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) return fallback;
+  return parsed;
+};
+
+const normalizeSupplierIds = (supplierIds: unknown): number[] => {
+  const values = Array.isArray(supplierIds) ? supplierIds : [];
+  const uniqueSupplierIds = new Set<number>();
+
+  values.forEach((value) => {
+    const id = Number(value);
+    if (Number.isInteger(id) && id > 0) {
+      uniqueSupplierIds.add(id);
+    }
+  });
+
+  return Array.from(uniqueSupplierIds);
 };
 
 export function buildSunglassesCreatePayload(values: SunglassesFormValues): CreateSunglassesRequest {
+  const supplierIds = normalizeSupplierIds(values.supplierIds);
   return {
     companyName: toTrimmedString(values.companyName),
     name: toTrimmedString(values.name),
@@ -78,36 +79,27 @@ export function buildSunglassesCreatePayload(values: SunglassesFormValues): Crea
     purchasePrice: Number(values.purchasePrice),
     sellingPrice: Number(values.sellingPrice),
     notes: toTrimmedString(values.notes),
-    supplierId: Number(values.supplierId)
+    supplierId: supplierIds[0] ?? 0,
+    supplierIds
   };
 }
 
 export function buildSunglassesUpdatePayload(
   values: SunglassesFormValues,
   existing: Record<string, any>
-): CreateProductRequest {
+): CreateSunglassesRequest {
+  const supplierIds = normalizeSupplierIds(values.supplierIds);
+  const lockedQuantity = toNonNegativeNumber(existing?.quantity, Number(values.quantity));
+  const lockedPurchasePrice = toNonNegativeNumber(existing?.purchasePrice, Number(values.purchasePrice));
   return {
-    productTypeCode: String(existing?.productTypeCode ?? PRODUCT_VARIANT_TYPES.SUNGLASSES),
-    brandName: toNullableString(existing?.brandName ?? values.companyName),
+    companyName: toTrimmedString(values.companyName),
     name: toTrimmedString(values.name),
-    description: toNullableString(values.description),
-    isActive: Boolean(existing?.productActive ?? existing?.isActive ?? true),
-    sku: String(existing?.sku ?? ""),
-    barcode: toNullableString(existing?.barcode),
-    uomCode: String(existing?.uomCode ?? "EA"),
-    notes: toNullableString(values.notes),
-    attributes: existing?.attributes ?? {},
-    variantActive: Boolean(existing?.variantActive ?? true),
-    supplierId: Number(values.supplierId),
-    purchasePrice: Number(values.purchasePrice),
+    description: toTrimmedString(values.description),
+    quantity: lockedQuantity,
+    purchasePrice: lockedPurchasePrice,
     sellingPrice: Number(values.sellingPrice),
-    quantity: Number(values.quantity),
-    variantType: PRODUCT_VARIANT_TYPES.SUNGLASSES,
-    lensDetails: null,
-    frameDetails: null,
-    sunglassesDetails: {
-      description: toNullableString(values.description)
-    },
-    accessoryDetails: null
+    notes: toTrimmedString(values.notes),
+    supplierId: supplierIds[0] ?? 0,
+    supplierIds
   };
 }

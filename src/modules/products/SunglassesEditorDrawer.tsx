@@ -10,6 +10,7 @@ import SupplierAsyncSelect, { type SupplierOption } from "@/modules/products/com
 import {
   createSunglasses,
   getSunglassesById,
+  getSuppliersByIds,
   updateSunglasses
 } from "@/modules/products/sunglasses.service";
 import {
@@ -38,7 +39,8 @@ function SunglassesEditorDrawer({ open, sunglassesId, onClose, onSaved }: Sungla
   const queryClient = useQueryClient();
 
   const defaultValues = useMemo(() => sunglassesFormDefaultValues, []);
-  const [selectedSupplier, setSelectedSupplier] = useState<SupplierOption | null>(null);
+  const [supplierPickerValue, setSupplierPickerValue] = useState<SupplierOption | null>(null);
+  const [selectedSuppliers, setSelectedSuppliers] = useState<SupplierOption[]>([]);
   const [existingProduct, setExistingProduct] = useState<Record<string, any> | null>(null);
 
   const {
@@ -46,6 +48,7 @@ function SunglassesEditorDrawer({ open, sunglassesId, onClose, onSaved }: Sungla
     control,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors, isSubmitting }
   } = useForm<SunglassesFormValues>({
     resolver: zodResolver(sunglassesFormSchema),
@@ -58,7 +61,7 @@ function SunglassesEditorDrawer({ open, sunglassesId, onClose, onSaved }: Sungla
     error: detailsError,
     isFetching: isLoadingDetails
   } = useQuery({
-    queryKey: ["product", sunglassesId],
+    queryKey: ["products", "sunglasses", sunglassesId],
     queryFn: () => getSunglassesById(sunglassesId as number),
     enabled: open && isEdit
   });
@@ -66,14 +69,16 @@ function SunglassesEditorDrawer({ open, sunglassesId, onClose, onSaved }: Sungla
   useEffect(() => {
     if (!open) {
       reset(defaultValues);
-      setSelectedSupplier(null);
+      setSupplierPickerValue(null);
+      setSelectedSuppliers([]);
       setExistingProduct(null);
       return;
     }
 
     if (!isEdit) {
       reset(defaultValues);
-      setSelectedSupplier(null);
+      setSupplierPickerValue(null);
+      setSelectedSuppliers([]);
       setExistingProduct(null);
     }
   }, [defaultValues, isEdit, open, reset]);
@@ -82,23 +87,89 @@ function SunglassesEditorDrawer({ open, sunglassesId, onClose, onSaved }: Sungla
     if (!open || !isEdit || !sunglassesDetails) return;
     setExistingProduct(sunglassesDetails);
 
-    const supplierId = Number(sunglassesDetails?.supplierId);
-    const supplierName =
-      sunglassesDetails?.supplierName ||
-      sunglassesDetails?.supplier?.name ||
-      (Number.isFinite(supplierId) ? `Supplier #${supplierId}` : "");
+    const supplierIds = new Set<number>();
+    const initialSupplierMap = new Map<number, SupplierOption>();
 
-    setSelectedSupplier(
-      Number.isFinite(supplierId) && supplierId > 0
-        ? {
-            id: supplierId,
-            name: supplierName || "Unknown supplier",
-            phone: sunglassesDetails?.supplierPhone ?? sunglassesDetails?.supplier?.phone ?? null,
-            email: sunglassesDetails?.supplierEmail ?? sunglassesDetails?.supplier?.email ?? null,
-            pendingAmount: null
-          }
-        : null
-    );
+    if (Array.isArray(sunglassesDetails?.supplierIds)) {
+      sunglassesDetails.supplierIds.forEach((value: unknown) => {
+        const supplierId = Number(value);
+        if (!Number.isInteger(supplierId) || supplierId <= 0) return;
+        supplierIds.add(supplierId);
+      });
+    }
+
+    if (Array.isArray(sunglassesDetails?.suppliers)) {
+      sunglassesDetails.suppliers.forEach((supplier: any) => {
+        const supplierId = Number(supplier?.id ?? supplier?.supplierId);
+        if (!Number.isInteger(supplierId) || supplierId <= 0) return;
+        supplierIds.add(supplierId);
+        initialSupplierMap.set(supplierId, {
+          id: supplierId,
+          name: supplier?.name ?? supplier?.supplierName ?? `Supplier #${supplierId}`,
+          phone: supplier?.phone ?? supplier?.supplierPhone ?? null,
+          email: supplier?.email ?? supplier?.supplierEmail ?? null,
+          pendingAmount: supplier?.pendingAmount ?? null
+        });
+      });
+    }
+
+    const primarySupplierId = Number(sunglassesDetails?.supplierId);
+    if (Number.isInteger(primarySupplierId) && primarySupplierId > 0) {
+      supplierIds.add(primarySupplierId);
+      if (!initialSupplierMap.has(primarySupplierId)) {
+        initialSupplierMap.set(primarySupplierId, {
+          id: primarySupplierId,
+          name: sunglassesDetails?.supplierName ?? sunglassesDetails?.supplier?.name ?? `Supplier #${primarySupplierId}`,
+          phone: sunglassesDetails?.supplierPhone ?? sunglassesDetails?.supplier?.phone ?? null,
+          email: sunglassesDetails?.supplierEmail ?? sunglassesDetails?.supplier?.email ?? null,
+          pendingAmount: null
+        });
+      }
+    }
+
+    let isCancelled = false;
+    const loadSupplierNames = async () => {
+      const ids = Array.from(supplierIds);
+      if (ids.length === 0) {
+        if (!isCancelled) {
+          setSelectedSuppliers([]);
+          setSupplierPickerValue(null);
+        }
+        return;
+      }
+
+      const fetchedSuppliers = await getSuppliersByIds(ids);
+      const mergedMap = new Map<number, SupplierOption>(initialSupplierMap);
+
+      fetchedSuppliers.forEach((supplier) => {
+        mergedMap.set(supplier.id, {
+          id: supplier.id,
+          name: supplier.name ?? `Supplier #${supplier.id}`,
+          phone: supplier.phone ?? null,
+          email: supplier.email ?? null,
+          pendingAmount: supplier.pendingAmount ?? null
+        });
+      });
+
+      const resolvedSuppliers = ids.map((id) => {
+        const supplier = mergedMap.get(id);
+        if (supplier) return supplier;
+        return {
+          id,
+          name: `Supplier #${id}`,
+          phone: null,
+          email: null,
+          pendingAmount: null
+        };
+      });
+
+      if (!isCancelled) {
+        setSelectedSuppliers(resolvedSuppliers);
+        setSupplierPickerValue(null);
+      }
+    };
+
+    loadSupplierNames();
 
     reset({
       companyName: toFieldValue(sunglassesDetails?.companyName ?? sunglassesDetails?.brandName),
@@ -108,9 +179,21 @@ function SunglassesEditorDrawer({ open, sunglassesId, onClose, onSaved }: Sungla
       purchasePrice: toFieldValue(sunglassesDetails?.purchasePrice),
       sellingPrice: toFieldValue(sunglassesDetails?.sellingPrice),
       notes: toFieldValue(sunglassesDetails?.notes),
-      supplierId: Number.isFinite(supplierId) && supplierId > 0 ? supplierId : undefined
+      supplierIds: Array.from(supplierIds)
     });
+
+    return () => {
+      isCancelled = true;
+    };
   }, [isEdit, open, reset, sunglassesDetails]);
+
+  useEffect(() => {
+    setValue(
+      "supplierIds",
+      selectedSuppliers.map((supplier) => supplier.id),
+      { shouldDirty: false, shouldValidate: true }
+    );
+  }, [selectedSuppliers, setValue]);
 
   useEffect(() => {
     if (!isDetailsError) return;
@@ -132,7 +215,7 @@ function SunglassesEditorDrawer({ open, sunglassesId, onClose, onSaved }: Sungla
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["products"] });
       if (sunglassesId) {
-        await queryClient.invalidateQueries({ queryKey: ["product", sunglassesId] });
+        await queryClient.invalidateQueries({ queryKey: ["products", "sunglasses", sunglassesId] });
       }
       toast({
         title: isEdit ? "Sunglasses updated" : "Sunglasses created",
@@ -206,18 +289,36 @@ function SunglassesEditorDrawer({ open, sunglassesId, onClose, onSaved }: Sungla
             <label htmlFor="quantity" className="mb-1 block text-sm font-medium">
               Quantity
             </label>
-            <Input id="quantity" type="number" min={0} step={1} placeholder="0" {...register("quantity")} />
+            <Input
+              id="quantity"
+              type="number"
+              min={0}
+              step={1}
+              placeholder="0"
+              disabled={isEdit}
+              {...register("quantity")}
+            />
             {errors.quantity ? <p className="mt-1 text-xs text-destructive">{errors.quantity.message}</p> : null}
+           
           </div>
 
           <div>
             <label htmlFor="purchasePrice" className="mb-1 block text-sm font-medium">
               Price (Purchase)
             </label>
-            <Input id="purchasePrice" type="number" min={0} step="0.01" placeholder="0.00" {...register("purchasePrice")} />
+            <Input
+              id="purchasePrice"
+              type="number"
+              min={0}
+              step="0.01"
+              placeholder="0.00"
+              disabled={isEdit}
+              {...register("purchasePrice")}
+            />
             {errors.purchasePrice ? (
               <p className="mt-1 text-xs text-destructive">{errors.purchasePrice.message}</p>
             ) : null}
+           
           </div>
 
           <div>
@@ -231,24 +332,59 @@ function SunglassesEditorDrawer({ open, sunglassesId, onClose, onSaved }: Sungla
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">Supplier</label>
+            <label className="mb-1 block text-sm font-medium">Suppliers</label>
             <Controller
-              name="supplierId"
+              name="supplierIds"
               control={control}
               render={({ field }) => (
-                <SupplierAsyncSelect
-                  value={selectedSupplier}
-                  onChange={(supplier) => {
-                    setSelectedSupplier(supplier);
-                    field.onChange(supplier?.id);
-                  }}
-                  onBlur={field.onBlur}
-                  error={errors.supplierId?.message}
-                  disabled={isSubmitting || saveMutation.isPending || isLoadingDetails}
-                />
+                <>
+                  <SupplierAsyncSelect
+                    value={supplierPickerValue}
+                    onChange={(supplier) => {
+                      if (!supplier) return;
+                      const alreadyAdded = selectedSuppliers.some((item) => item.id === supplier.id);
+                      if (alreadyAdded) {
+                        setSupplierPickerValue(null);
+                        return;
+                      }
+                      const nextSuppliers = [...selectedSuppliers, supplier];
+                      setSelectedSuppliers(nextSuppliers);
+                      field.onChange(nextSuppliers.map((item) => item.id));
+                      setSupplierPickerValue(null);
+                    }}
+                    onBlur={field.onBlur}
+                    error={typeof errors.supplierIds?.message === "string" ? errors.supplierIds.message : undefined}
+                    placeholder="Search supplier and add"
+                    disabled={isSubmitting || saveMutation.isPending || isLoadingDetails}
+                  />
+                  <div className="mt-2 space-y-2">
+                    {selectedSuppliers.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">No suppliers added yet.</p>
+                    ) : (
+                      selectedSuppliers.map((supplier) => (
+                        <div key={supplier.id} className="flex items-center justify-between rounded-md border px-2 py-1.5 text-sm">
+                          <span className="truncate">{supplier.name}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-destructive"
+                            onClick={() => {
+                              const nextSuppliers = selectedSuppliers.filter((item) => item.id !== supplier.id);
+                              setSelectedSuppliers(nextSuppliers);
+                              field.onChange(nextSuppliers.map((item) => item.id));
+                            }}
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </>
               )}
             />
-            <p className="mt-1 text-xs text-muted-foreground">Type to search suppliers</p>
+           
           </div>
 
           <div className="md:col-span-2">

@@ -76,7 +76,8 @@ const variantMeta = {
 };
 
 const resolveItems = (response) => (Array.isArray(response?.items) ? response.items : []);
-const resolveId = (item) => item?.productId ?? item?.id ?? item?.variantId ?? null;
+const resolveProductId = (item) => item?.productId ?? item?.id ?? null;
+const resolveRowId = (item) => resolveProductId(item) ?? item?.variantId ?? null;
 const toStatusBadgeVariant = (active) => (active ? "default" : "secondary");
 
 const getListErrorMessage = (error) =>
@@ -101,6 +102,7 @@ function ProductList({ variantType }) {
   const [editingSunglassesId, setEditingSunglassesId] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const isSunglassesView = variantType === PRODUCT_VARIANT_TYPES.SUNGLASSES;
+  const tableColumnCount = isSunglassesView ? 6 : 8;
 
   const lensSubtabsQuery = useQuery({
     queryKey: ["products", "lenses", "subtabs"],
@@ -254,33 +256,17 @@ function ProductList({ variantType }) {
         </div>
 
         <div className="min-h-0 flex flex-1 flex-col overflow-x-auto rounded-lg border bg-card/60">
-          <Table className="min-w-[1100px] table-fixed">
-            <colgroup>
-              <col className="w-[23%]" />
-              <col className="w-[15%]" />
-              <col className="w-[14%]" />
-              <col className="w-[12%]" />
-              <col className="w-[11%]" />
-              <col className="w-[10%]" />
-              <col className="w-[11%]" />
-              <col className="w-[64px]" />
-            </colgroup>
-            <TableHeader className="bg-muted/85 supports-[backdrop-filter]:bg-muted/65">
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>SKU</TableHead>
-                <TableHead>Supplier</TableHead>
-                <TableHead>Selling Price</TableHead>
-                <TableHead>Quantity</TableHead>
-                <TableHead>Product</TableHead>
-                <TableHead>Variant</TableHead>
-                <TableHead className="w-[50px]"></TableHead>
-              </TableRow>
-            </TableHeader>
-          </Table>
-
-          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden border-t">
-            <Table className="min-w-[1100px] table-fixed">
+          <Table className={isSunglassesView ? "min-w-[900px] table-fixed" : "min-w-[1100px] table-fixed"}>
+            {isSunglassesView ? (
+              <colgroup>
+                <col className="w-[24%]" />
+                <col className="w-[24%]" />
+                <col className="w-[12%]" />
+                <col className="w-[16%]" />
+                <col className="w-[16%]" />
+                <col className="w-[64px]" />
+              </colgroup>
+            ) : (
               <colgroup>
                 <col className="w-[23%]" />
                 <col className="w-[15%]" />
@@ -291,49 +277,132 @@ function ProductList({ variantType }) {
                 <col className="w-[11%]" />
                 <col className="w-[64px]" />
               </colgroup>
+            )}
+            <TableHeader className="bg-muted/85 supports-[backdrop-filter]:bg-muted/65">
+              {isSunglassesView ? (
+                <TableRow>
+                  <TableHead>Model Name</TableHead>
+                  <TableHead>Company</TableHead>
+                  <TableHead>Quantity</TableHead>
+                  <TableHead>Purchase Price</TableHead>
+                  <TableHead>Sales Price</TableHead>
+                  <TableHead className="w-[50px]"></TableHead>
+                </TableRow>
+              ) : (
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>SKU</TableHead>
+                  <TableHead>Supplier</TableHead>
+                  <TableHead>Selling Price</TableHead>
+                  <TableHead>Quantity</TableHead>
+                  <TableHead>Product</TableHead>
+                  <TableHead>Variant</TableHead>
+                  <TableHead className="w-[50px]"></TableHead>
+                </TableRow>
+              )}
+            </TableHeader>
+          </Table>
+
+          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden border-t">
+            <Table className={isSunglassesView ? "min-w-[900px] table-fixed" : "min-w-[1100px] table-fixed"}>
+              {isSunglassesView ? (
+                <colgroup>
+                  <col className="w-[24%]" />
+                  <col className="w-[24%]" />
+                  <col className="w-[12%]" />
+                  <col className="w-[16%]" />
+                  <col className="w-[16%]" />
+                  <col className="w-[64px]" />
+                </colgroup>
+              ) : (
+                <colgroup>
+                  <col className="w-[23%]" />
+                  <col className="w-[15%]" />
+                  <col className="w-[14%]" />
+                  <col className="w-[12%]" />
+                  <col className="w-[11%]" />
+                  <col className="w-[10%]" />
+                  <col className="w-[11%]" />
+                  <col className="w-[64px]" />
+                </colgroup>
+              )}
               <TableBody>
                 {isLoading || isFetching ? (
                   <TableRow>
-                    <TableCell colSpan={8}>Loading products...</TableCell>
+                    <TableCell colSpan={tableColumnCount}>Loading products...</TableCell>
                   </TableRow>
                 ) : items.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8}>No products found.</TableCell>
+                    <TableCell colSpan={tableColumnCount}>No products found.</TableCell>
                   </TableRow>
                 ) : (
-                  items.map((item) => {
-                    const identifier = resolveId(item);
+                  items.map((item, index) => {
+                    const productId = resolveProductId(item);
+                    const rowId = resolveRowId(item);
                     const productActive = Boolean(item?.productActive ?? true);
                     const variantActive = Boolean(item?.variantActive ?? true);
                     return (
-                      <TableRow key={identifier ?? `${item?.sku ?? "product"}-${item?.barcode ?? "row"}`}>
-                        <TableCell className="font-medium">{item?.name ?? item?.productName ?? "-"}</TableCell>
-                        <TableCell>{item?.sku ?? "-"}</TableCell>
-                        <TableCell>
-                          <span className="inline-flex items-center gap-1">
-                            <UserRound className="h-3.5 w-3.5 text-muted-foreground" />
-                            {item?.supplierId ?? "-"}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <span className="inline-flex items-center gap-1">
-                            <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
-                            {item?.sellingPrice != null ? Number(item.sellingPrice).toFixed(2) : "-"}
-                          </span>
-                        </TableCell>
-                        <TableCell>{item?.quantity != null ? item.quantity : "-"}</TableCell>
-                        <TableCell>
-                          <Badge variant={toStatusBadgeVariant(productActive)} className="gap-1">
-                            {productActive ? <Circle className="h-3 w-3" /> : <CircleOff className="h-3 w-3" />}
-                            {productActive ? "Active" : "Inactive"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={toStatusBadgeVariant(variantActive)} className="gap-1">
-                            {variantActive ? <Circle className="h-3 w-3" /> : <CircleOff className="h-3 w-3" />}
-                            {variantActive ? "Active" : "Inactive"}
-                          </Badge>
-                        </TableCell>
+                      <TableRow
+                        key={
+                          rowId ??
+                          `${item?.modelName ?? item?.name ?? item?.productName ?? "product"}-${
+                            item?.company ?? item?.companyName ?? item?.brandName ?? "company"
+                          }-${index}`
+                        }
+                      >
+                        {isSunglassesView ? (
+                          <>
+                            <TableCell className="font-medium">{item?.modelName ?? item?.name ?? item?.productName ?? "-"}</TableCell>
+                            <TableCell>{item?.company ?? item?.companyName ?? item?.brandName ?? "-"}</TableCell>
+                            <TableCell>{item?.quantity != null ? item.quantity : "-"}</TableCell>
+                            <TableCell>
+                              <span className="inline-flex items-center gap-1">
+                                <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
+                                {item?.purchasePrice != null ? Number(item.purchasePrice).toFixed(2) : "-"}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              <span className="inline-flex items-center gap-1">
+                                <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
+                                {item?.salesPrice != null
+                                  ? Number(item.salesPrice).toFixed(2)
+                                  : item?.sellingPrice != null
+                                    ? Number(item.sellingPrice).toFixed(2)
+                                    : "-"}
+                              </span>
+                            </TableCell>
+                          </>
+                        ) : (
+                          <>
+                            <TableCell className="font-medium">{item?.name ?? item?.productName ?? "-"}</TableCell>
+                            <TableCell>{item?.sku ?? "-"}</TableCell>
+                            <TableCell>
+                              <span className="inline-flex items-center gap-1">
+                                <UserRound className="h-3.5 w-3.5 text-muted-foreground" />
+                                {item?.supplierId ?? "-"}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              <span className="inline-flex items-center gap-1">
+                                <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
+                                {item?.sellingPrice != null ? Number(item.sellingPrice).toFixed(2) : "-"}
+                              </span>
+                            </TableCell>
+                            <TableCell>{item?.quantity != null ? item.quantity : "-"}</TableCell>
+                            <TableCell>
+                              <Badge variant={toStatusBadgeVariant(productActive)} className="gap-1">
+                                {productActive ? <Circle className="h-3 w-3" /> : <CircleOff className="h-3 w-3" />}
+                                {productActive ? "Active" : "Inactive"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={toStatusBadgeVariant(variantActive)} className="gap-1">
+                                {variantActive ? <Circle className="h-3 w-3" /> : <CircleOff className="h-3 w-3" />}
+                                {variantActive ? "Active" : "Inactive"}
+                              </Badge>
+                            </TableCell>
+                          </>
+                        )}
                         <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -343,14 +412,14 @@ function ProductList({ variantType }) {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem
-                                disabled={!identifier}
+                                disabled={!productId}
                                 onClick={() => {
                                   if (isSunglassesView) {
-                                    setEditingSunglassesId(identifier);
+                                    setEditingSunglassesId(productId);
                                     setSunglassesDrawerOpen(true);
                                     return;
                                   }
-                                  setEditingId(identifier);
+                                  setEditingId(productId);
                                   setDrawerOpen(true);
                                 }}
                               >
@@ -358,8 +427,8 @@ function ProductList({ variantType }) {
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 className="text-destructive"
-                                disabled={!identifier}
-                                onClick={() => setConfirmDeleteId(identifier)}
+                                disabled={!productId}
+                                onClick={() => setConfirmDeleteId(productId)}
                               >
                                 Delete
                               </DropdownMenuItem>

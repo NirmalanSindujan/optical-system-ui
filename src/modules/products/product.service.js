@@ -89,10 +89,10 @@ export async function updateProduct(id, payload) {
 }
 
 /**
- * @param {number|string} id
+ * @param {number|string} productId
  * @returns {Promise<any>}
  */
-export async function deleteProduct(id) {
-  const { data } = await api.delete(`/products/${id}`);
+export async function deleteProduct(productId) {
+  const { data } = await api.delete(`/products/${productId}`);
   return data;
 }

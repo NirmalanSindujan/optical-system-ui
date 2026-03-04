@@ -43,6 +43,7 @@ export interface CreateProductRequest {
   attributes?: Record<string, unknown> | null;
   variantActive?: boolean | null;
   supplierId: number;
+  supplierIds?: number[];
   purchasePrice: number;
   sellingPrice: number;
   quantity?: number | null;
@@ -153,4 +154,5 @@ export interface CreateSunglassesRequest {
   sellingPrice: number;
   notes: string;
   supplierId: number;
+  supplierIds: number[];
 }
