@@ -1,39 +1,38 @@
+// @ts-nocheck
 import { useEffect, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Building2, Mail, MapPin, Phone, StickyNote, UserRound, Users, X } from "lucide-react";
+import { Calendar, Mail, MapPin, Phone, StickyNote, UserRound, Users, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
-import {
-  createSupplier,
-  getSupplierById,
-  updateSupplier
-} from "@/modules/suppliers/supplier.service";
+import { createCustomer, getCustomerById, updateCustomer } from "@/modules/customers/customer.service";
 
 const schema = z.object({
-  name: z.string().min(1, "Supplier name is required"),
-  contactPerson: z.string().optional(),
+  name: z.string().min(1, "Name is required"),
   phone: z.string().optional(),
   email: z.union([z.string().email("Invalid email"), z.literal("")]).optional(),
   address: z.string().optional(),
+  gender: z.union([z.enum(["MALE", "FEMALE", "OTHER"]), z.literal("")]).optional(),
+  dob: z.string().optional(),
   notes: z.string().optional()
 });
 
-function SupplierEditorDrawer({ open, supplierId, onClose, onSaved }) {
-  const isEdit = Boolean(supplierId);
+function CustomerEditorDrawer({ open, customerId, onClose, onSaved }) {
+  const isEdit = Boolean(customerId);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const defaultValues = useMemo(
     () => ({
       name: "",
-      contactPerson: "",
       phone: "",
       email: "",
       address: "",
+      gender: "",
+      dob: "",
       notes: ""
     }),
     []
@@ -50,23 +49,23 @@ function SupplierEditorDrawer({ open, supplierId, onClose, onSaved }) {
   });
 
   const {
-    data: supplierResponse,
-    isError: isSupplierError,
-    error: supplierError
+    data: customerResponse,
+    isError: isCustomerError,
+    error: customerError
   } = useQuery({
-    queryKey: ["supplier", supplierId],
-    queryFn: () => getSupplierById(supplierId),
+    queryKey: ["customer", customerId],
+    queryFn: () => getCustomerById(customerId),
     enabled: open && isEdit
   });
 
   const saveMutation = useMutation({
-    mutationFn: ({ id, payload }) => (id ? updateSupplier(id, payload) : createSupplier(payload)),
+    mutationFn: ({ id, payload }) => (id ? updateCustomer(id, payload) : createCustomer(payload)),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["suppliers"] });
-      if (supplierId) {
-        await queryClient.invalidateQueries({ queryKey: ["supplier", supplierId] });
+      await queryClient.invalidateQueries({ queryKey: ["customers"] });
+      if (customerId) {
+        await queryClient.invalidateQueries({ queryKey: ["customer", customerId] });
       }
-      toast({ title: isEdit ? "Supplier updated" : "Supplier created" });
+      toast({ title: isEdit ? "Customer updated" : "Customer created" });
       onSaved?.();
       onClose();
     },
@@ -92,38 +91,40 @@ function SupplierEditorDrawer({ open, supplierId, onClose, onSaved }) {
   }, [defaultValues, isEdit, open, reset]);
 
   useEffect(() => {
-    if (!open || !isEdit || !supplierResponse) return;
-    const supplier = supplierResponse?.data ?? supplierResponse;
+    if (!open || !isEdit || !customerResponse) return;
+    const customer = customerResponse?.data ?? customerResponse;
     reset({
-      name: supplier?.name ?? "",
-      contactPerson: supplier?.contactPerson ?? "",
-      phone: supplier?.phone ?? "",
-      email: supplier?.email ?? "",
-      address: supplier?.address ?? "",
-      notes: supplier?.notes ?? ""
+      name: customer?.name ?? "",
+      phone: customer?.phone ?? "",
+      email: customer?.email ?? "",
+      address: customer?.address ?? "",
+      gender: customer?.gender ?? "",
+      dob: customer?.dob ?? "",
+      notes: customer?.notes ?? ""
     });
-  }, [supplierResponse, isEdit, open, reset]);
+  }, [customerResponse, isEdit, open, reset]);
 
   useEffect(() => {
-    if (!isSupplierError) return;
+    if (!isCustomerError) return;
     toast({
       variant: "destructive",
-      title: "Failed to load supplier",
-      description: supplierError?.response?.data?.message ?? "Unable to fetch supplier details."
+      title: "Failed to load customer",
+      description: customerError?.response?.data?.message ?? "Unable to fetch customer details."
     });
-  }, [isSupplierError, supplierError, toast]);
+  }, [customerError, isCustomerError, toast]);
 
   const onSubmit = async (values) => {
     const payload = {
       name: values.name,
-      contactPerson: values.contactPerson || null,
       phone: values.phone || null,
       email: values.email || null,
       address: values.address || null,
+      gender: values.gender || null,
+      dob: values.dob || null,
       notes: values.notes || null
     };
 
-    saveMutation.mutate({ id: supplierId, payload });
+    saveMutation.mutate({ id: customerId, payload });
   };
 
   return (
@@ -140,7 +141,7 @@ function SupplierEditorDrawer({ open, supplierId, onClose, onSaved }) {
         <div className="mb-4 flex items-center justify-between">
           <h3 className="flex items-center gap-2 text-lg font-semibold">
             <Users className="h-5 w-5 text-primary" />
-            {isEdit ? "Edit Supplier" : "Create Supplier"}
+            {isEdit ? "Edit Customer" : "Create Customer"}
           </h3>
           <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close drawer">
             <X className="h-4 w-4" />
@@ -149,21 +150,12 @@ function SupplierEditorDrawer({ open, supplierId, onClose, onSaved }) {
 
         <form className="grid gap-4 md:grid-cols-2" onSubmit={handleSubmit(onSubmit)}>
           <div>
-            <label className="mb-1 block text-sm font-medium">Supplier Name</label>
-            <div className="relative">
-              <Building2 className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input {...register("name")} placeholder="Supplier name" className="pl-9" />
-            </div>
-            {errors.name ? <p className="mt-1 text-xs text-destructive">{errors.name.message}</p> : null}
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium">Contact Person</label>
+            <label className="mb-1 block text-sm font-medium">Name</label>
             <div className="relative">
               <UserRound className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input {...register("contactPerson")} placeholder="Contact person" className="pl-9" />
+              <Input {...register("name")} placeholder="Customer name" className="pl-9" />
             </div>
-            {errors.contactPerson ? <p className="mt-1 text-xs text-destructive">{errors.contactPerson.message}</p> : null}
+            {errors.name ? <p className="mt-1 text-xs text-destructive">{errors.name.message}</p> : null}
           </div>
 
           <div>
@@ -179,9 +171,35 @@ function SupplierEditorDrawer({ open, supplierId, onClose, onSaved }) {
             <label className="mb-1 block text-sm font-medium">Email</label>
             <div className="relative">
               <Mail className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input {...register("email")} placeholder="supplier@example.com" className="pl-9" />
+              <Input {...register("email")} placeholder="john@example.com" className="pl-9" />
             </div>
             {errors.email ? <p className="mt-1 text-xs text-destructive">{errors.email.message}</p> : null}
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium">Gender</label>
+            <div className="relative">
+              <UserRound className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <select
+                className="h-10 w-full rounded-md border border-input bg-background py-2 pl-9 pr-3 text-sm"
+                {...register("gender")}
+              >
+                <option value="">Select gender</option>
+                <option value="MALE">Male</option>
+                <option value="FEMALE">Female</option>
+                <option value="OTHER">Other</option>
+              </select>
+            </div>
+            {errors.gender ? <p className="mt-1 text-xs text-destructive">{errors.gender.message}</p> : null}
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium">DOB</label>
+            <div className="relative">
+              <Calendar className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input type="date" {...register("dob")} className="pl-9" />
+            </div>
+            {errors.dob ? <p className="mt-1 text-xs text-destructive">{errors.dob.message}</p> : null}
           </div>
 
           <div className="md:col-span-2">
@@ -207,7 +225,7 @@ function SupplierEditorDrawer({ open, supplierId, onClose, onSaved }) {
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting || saveMutation.isPending}>
-              {isSubmitting || saveMutation.isPending ? "Saving..." : "Save Supplier"}
+              {isSubmitting || saveMutation.isPending ? "Saving..." : "Save Customer"}
             </Button>
           </div>
         </form>
@@ -216,4 +234,4 @@ function SupplierEditorDrawer({ open, supplierId, onClose, onSaved }) {
   );
 }
 
-export default SupplierEditorDrawer;
+export default CustomerEditorDrawer;

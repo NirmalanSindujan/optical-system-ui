@@ -3,9 +3,11 @@ import ProtectedRoute from "@/components/layout/ProtectedRoute";
 import AppShell from "@/components/layout/AppShell";
 import Login from "@/modules/auth/Login";
 import CustomerList from "@/modules/customers/CustomerList";
+import AccessoryProductList from "@/modules/products/accessory/AccessoryProductList";
+import FrameProductList from "@/modules/products/frame/FrameProductList";
+import LensProductList from "@/modules/products/lens/LensProductList";
+import SunglassesProductList from "@/modules/products/sunglasses/SunglassesProductList";
 import SupplierList from "@/modules/suppliers/SupplierList";
-import ProductList from "@/modules/products/ProductList";
-import { PRODUCT_VARIANT_TYPES } from "@/modules/products/product.constants";
 import { ROLES } from "@/store/auth.store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -59,19 +61,19 @@ const router = createBrowserRouter([
               },
               {
                 path: "products/lens",
-                element: <ProductList variantType={PRODUCT_VARIANT_TYPES.LENS} />
+                element: <LensProductList />
               },
               {
                 path: "products/frame",
-                element: <ProductList variantType={PRODUCT_VARIANT_TYPES.FRAME} />
+                element: <FrameProductList />
               },
               {
                 path: "products/sunglasses",
-                element: <ProductList variantType={PRODUCT_VARIANT_TYPES.SUNGLASSES} />
+                element: <SunglassesProductList />
               },
               {
                 path: "products/accessory",
-                element: <ProductList variantType={PRODUCT_VARIANT_TYPES.ACCESSORY} />
+                element: <AccessoryProductList />
               }
             ]
           }

@@ -18,9 +18,21 @@ const PRIMARY_PRESETS = {
       sidebarActiveForeground: "24 25% 10%"
     }
   }
+} as const;
+
+type ThemeMode = "light" | "dark";
+type PrimaryPreset = keyof typeof PRIMARY_PRESETS;
+
+type ThemeState = {
+  mode: ThemeMode;
+  primary: PrimaryPreset;
+  setMode: (mode: ThemeMode) => void;
+  toggleMode: () => void;
+  setPrimary: (presetName: string) => void;
+  initTheme: () => void;
 };
 
-const applyThemeToDom = (mode, primary) => {
+const applyThemeToDom = (mode: ThemeMode, primary: PrimaryPreset) => {
   const root = document.documentElement;
   const palette = PRIMARY_PRESETS[primary] ?? PRIMARY_PRESETS.orange;
   const values = palette[mode];
@@ -33,12 +45,12 @@ const applyThemeToDom = (mode, primary) => {
   root.style.setProperty("--sidebar-active-foreground", values.sidebarActiveForeground);
 };
 
-export const useThemeStore = create(
+export const useThemeStore = create<ThemeState>()(
   persist(
     (set, get) => ({
-      mode: "light",
-      primary: "orange",
-      setMode: (mode) => {
+      mode: "light" as ThemeMode,
+      primary: "orange" as PrimaryPreset,
+      setMode: (mode: ThemeMode) => {
         set({ mode });
         applyThemeToDom(mode, get().primary);
       },
@@ -47,10 +59,10 @@ export const useThemeStore = create(
         set({ mode: next });
         applyThemeToDom(next, get().primary);
       },
-      setPrimary: (presetName) => {
+      setPrimary: (presetName: string) => {
         const safePreset = PRIMARY_PRESETS[presetName] ? presetName : "orange";
-        set({ primary: safePreset });
-        applyThemeToDom(get().mode, safePreset);
+        set({ primary: safePreset as PrimaryPreset });
+        applyThemeToDom(get().mode, safePreset as PrimaryPreset);
       },
       initTheme: () => {
         const { mode, primary } = get();

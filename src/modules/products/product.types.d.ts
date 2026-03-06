@@ -1,6 +1,12 @@
 export type ProductVariantType = "LENS" | "FRAME" | "SUNGLASSES" | "ACCESSORY";
 export type LensSubType = "SINGLE_VISION" | "BIFOCAL" | "PROGRESSIVE" | "CONTACT_LENS";
 export type SingleVisionLensType = "UC" | "HMC" | "PGHMC" | "PBHMC" | "BB" | "PGBB";
+export type FrameType =
+  | "3Pieces/Rimless"
+  | "Half Rimless/SUPRA"
+  | "Full Metal"
+  | "Full Shell/Plastic"
+  | "Goggles";
 
 export interface LensDetailsRequest {
   lensSubType: LensSubType;
@@ -17,7 +23,7 @@ export interface LensDetailsRequest {
 
 export interface FrameDetailsRequest {
   frameCode: string | null;
-  frameType: string | null;
+  frameType: FrameType | null;
   color: string | null;
   size: string | null;
 }
@@ -88,6 +94,17 @@ export interface ProductListItem {
   attributes?: Record<string, unknown> | null;
   variantType?: ProductVariantType;
   supplierId?: number;
+  supplierName?: string | null;
+  supplier?: {
+    id?: number;
+    name?: string | null;
+    supplierName?: string | null;
+  } | null;
+  suppliers?: Array<{
+    id?: number;
+    name?: string | null;
+    supplierName?: string | null;
+  }> | null;
   purchasePrice?: number;
   sellingPrice?: number;
   quantity?: number | null;
@@ -155,4 +172,66 @@ export interface CreateSunglassesRequest {
   notes: string;
   supplierId: number;
   supplierIds: number[];
+}
+
+export interface CreateFrameRequest {
+  name: string;
+  code: string;
+  type: FrameType;
+  color?: string | null;
+  size?: string | null;
+  quantity: number;
+  purchasePrice: number;
+  sellingPrice: number;
+  extra?: string | null;
+  supplierId: number;
+  supplierIds: number[];
+}
+
+export interface FrameMutationResponse {
+  productId: number;
+  variantId: number;
+  productTypeCode: string;
+  productName: string;
+  sku: string;
+  barcode: string | null;
+  variantType: "FRAME";
+  lensSubType: null;
+  productActive: boolean;
+  variantActive: boolean;
+  supplierId: number;
+  purchasePrice: number;
+  sellingPrice: number;
+  quantity: number;
+}
+
+export interface FrameDetailResponse {
+  productId: number;
+  variantId: number;
+  name: string;
+  code: string;
+  type: FrameType;
+  color: string | null;
+  size: string | null;
+  quantity: number;
+  purchasePrice: number;
+  sellingPrice: number;
+  extra: string | null;
+  supplierIds: number[];
+  supplierId?: number;
+}
+
+export interface FrameListItem {
+  productId: number;
+  variantId: number;
+  name: string;
+  variantType: "FRAME";
+  supplierId: number;
+  purchasePrice: number;
+  sellingPrice: number;
+  quantity: number;
+  frameCode: string | null;
+  frameType: FrameType | null;
+  color: string | null;
+  size: string | null;
 }

@@ -5,9 +5,28 @@ export const ROLES = {
   SUPER_ADMIN: "SUPER_ADMIN",
   ADMIN: "ADMIN",
   BRANCH_USER: "BRANCH_USER"
+} as const;
+
+export type Role = (typeof ROLES)[keyof typeof ROLES];
+
+type AuthPayload = {
+  token?: string | null;
+  role?: Role | null;
+  branchId?: number | null;
+  username?: string | null;
 };
 
-export const useAuthStore = create(
+type AuthState = {
+  token: string | null;
+  role: Role | null;
+  branchId: number | null;
+  username: string | null;
+  isAuthenticated: () => boolean;
+  setAuth: (payload: AuthPayload) => void;
+  clearAuth: () => void;
+};
+
+export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
       token: null,

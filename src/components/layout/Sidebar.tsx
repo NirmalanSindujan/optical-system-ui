@@ -19,7 +19,7 @@ const productIcons = {
 
 function Sidebar() {
   const role = useAuthStore((state) => state.role);
-  const canManageProducts = [ROLES.SUPER_ADMIN, ROLES.ADMIN].includes(role);
+  const canManageProducts = role === ROLES.SUPER_ADMIN || role === ROLES.ADMIN;
 
   return (
     <aside className="w-64 border-r bg-[hsl(var(--sidebar-background))] text-[hsl(var(--sidebar-foreground))]">
