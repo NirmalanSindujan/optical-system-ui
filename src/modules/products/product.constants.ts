@@ -20,6 +20,8 @@ export const FRAME_TYPE_VALUES = [
   "Goggles"
 ] as const;
 
+export const ACCESSORY_ITEM_TYPE_VALUES = ["Product", "Service"] as const;
+
 export const LENS_SUB_TYPES = {
   SINGLE_VISION: "SINGLE_VISION",
   BIFOCAL: "BIFOCAL",

@@ -1,8 +1,6 @@
-// @ts-nocheck
-import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Circle, CircleOff, DollarSign, MoreHorizontal, Package, Plus, Search, UserRound } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { DollarSign, MoreHorizontal, Package, Plus, Search, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -14,21 +12,19 @@ import {
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/components/ui/use-toast";
+import AccessoryEditorDrawer from "@/modules/products/AccessoryEditorDrawer";
 import ProductDeleteDialog from "@/modules/products/components/ProductDeleteDialog";
 import ProductPagination from "@/modules/products/components/ProductPagination";
 import {
   getListErrorMessage,
-  resolveItems,
   resolveProductId,
   resolveRowId,
   resolveSupplierLabel
 } from "@/modules/products/components/productListShared";
-import ProductEditorDrawer from "@/modules/products/ProductEditorDrawer";
 import { PRODUCT_VARIANT_TYPES } from "@/modules/products/product.constants";
-import { deleteProduct, getAccessories } from "@/modules/products/product.service";
-import { getSupplierById } from "@/modules/suppliers/supplier.service";
-
-const toStatusBadgeVariant = (active: boolean) => (active ? "default" : "secondary");
+import { deleteProduct } from "@/modules/products/product.service";
+import { getAccessories } from "@/modules/products/accessory.service";
+import type { AccessoryListItem } from "@/modules/products/product.types";
 
 function AccessoryProductList() {
   const PAGE_SIZE = 20;
@@ -39,8 +35,8 @@ function AccessoryProductList() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
   const {
     data: productsResponse,
@@ -61,7 +57,7 @@ function AccessoryProductList() {
       setConfirmDeleteId(null);
       queryClient.invalidateQueries({ queryKey: ["products"] });
     },
-    onError: (mutationError) => {
+    onError: (mutationError: any) => {
       toast({
         variant: "destructive",
         title: "Delete failed",
@@ -70,50 +66,16 @@ function AccessoryProductList() {
     }
   });
 
-  const items = resolveItems(productsResponse);
+  const items: AccessoryListItem[] = Array.isArray(productsResponse?.items) ? productsResponse.items : [];
   const total = productsResponse?.totalCounts ?? items.length;
   const totalPages = Math.max(1, productsResponse?.totalPages ?? 1);
-  const supplierIds = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          items
-            .map((item) => Number(item?.supplierId))
-            .filter((supplierId) => Number.isInteger(supplierId) && supplierId > 0)
-        )
-      ),
-    [items]
-  );
-
-  const supplierQueries = useQueries({
-    queries: supplierIds.map((supplierId) => ({
-      queryKey: ["supplier", supplierId],
-      queryFn: () => getSupplierById(supplierId)
-    }))
-  });
-
-  const supplierNamesById = useMemo(() => {
-    const nameMap = new Map();
-
-    supplierIds.forEach((supplierId, index) => {
-      const supplierResponse = supplierQueries[index]?.data;
-      const supplier = supplierResponse?.data ?? supplierResponse;
-      const supplierName = supplier?.name ?? supplier?.supplierName;
-
-      if (typeof supplierName === "string" && supplierName.trim()) {
-        nameMap.set(supplierId, supplierName.trim());
-      }
-    });
-
-    return nameMap;
-  }, [supplierIds, supplierQueries]);
 
   useEffect(() => {
     if (!isError) return;
     toast({
       variant: "destructive",
-      title: "Failed to load products",
-      description: getListErrorMessage(error)
+      title: "Failed to load accessories",
+      description: getListErrorMessage(error as any)
     });
   }, [error, isError, toast]);
 
@@ -136,9 +98,15 @@ function AccessoryProductList() {
             </CardTitle>
             <p className="text-sm text-muted-foreground">Manage accessory inventory.</p>
           </div>
-          <Button className="w-full sm:w-auto" onClick={() => { setEditingId(null); setDrawerOpen(true); }}>
+          <Button
+            className="w-full sm:w-auto"
+            onClick={() => {
+              setEditingId(null);
+              setDrawerOpen(true);
+            }}
+          >
             <Plus className="mr-2 h-4 w-4" />
-            Add Product
+            Add Accessory
           </Button>
         </div>
       </CardHeader>
@@ -149,7 +117,7 @@ function AccessoryProductList() {
             <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search by name, brand, SKU, barcode"
+              placeholder="Search by model or company"
               className="pl-9"
             />
             <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -161,71 +129,77 @@ function AccessoryProductList() {
         </div>
 
         <div className="min-h-0 flex flex-1 flex-col overflow-x-auto rounded-lg border bg-card/60">
-          <Table className="min-w-[1100px] table-fixed">
+          <Table className="min-w-[1180px] table-fixed">
             <colgroup>
-              <col className="w-[23%]" />
-              <col className="w-[15%]" />
-              <col className="w-[14%]" />
+              <col className="w-[18%]" />
+              <col className="w-[18%]" />
               <col className="w-[12%]" />
-              <col className="w-[11%]" />
+              <col className="w-[18%]" />
+              <col className="w-[12%]" />
+              <col className="w-[12%]" />
               <col className="w-[10%]" />
-              <col className="w-[11%]" />
               <col className="w-[64px]" />
             </colgroup>
             <TableHeader className="bg-muted/85 supports-[backdrop-filter]:bg-muted/65">
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>SKU</TableHead>
-                <TableHead>Supplier</TableHead>
-                <TableHead>Selling Price</TableHead>
-                <TableHead>Quantity</TableHead>
-                <TableHead>Product</TableHead>
-                <TableHead>Variant</TableHead>
+                <TableHead>Model</TableHead>
+                <TableHead>Company</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Suppliers</TableHead>
+                <TableHead>Purchase</TableHead>
+                <TableHead>Selling</TableHead>
+                <TableHead>Qty</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
           </Table>
 
           <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden border-t">
-            <Table className="min-w-[1100px] table-fixed">
+            <Table className="min-w-[1180px] table-fixed">
               <colgroup>
-                <col className="w-[23%]" />
-                <col className="w-[15%]" />
-                <col className="w-[14%]" />
+                <col className="w-[18%]" />
+                <col className="w-[18%]" />
                 <col className="w-[12%]" />
-                <col className="w-[11%]" />
+                <col className="w-[18%]" />
+                <col className="w-[12%]" />
+                <col className="w-[12%]" />
                 <col className="w-[10%]" />
-                <col className="w-[11%]" />
                 <col className="w-[64px]" />
               </colgroup>
               <TableBody>
                 {isLoading || isFetching ? (
                   <TableRow>
-                    <TableCell colSpan={8}>Loading products...</TableCell>
+                    <TableCell colSpan={8}>Loading accessories...</TableCell>
                   </TableRow>
                 ) : items.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8}>No products found.</TableCell>
+                    <TableCell colSpan={8}>No accessories found.</TableCell>
                   </TableRow>
                 ) : (
                   items.map((item, index) => {
                     const productId = resolveProductId(item);
                     const rowId = resolveRowId(item);
-                    const productActive = Boolean(item?.productActive ?? true);
-                    const variantActive = Boolean(item?.variantActive ?? true);
+
                     return (
                       <TableRow
                         key={
                           rowId ??
-                          `${item?.name ?? item?.productName ?? "product"}-${item?.brandName ?? "brand"}-${index}`
+                          `${item?.name ?? "accessory"}-${item?.brandName ?? "company"}-${index}`
                         }
                       >
-                        <TableCell className="font-medium">{item?.name ?? item?.productName ?? "-"}</TableCell>
-                        <TableCell>{item?.sku ?? "-"}</TableCell>
+                        <TableCell className="font-medium">{item?.name ?? "-"}</TableCell>
+                        <TableCell>{item?.brandName ?? "-"}</TableCell>
+                        <TableCell>{item?.itemType ?? "-"}</TableCell>
                         <TableCell>
                           <span className="inline-flex items-center gap-1">
                             <UserRound className="h-3.5 w-3.5 text-muted-foreground" />
-                            {resolveSupplierLabel(item, supplierNamesById.get(Number(item?.supplierId)))}
+                            {resolveSupplierLabel(item)}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <span className="inline-flex items-center gap-1">
+                            <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
+                            {item?.purchasePrice != null ? Number(item.purchasePrice).toFixed(2) : "-"}
                           </span>
                         </TableCell>
                         <TableCell>
@@ -236,18 +210,6 @@ function AccessoryProductList() {
                         </TableCell>
                         <TableCell>{item?.quantity != null ? item.quantity : "-"}</TableCell>
                         <TableCell>
-                          <Badge variant={toStatusBadgeVariant(productActive)} className="gap-1">
-                            {productActive ? <Circle className="h-3 w-3" /> : <CircleOff className="h-3 w-3" />}
-                            {productActive ? "Active" : "Inactive"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={toStatusBadgeVariant(variantActive)} className="gap-1">
-                            {variantActive ? <Circle className="h-3 w-3" /> : <CircleOff className="h-3 w-3" />}
-                            {variantActive ? "Active" : "Inactive"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button className="h-8 w-8" variant="ghost" size="icon">
@@ -255,7 +217,13 @@ function AccessoryProductList() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem disabled={!productId} onClick={() => { setEditingId(productId); setDrawerOpen(true); }}>
+                              <DropdownMenuItem
+                                disabled={!productId}
+                                onClick={() => {
+                                  setEditingId(productId);
+                                  setDrawerOpen(true);
+                                }}
+                              >
                                 Edit
                               </DropdownMenuItem>
                               <DropdownMenuItem
@@ -293,10 +261,9 @@ function AccessoryProductList() {
         onConfirm={() => confirmDeleteId && deleteMutation.mutate(confirmDeleteId)}
       />
 
-      <ProductEditorDrawer
+      <AccessoryEditorDrawer
         open={drawerOpen}
-        productId={editingId}
-        defaultVariantType={PRODUCT_VARIANT_TYPES.ACCESSORY}
+        accessoryId={editingId}
         onClose={() => setDrawerOpen(false)}
         onSaved={() => queryClient.invalidateQueries({ queryKey: ["products"] })}
       />

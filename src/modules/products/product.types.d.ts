@@ -1,6 +1,7 @@
 export type ProductVariantType = "LENS" | "FRAME" | "SUNGLASSES" | "ACCESSORY";
 export type LensSubType = "SINGLE_VISION" | "BIFOCAL" | "PROGRESSIVE" | "CONTACT_LENS";
 export type SingleVisionLensType = "UC" | "HMC" | "PGHMC" | "PBHMC" | "BB" | "PGBB";
+export type AccessoryItemType = "Product" | "Service";
 export type FrameType =
   | "3Pieces/Rimless"
   | "Half Rimless/SUPRA"
@@ -156,6 +157,81 @@ export interface SupplierSearchItem {
 
 export interface SupplierSearchResponse {
   items: SupplierSearchItem[];
+  totalCounts: number;
+  page: number;
+  size: number;
+  totalPages: number;
+}
+
+export interface AccessorySupplier {
+  id?: number;
+  name?: string | null;
+  supplierName?: string | null;
+  phone?: string | null;
+  email?: string | null;
+}
+
+export interface CreateAccessoryRequest {
+  companyName: string;
+  modelName: string;
+  type: AccessoryItemType;
+  sellingPrice: number;
+  quantity?: number | null;
+  purchasePrice?: number | null;
+  extra?: string | null;
+  supplierId?: number;
+  supplierIds?: number[];
+}
+
+export interface AccessoryMutationResponse {
+  productId: number;
+  variantId: number;
+  productTypeCode: string;
+  productName: string;
+  sku: string;
+  barcode: string | null;
+  variantType: "ACCESSORY";
+  productActive: boolean;
+  variantActive: boolean;
+  supplierId?: number | null;
+  supplierIds?: number[];
+  suppliers?: AccessorySupplier[] | null;
+  purchasePrice?: number | null;
+  sellingPrice: number;
+  quantity?: number | null;
+}
+
+export interface AccessoryDetailResponse {
+  productId: number;
+  variantId: number;
+  companyName: string;
+  modelName: string;
+  type: AccessoryItemType;
+  quantity?: number | null;
+  purchasePrice?: number | null;
+  sellingPrice: number;
+  extra: string | null;
+  supplierId?: number;
+  supplierIds?: number[];
+  suppliers?: AccessorySupplier[] | null;
+}
+
+export interface AccessoryListItem extends ProductListItem {
+  productId: number;
+  variantId: number;
+  productTypeCode: string;
+  brandName: string | null;
+  name: string;
+  variantType: "ACCESSORY";
+  purchasePrice?: number | null;
+  sellingPrice: number;
+  quantity?: number | null;
+  itemType: AccessoryItemType | null;
+  suppliers?: AccessorySupplier[] | null;
+}
+
+export interface AccessoryListResponse {
+  items: AccessoryListItem[];
   totalCounts: number;
   page: number;
   size: number;
