@@ -1,6 +1,8 @@
 export type ProductVariantType = "LENS" | "FRAME" | "SUNGLASSES" | "ACCESSORY";
 export type LensSubType = "SINGLE_VISION" | "BIFOCAL" | "PROGRESSIVE" | "CONTACT_LENS";
 export type SingleVisionLensType = "UC" | "HMC" | "PGHMC" | "PBHMC" | "BB" | "PGBB";
+export type SingleVisionAdditionMethod = "SINGLE" | "RANGE";
+export type SingleVisionMaterial = "Glass" | "Plastic Lense" | "Polycarbonate Lense";
 export type AccessoryItemType = "Product" | "Service";
 export type FrameType =
   | "3Pieces/Rimless"
@@ -84,6 +86,7 @@ export interface ProductListItem {
   variantId?: number;
   productTypeCode?: string;
   brandName?: string | null;
+  companyName?: string | null;
   name?: string;
   description?: string | null;
   productActive?: boolean;
@@ -125,6 +128,7 @@ export interface ProductListItem {
   size?: string | null;
   sunglassesDescription?: string | null;
   itemType?: string | null;
+  extra?: string | null;
 }
 
 export interface LensSubtabItem {
@@ -161,6 +165,36 @@ export interface SupplierSearchResponse {
   page: number;
   size: number;
   totalPages: number;
+}
+
+export interface SingleVisionCreateRequest {
+  material: SingleVisionMaterial;
+  type: SingleVisionLensType;
+  companyName: string;
+  name: string;
+  index: number;
+  additionMethod: SingleVisionAdditionMethod;
+  cylEnabled: boolean;
+  sph?: number;
+  cyl?: number;
+  sphStart?: number;
+  sphEnd?: number;
+  cylStart?: number;
+  cylEnd?: number;
+  purchasePrice: number;
+  sellingPrice: number;
+  extra?: string | null;
+  supplierIds: number[];
+}
+
+export interface SingleVisionCreateResponse {
+  productId?: number;
+  productName?: string;
+  variantId?: number;
+  variantIds?: number[];
+  createdVariantCount?: number;
+  totalVariants?: number;
+  message?: string;
 }
 
 export interface AccessorySupplier {

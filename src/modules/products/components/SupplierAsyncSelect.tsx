@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/cn";
 import { searchSuppliers } from "@/modules/products/sunglasses.service";
 
@@ -37,7 +38,6 @@ function SupplierAsyncSelect({
   error,
   placeholder = "Select supplier"
 }: SupplierAsyncSelectProps) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const requestIdRef = useRef(0);
 
@@ -118,50 +118,39 @@ function SupplierAsyncSelect({
     searchInputRef.current?.focus();
   }, [isOpen]);
 
-  useEffect(() => {
-    if (!isOpen) return undefined;
-    const handlePointerDown = (event: MouseEvent) => {
-      const target = event.target as Node | null;
-      if (target && !containerRef.current?.contains(target)) {
-        closeDropdown();
-      }
-    };
-
-    document.addEventListener("mousedown", handlePointerDown);
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-    };
-  }, [closeDropdown, isOpen]);
-
   return (
-    <div ref={containerRef} className="relative">
-      <Button
-        type="button"
-        variant="outline"
-        className={cn("w-full justify-between font-normal", !value && "text-muted-foreground")}
-        onClick={() => {
-          if (isOpen) {
-            closeDropdown();
+    <div className="relative isolate">
+      <Popover
+        open={isOpen}
+        onOpenChange={(open) => {
+          if (open) {
+            openDropdown();
             return;
           }
-          openDropdown();
+          closeDropdown();
         }}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " " || event.key === "ArrowDown") {
-            event.preventDefault();
-            openDropdown();
-          }
-        }}
-        disabled={disabled}
-        aria-expanded={isOpen}
-        aria-haspopup="listbox"
       >
-        <span className="truncate text-left">{selectedLabel}</span>
-        <ChevronDown className="h-4 w-4 shrink-0 opacity-60" />
-      </Button>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            className={cn("w-full justify-between font-normal", !value && "text-muted-foreground")}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " " || event.key === "ArrowDown") {
+                event.preventDefault();
+                openDropdown();
+              }
+            }}
+            disabled={disabled}
+            aria-expanded={isOpen}
+            aria-haspopup="listbox"
+          >
+            <span className="truncate text-left">{selectedLabel}</span>
+            <ChevronDown className={cn("h-4 w-4 shrink-0 opacity-60 transition-transform", isOpen && "rotate-180")} />
+          </Button>
+        </PopoverTrigger>
 
-      {isOpen ? (
-        <div className="absolute z-40 mt-2 w-full rounded-md border bg-popover p-2 shadow-md">
+        <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] p-2">
           <Input
             ref={searchInputRef}
             value={searchText}
@@ -202,7 +191,7 @@ function SupplierAsyncSelect({
             }}
           />
 
-          <div className="mt-2 max-h-56 overflow-y-auto rounded border">
+          <div className="mt-2 max-h-56 overflow-y-auto rounded border border-border bg-background">
             {isLoading ? (
               <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -238,8 +227,8 @@ function SupplierAsyncSelect({
                 })
               : null}
           </div>
-        </div>
-      ) : null}
+        </PopoverContent>
+      </Popover>
 
       {error ? <p className="mt-1 text-xs text-destructive">{error}</p> : null}
     </div>

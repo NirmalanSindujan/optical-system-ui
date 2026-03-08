@@ -70,6 +70,15 @@ export async function getProductById(id) {
 }
 
 /**
+ * @param {number|string} variantId
+ * @returns {Promise<any>}
+ */
+export async function getLensByVariantId(variantId) {
+  const { data } = await api.get(`/products/lenses/${variantId}`);
+  return data;
+}
+
+/**
  * @param {CreateProductRequest} payload
  * @returns {Promise<CreateProductResponse>}
  */

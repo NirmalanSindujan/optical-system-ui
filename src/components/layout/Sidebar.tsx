@@ -1,8 +1,9 @@
-import { NavLink } from "react-router-dom";
-import { Building2, Circle, LayoutDashboard, Package, Square, Sun, Users, Wrench } from "lucide-react";
+import { useEffect, useState } from "react";
+import { NavLink, useLocation } from "react-router-dom";
+import { Building2, ChevronDown, Circle, LayoutDashboard, Package, Square, Sun, Users, Wrench } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { ROLES, useAuthStore } from "@/store/auth.store";
-import { PRODUCT_NAV_ITEMS, PRODUCT_VARIANT_TYPES } from "@/modules/products/product.constants";
+import { LENS_SUBTYPE_NAV_ITEMS, PRODUCT_NAV_ITEMS, PRODUCT_VARIANT_TYPES } from "@/modules/products/product.constants";
 
 const baseNavItems = [
   { to: "/app", label: "Dashboard", icon: LayoutDashboard, exact: true },
@@ -20,6 +21,15 @@ const productIcons = {
 function Sidebar() {
   const role = useAuthStore((state) => state.role);
   const canManageProducts = role === ROLES.SUPER_ADMIN || role === ROLES.ADMIN;
+  const location = useLocation();
+  const isLensRoute = location.pathname.startsWith("/app/products/lens");
+  const [lensMenuOpen, setLensMenuOpen] = useState(isLensRoute);
+
+  useEffect(() => {
+    if (isLensRoute) {
+      setLensMenuOpen(true);
+    }
+  }, [isLensRoute]);
 
   return (
     <aside className="w-64 border-r bg-[hsl(var(--sidebar-background))] text-[hsl(var(--sidebar-foreground))]">
@@ -69,22 +79,77 @@ function Sidebar() {
             <div className="ml-5 mt-1 space-y-1 border-l pl-2">
               {PRODUCT_NAV_ITEMS.map((item) => {
                 const Icon = productIcons[item.variantType] ?? Package;
+
                 return (
-                  <NavLink
-                    key={item.to}
-                    to={item.to}
-                    className={({ isActive }) =>
-                      cn(
-                        "flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors",
-                        isActive
-                          ? "bg-[hsl(var(--sidebar-active))] text-[hsl(var(--sidebar-active-foreground))]"
-                          : "hover:bg-accent hover:text-accent-foreground"
-                      )
-                    }
-                  >
-                    <Icon className="h-3.5 w-3.5" />
-                    {item.label}
-                  </NavLink>
+                  <div key={item.to} className="space-y-1">
+                    {item.variantType === PRODUCT_VARIANT_TYPES.LENS ? (
+                      <button
+                        type="button"
+                        onClick={() => setLensMenuOpen((open) => !open)}
+                        className={cn(
+                          "flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors",
+                          isLensRoute
+                            ? "bg-[hsl(var(--sidebar-active))] text-[hsl(var(--sidebar-active-foreground))]"
+                            : "hover:bg-accent hover:text-accent-foreground"
+                        )}
+                        >
+                          <Icon className="h-3.5 w-3.5" />
+                          <span className="flex-1 text-left">{item.label}</span>
+                        <ChevronDown
+                          className={cn(
+                            "h-4 w-4 transition-transform duration-200 ease-out",
+                            lensMenuOpen ? "rotate-0" : "-rotate-90"
+                          )}
+                        />
+                      </button>
+                    ) : (
+                      <NavLink
+                        to={item.to}
+                        className={({ isActive }) =>
+                          cn(
+                            "flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors",
+                            isActive
+                              ? "bg-[hsl(var(--sidebar-active))] text-[hsl(var(--sidebar-active-foreground))]"
+                              : "hover:bg-accent hover:text-accent-foreground"
+                          )
+                        }
+                      >
+                        <Icon className="h-3.5 w-3.5" />
+                        {item.label}
+                      </NavLink>
+                    )}
+
+                    {item.variantType === PRODUCT_VARIANT_TYPES.LENS ? (
+                      <div
+                        className={cn(
+                          "grid overflow-hidden transition-all duration-200 ease-out",
+                          lensMenuOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+                        )}
+                      >
+                        <div className="min-h-0">
+                          <div className="ml-5 mt-1 space-y-1 border-l pl-2">
+                            {LENS_SUBTYPE_NAV_ITEMS.map((lensItem) => (
+                              <NavLink
+                                key={lensItem.to}
+                                to={lensItem.to}
+                                end
+                                className={({ isActive }) =>
+                                  cn(
+                                    "flex items-center rounded-md px-3 py-1.5 text-sm transition-colors",
+                                    isActive
+                                      ? "bg-[hsl(var(--sidebar-active))] text-[hsl(var(--sidebar-active-foreground))]"
+                                      : "hover:bg-accent hover:text-accent-foreground"
+                                  )
+                                }
+                              >
+                                {lensItem.label}
+                              </NavLink>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
                 );
               })}
             </div>

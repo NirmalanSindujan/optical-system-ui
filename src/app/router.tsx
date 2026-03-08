@@ -6,6 +6,7 @@ import CustomerList from "@/modules/customers/CustomerList";
 import AccessoryProductList from "@/modules/products/accessory/AccessoryProductList";
 import FrameProductList from "@/modules/products/frame/FrameProductList";
 import LensProductList from "@/modules/products/lens/LensProductList";
+import { DEFAULT_LENS_SUBTYPE, LENS_SUBTYPE_ROUTE_SEGMENTS } from "@/modules/products/product.constants";
 import SunglassesProductList from "@/modules/products/sunglasses/SunglassesProductList";
 import SupplierList from "@/modules/suppliers/SupplierList";
 import { ROLES } from "@/store/auth.store";
@@ -57,10 +58,14 @@ const router = createBrowserRouter([
             children: [
               {
                 path: "products",
-                element: <Navigate to="/app/products/lens" replace />
+                element: <Navigate to={`/app/products/lens/${LENS_SUBTYPE_ROUTE_SEGMENTS[DEFAULT_LENS_SUBTYPE]}`} replace />
               },
               {
                 path: "products/lens",
+                element: <Navigate to={`/app/products/lens/${LENS_SUBTYPE_ROUTE_SEGMENTS[DEFAULT_LENS_SUBTYPE]}`} replace />
+              },
+              {
+                path: "products/lens/:lensSubtype",
                 element: <LensProductList />
               },
               {
