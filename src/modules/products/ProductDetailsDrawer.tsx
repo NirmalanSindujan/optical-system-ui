@@ -4,16 +4,19 @@ import { Box, Mail, Phone, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { getAccessoryById } from "@/modules/products/accessory.service";
 import { cn } from "@/lib/cn";
+import { getFrameById } from "@/modules/products/frame.service";
 import LensTypeChips from "@/modules/products/components/LensTypeChips";
 import { LENS_SUB_TYPES, PRODUCT_VARIANT_TYPES } from "@/modules/products/product.constants";
 import { getLensByVariantId, getProductById } from "@/modules/products/product.service";
+import { getSunglassesById } from "@/modules/products/sunglasses.service";
 import type { AccessorySupplier, ProductListItem } from "@/modules/products/product.types";
 
 interface ProductDetailsDrawerProps {
   open: boolean;
   recordId: number | string | null;
-  detailMode?: "product" | "lens-variant";
+  detailMode?: "product" | "lens-variant" | "frame" | "sunglasses" | "accessory";
   onClose: () => void;
 }
 
@@ -33,7 +36,9 @@ type ProductSupplier = AccessorySupplier & {
 };
 
 type ProductDetails = ProductListItem & {
+  modelName?: string | null;
   productName?: string | null;
+  code?: string | null;
   index?: number | null;
   type?: string | null;
   extra?: string | null;
@@ -289,26 +294,53 @@ function ProductDetailsDrawer({
 }: ProductDetailsDrawerProps) {
   const { data: productResponse, isFetching } = useQuery({
     queryKey: ["product", "details", detailMode, recordId],
-    queryFn: () =>
-      detailMode === "lens-variant"
-        ? getLensByVariantId(recordId as number)
-        : getProductById(recordId as number),
+    queryFn: () => {
+      if (detailMode === "lens-variant") {
+        return getLensByVariantId(recordId as number);
+      }
+
+      if (detailMode === "frame") {
+        return getFrameById(recordId as number);
+      }
+
+      if (detailMode === "sunglasses") {
+        return getSunglassesById(recordId as number);
+      }
+
+      if (detailMode === "accessory") {
+        return getAccessoryById(recordId as number);
+      }
+
+      return getProductById(recordId as number);
+    },
     enabled: open && Boolean(recordId)
   });
 
   const product = (productResponse?.data ?? productResponse) as ProductDetails | undefined;
   const normalizedVariantType =
-    product?.variantType ?? (product?.lensSubType ? PRODUCT_VARIANT_TYPES.LENS : undefined);
+    product?.variantType ??
+    (detailMode === "frame" ? PRODUCT_VARIANT_TYPES.FRAME : undefined) ??
+    (detailMode === "sunglasses" ? PRODUCT_VARIANT_TYPES.SUNGLASSES : undefined) ??
+    (detailMode === "accessory" ? PRODUCT_VARIANT_TYPES.ACCESSORY : undefined) ??
+    (product?.lensSubType ? PRODUCT_VARIANT_TYPES.LENS : undefined);
   const normalizedVariantLabel = normalizedVariantType ? toTitleCase(normalizedVariantType) : "Product";
   const normalizedIndex = product?.index ?? product?.lensIndex;
   const normalizedLensType = product?.type ?? product?.lensType;
   const normalizedColor = product?.color ?? product?.lensColor;
-  const rawDisplayName = product?.name ?? product?.productName ?? "Unnamed Product";
+  const normalizedFrameCode = product?.frameCode ?? product?.code;
+  const normalizedFrameType = product?.frameType ?? product?.type;
+  const normalizedDescription = product?.description ?? product?.sunglassesDescription;
+  const rawDisplayName = product?.modelName ?? product?.name ?? product?.productName ?? "Unnamed Product";
   const displayName =
     product?.lensSubType === LENS_SUB_TYPES.BIFOCAL
       ? buildBifocalDisplayName(rawDisplayName, product?.sph, product?.cyl, product?.addPower)
       : rawDisplayName;
-  const displayCompany = product?.companyName ?? product?.brandName ?? "No company name";
+  const displayCompany =
+    product?.companyName ??
+    product?.brandName ??
+    (detailMode === "accessory" ? "Accessory product" : undefined) ??
+    (detailMode === "sunglasses" ? "Sunglasses product" : undefined) ??
+    (detailMode === "frame" ? "Frame product" : "No company name");
   const hasProductStatus = typeof product?.productActive === "boolean";
   const hasVariantStatus = typeof product?.variantActive === "boolean";
 
@@ -343,8 +375,16 @@ function ProductDetailsDrawer({
     { label: "Selling Price", value: product?.sellingPrice, format: "money" },
     { label: "Purchase Price", value: product?.purchasePrice, format: "money" },
     { label: "Quantity", value: product?.quantity },
-    { label: "Description", value: product?.description, fullWidth: true },
+    { label: "Description", value: normalizedDescription, fullWidth: true },
     { label: "Notes", value: product?.notes, fullWidth: true }
+  ];
+
+  const frameRows: DetailRowConfig[] = [
+    { label: "Code", value: normalizedFrameCode },
+    { label: "Type", value: normalizedFrameType },
+    { label: "Color", value: normalizedColor },
+    { label: "Size", value: product?.size },
+    { label: "Extra", value: product?.extra, fullWidth: true }
   ];
 
   const lensRows: DetailRowConfig[] = [
@@ -357,6 +397,19 @@ function ProductDetailsDrawer({
     { label: "Add Power", value: product?.addPower, format: "power" },
     { label: "Color", value: normalizedColor },
     { label: "Base Curve", value: product?.baseCurve }
+  ];
+
+  const sunglassesRows: DetailRowConfig[] = [
+    { label: "Company", value: product?.companyName ?? product?.brandName },
+    { label: "Model Name", value: rawDisplayName },
+    { label: "Description", value: normalizedDescription, fullWidth: true },
+  ];
+
+  const accessoryRows: DetailRowConfig[] = [
+    { label: "Company", value: product?.companyName ?? product?.brandName },
+    { label: "Model Name", value: rawDisplayName },
+    { label: "Type", value: product?.itemType ?? product?.type },
+    { label: "Extra", value: product?.extra, fullWidth: true },
   ];
 
   return (
@@ -454,6 +507,24 @@ function ProductDetailsDrawer({
               {normalizedVariantType === PRODUCT_VARIANT_TYPES.LENS ? (
                 <Section title="Lens Specifications" description="Optical values and lens-specific configuration.">
                   <DetailGrid items={lensRows} />
+                </Section>
+              ) : null}
+
+              {normalizedVariantType === PRODUCT_VARIANT_TYPES.FRAME ? (
+                <Section title="Frame Specifications" description="Core frame identity and sizing details.">
+                  <DetailGrid items={frameRows} />
+                </Section>
+              ) : null}
+
+              {normalizedVariantType === PRODUCT_VARIANT_TYPES.SUNGLASSES ? (
+                <Section title="Sunglasses Details" description="Core sunglasses identity and product description.">
+                  <DetailGrid items={sunglassesRows} />
+                </Section>
+              ) : null}
+
+              {normalizedVariantType === PRODUCT_VARIANT_TYPES.ACCESSORY ? (
+                <Section title="Accessory Details" description="Core accessory identity and service or product details.">
+                  <DetailGrid items={accessoryRows} />
                 </Section>
               ) : null}
 

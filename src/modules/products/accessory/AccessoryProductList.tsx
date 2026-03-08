@@ -1,26 +1,22 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { DollarSign, MoreHorizontal, Package, Plus, Search, UserRound } from "lucide-react";
+import { DollarSign, Package, Plus, Search, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/components/ui/use-toast";
 import AccessoryEditorDrawer from "@/modules/products/AccessoryEditorDrawer";
 import ProductDeleteDialog from "@/modules/products/components/ProductDeleteDialog";
 import ProductPagination from "@/modules/products/components/ProductPagination";
+import ProductDetailsDrawer from "@/modules/products/ProductDetailsDrawer";
 import {
   getListErrorMessage,
   resolveProductId,
   resolveRowId,
   resolveSupplierLabel
 } from "@/modules/products/components/productListShared";
+import LensRowActionsPopover from "@/modules/products/lens/components/LensRowActionsPopover";
 import { PRODUCT_VARIANT_TYPES } from "@/modules/products/product.constants";
 import { deleteProduct } from "@/modules/products/product.service";
 import { getAccessories } from "@/modules/products/accessory.service";
@@ -36,6 +32,8 @@ function AccessoryProductList() {
   const [page, setPage] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [viewingId, setViewingId] = useState<number | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
   const {
@@ -210,31 +208,20 @@ function AccessoryProductList() {
                         </TableCell>
                         <TableCell>{item?.quantity != null ? item.quantity : "-"}</TableCell>
                         <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button className="h-8 w-8" variant="ghost" size="icon">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                disabled={!productId}
-                                onClick={() => {
-                                  setEditingId(productId);
-                                  setDrawerOpen(true);
-                                }}
-                              >
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-destructive"
-                                disabled={!productId}
-                                onClick={() => setConfirmDeleteId(productId)}
-                              >
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          <LensRowActionsPopover
+                            canDelete={Boolean(productId)}
+                            canView={Boolean(productId)}
+                            canEdit={Boolean(productId)}
+                            onEdit={() => {
+                              setEditingId(productId);
+                              setDrawerOpen(true);
+                            }}
+                            onDelete={() => setConfirmDeleteId(productId)}
+                            onView={() => {
+                              setViewingId(productId);
+                              setDetailsOpen(true);
+                            }}
+                          />
                         </TableCell>
                       </TableRow>
                     );
@@ -261,10 +248,23 @@ function AccessoryProductList() {
         onConfirm={() => confirmDeleteId && deleteMutation.mutate(confirmDeleteId)}
       />
 
+      <ProductDetailsDrawer
+        open={detailsOpen}
+        recordId={viewingId}
+        detailMode="accessory"
+        onClose={() => {
+          setDetailsOpen(false);
+          setViewingId(null);
+        }}
+      />
+
       <AccessoryEditorDrawer
         open={drawerOpen}
         accessoryId={editingId}
-        onClose={() => setDrawerOpen(false)}
+        onClose={() => {
+          setDrawerOpen(false);
+          setEditingId(null);
+        }}
         onSaved={() => queryClient.invalidateQueries({ queryKey: ["products"] })}
       />
     </Card>

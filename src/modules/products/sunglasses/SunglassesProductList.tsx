@@ -1,15 +1,9 @@
 // @ts-nocheck
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { DollarSign, MoreHorizontal, Package, Plus, Search } from "lucide-react";
+import { DollarSign, Package, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/components/ui/use-toast";
@@ -21,6 +15,8 @@ import {
   resolveProductId,
   resolveRowId
 } from "@/modules/products/components/productListShared";
+import ProductDetailsDrawer from "@/modules/products/ProductDetailsDrawer";
+import LensRowActionsPopover from "@/modules/products/lens/components/LensRowActionsPopover";
 import SunglassesEditorDrawer from "@/modules/products/SunglassesEditorDrawer";
 import { deleteProduct, getSunglasses } from "@/modules/products/product.service";
 
@@ -34,6 +30,8 @@ function SunglassesProductList() {
   const [page, setPage] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [viewingId, setViewingId] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
   const {
@@ -194,25 +192,20 @@ function SunglassesProductList() {
                           </span>
                         </TableCell>
                         <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button className="h-8 w-8" variant="ghost" size="icon">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem disabled={!productId} onClick={() => { setEditingId(productId); setDrawerOpen(true); }}>
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-destructive"
-                                disabled={!productId}
-                                onClick={() => setConfirmDeleteId(productId)}
-                              >
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          <LensRowActionsPopover
+                            canDelete={Boolean(productId)}
+                            canView={Boolean(productId)}
+                            canEdit={Boolean(productId)}
+                            onEdit={() => {
+                              setEditingId(productId);
+                              setDrawerOpen(true);
+                            }}
+                            onDelete={() => setConfirmDeleteId(productId)}
+                            onView={() => {
+                              setViewingId(productId);
+                              setDetailsOpen(true);
+                            }}
+                          />
                         </TableCell>
                       </TableRow>
                     );
@@ -239,10 +232,23 @@ function SunglassesProductList() {
         onConfirm={() => confirmDeleteId && deleteMutation.mutate(confirmDeleteId)}
       />
 
+      <ProductDetailsDrawer
+        open={detailsOpen}
+        recordId={viewingId}
+        detailMode="sunglasses"
+        onClose={() => {
+          setDetailsOpen(false);
+          setViewingId(null);
+        }}
+      />
+
       <SunglassesEditorDrawer
         open={drawerOpen}
         sunglassesId={editingId}
-        onClose={() => setDrawerOpen(false)}
+        onClose={() => {
+          setDrawerOpen(false);
+          setEditingId(null);
+        }}
         onSaved={() => queryClient.invalidateQueries({ queryKey: ["products"] })}
       />
     </Card>

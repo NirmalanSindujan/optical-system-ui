@@ -29,6 +29,9 @@ interface AccessoryEditorDrawerProps {
   onSaved?: () => void;
 }
 
+const textareaClassName =
+  "w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
 const toFieldValue = (value: unknown) => {
   if (value === null || typeof value === "undefined") return "";
   return String(value);
@@ -236,9 +239,12 @@ function AccessoryEditorDrawer({ open, accessoryId, onClose, onSaved }: Accessor
     }
   });
 
+  const renderFieldError = (message?: string) =>
+    message ? <p className="mt-1 text-xs text-destructive">{message}</p> : null;
+
   return (
     <Sheet open={open} onOpenChange={(nextOpen) => { if (!nextOpen) onClose(); }}>
-      <SheetContent side="right" hideClose className="max-w-xl overflow-y-auto p-6 sm:max-w-xl">
+      <SheetContent side="right" hideClose className="max-w-2xl overflow-y-auto p-6 sm:max-w-2xl">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="flex items-center gap-2 text-lg font-semibold">
             <Package className="h-5 w-5 text-primary" />
@@ -251,158 +257,197 @@ function AccessoryEditorDrawer({ open, accessoryId, onClose, onSaved }: Accessor
           </SheetClose>
         </div>
 
-        <form className="grid gap-4 md:grid-cols-2" onSubmit={handleSubmit((values) => saveMutation.mutate(values))}>
-          <div>
-            <label htmlFor="companyName" className="mb-1 block text-sm font-medium">
-              Company Name
-            </label>
-            <Input id="companyName" autoFocus placeholder="Rayban" {...register("companyName")} />
-            {errors.companyName ? <p className="mt-1 text-xs text-destructive">{errors.companyName.message}</p> : null}
-          </div>
-
-          <div>
-            <label htmlFor="modelName" className="mb-1 block text-sm font-medium">
-              Model Name
-            </label>
-            <Input id="modelName" placeholder="Cleaning Cloth" {...register("modelName")} />
-            {errors.modelName ? <p className="mt-1 text-xs text-destructive">{errors.modelName.message}</p> : null}
-          </div>
-
-          <div>
-            <label htmlFor="type" className="mb-1 block text-sm font-medium">
-              Type
-            </label>
-            <select
-              id="type"
-              className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              {...register("type")}
-              disabled={isLoadingDetails}
-            >
-              <option value="">Select accessory type</option>
-              {ACCESSORY_ITEM_TYPE_VALUES.map((accessoryType) => (
-                <option key={accessoryType} value={accessoryType}>
-                  {accessoryType}
-                </option>
-              ))}
-            </select>
-            {errors.type ? <p className="mt-1 text-xs text-destructive">{errors.type.message}</p> : null}
-            {accessoryType === "Service" ? (
-              <p className="mt-1 text-xs text-muted-foreground">
-                For services, only company, model, type, and selling price are required.
+        <form className="space-y-6" onSubmit={handleSubmit((values) => saveMutation.mutate(values))}>
+          <section className="rounded-lg border p-4">
+            <div className="mb-4">
+              <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                Basic Details
+              </h4>
+              <p className="text-sm text-muted-foreground">
+                Capture the accessory identity and classify it as a product or service.
               </p>
-            ) : null}
-          </div>
+            </div>
 
-          {isProductType ? (
-            <>
+            <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <label htmlFor="quantity" className="mb-1 block text-sm font-medium">
-                  Quantity
+                <label htmlFor="companyName" className="mb-1 block text-sm font-medium">
+                  Company Name
                 </label>
-                <Input id="quantity" type="number" min={0} step={1} placeholder="0" {...register("quantity")} />
-                {errors.quantity ? <p className="mt-1 text-xs text-destructive">{errors.quantity.message}</p> : null}
+                <Input id="companyName" autoFocus placeholder="Rayban" {...register("companyName")} />
+                {renderFieldError(errors.companyName?.message)}
               </div>
 
               <div>
-                <label htmlFor="purchasePrice" className="mb-1 block text-sm font-medium">
-                  Price (Purchase)
+                <label htmlFor="modelName" className="mb-1 block text-sm font-medium">
+                  Model Name
                 </label>
-                <Input
-                  id="purchasePrice"
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  placeholder="0.00"
-                  {...register("purchasePrice")}
-                />
-                {errors.purchasePrice ? (
-                  <p className="mt-1 text-xs text-destructive">{errors.purchasePrice.message}</p>
+                <Input id="modelName" placeholder="Cleaning Cloth" {...register("modelName")} />
+                {renderFieldError(errors.modelName?.message)}
+              </div>
+
+              <div>
+                <label htmlFor="type" className="mb-1 block text-sm font-medium">
+                  Type
+                </label>
+                <select
+                  id="type"
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  {...register("type")}
+                  disabled={isLoadingDetails}
+                >
+                  <option value="">Select accessory type</option>
+                  {ACCESSORY_ITEM_TYPE_VALUES.map((accessoryType) => (
+                    <option key={accessoryType} value={accessoryType}>
+                      {accessoryType}
+                    </option>
+                  ))}
+                </select>
+                {renderFieldError(errors.type?.message)}
+                {accessoryType === "Service" ? (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    For services, only company, model, type, and selling price are required.
+                  </p>
                 ) : null}
               </div>
-            </>
-          ) : null}
 
-          <div>
-            <label htmlFor="sellingPrice" className="mb-1 block text-sm font-medium">
-              Price (Selling)
-            </label>
-            <Input id="sellingPrice" type="number" min={0} step="0.01" placeholder="0.00" {...register("sellingPrice")} />
-            {errors.sellingPrice ? (
-              <p className="mt-1 text-xs text-destructive">{errors.sellingPrice.message}</p>
-            ) : null}
-          </div>
+              <div className="md:col-span-2">
+                <label htmlFor="extra" className="mb-1 block text-sm font-medium">
+                  Extra
+                </label>
+                <textarea
+                  id="extra"
+                  rows={3}
+                  placeholder="Microfiber"
+                  className={textareaClassName}
+                  {...register("extra")}
+                />
+                {renderFieldError(errors.extra?.message)}
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-lg border p-4">
+            <div className="mb-4">
+              <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                Pricing And Inventory
+              </h4>
+              <p className="text-sm text-muted-foreground">
+                Set prices and stock values. Product accessories require quantity and purchase price.
+              </p>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-3">
+              {isProductType ? (
+                <>
+                  <div>
+                    <label htmlFor="quantity" className="mb-1 block text-sm font-medium">
+                      Quantity
+                    </label>
+                    <Input id="quantity" type="number" min={0} step={1} placeholder="0" {...register("quantity")} />
+                    {renderFieldError(errors.quantity?.message)}
+                  </div>
+
+                  <div>
+                    <label htmlFor="purchasePrice" className="mb-1 block text-sm font-medium">
+                      Purchase Price
+                    </label>
+                    <Input
+                      id="purchasePrice"
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      placeholder="0.00"
+                      {...register("purchasePrice")}
+                    />
+                    {renderFieldError(errors.purchasePrice?.message)}
+                  </div>
+                </>
+              ) : null}
+
+              <div>
+                <label htmlFor="sellingPrice" className="mb-1 block text-sm font-medium">
+                  Sales Price
+                </label>
+                <Input id="sellingPrice" type="number" min={0} step="0.01" placeholder="0.00" {...register("sellingPrice")} />
+                {renderFieldError(errors.sellingPrice?.message)}
+              </div>
+            </div>
+          </section>
 
           {isProductType ? (
-            <div className="md:col-span-2">
-              <label className="mb-1 block text-sm font-medium">Suppliers</label>
-              <Controller
-                name="supplierIds"
-                control={control}
-                render={({ field }) => (
-                  <>
-                    <SupplierAsyncSelect
-                      value={supplierPickerValue}
-                      onChange={(supplier) => {
-                        if (!supplier) return;
-                        const alreadyAdded = selectedSuppliers.some((item) => item.id === supplier.id);
-                        if (alreadyAdded) {
-                          setSupplierPickerValue(null);
-                          return;
-                        }
-                        const nextSuppliers = [...selectedSuppliers, supplier];
-                        setSelectedSuppliers(nextSuppliers);
-                        field.onChange(nextSuppliers.map((item) => item.id));
-                        setSupplierPickerValue(null);
-                      }}
-                      onBlur={field.onBlur}
-                      error={typeof errors.supplierIds?.message === "string" ? errors.supplierIds.message : undefined}
-                      placeholder="Search supplier and add"
-                      disabled={isSubmitting || saveMutation.isPending || isLoadingDetails}
-                    />
-                    <div className="mt-2 space-y-2">
-                      {selectedSuppliers.length === 0 ? (
-                        <p className="text-xs text-muted-foreground">No suppliers added yet.</p>
-                      ) : (
-                        selectedSuppliers.map((supplier) => (
-                          <div key={supplier.id} className="flex items-center justify-between rounded-md border px-2 py-1.5 text-sm">
-                            <span className="truncate">{supplier.name}</span>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 px-2 text-destructive"
-                              onClick={() => {
-                                const nextSuppliers = selectedSuppliers.filter((item) => item.id !== supplier.id);
-                                setSelectedSuppliers(nextSuppliers);
-                                field.onChange(nextSuppliers.map((item) => item.id));
-                              }}
-                            >
-                              Remove
-                            </Button>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </>
-                )}
-              />
-            </div>
+            <section className="rounded-lg border p-4">
+              <div className="mb-4">
+                <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                  Suppliers
+                </h4>
+                <p className="text-sm text-muted-foreground">
+                  Attach one or more suppliers to this accessory product.
+                </p>
+              </div>
+
+              <div className="grid gap-4">
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Suppliers</label>
+                  <Controller
+                    name="supplierIds"
+                    control={control}
+                    render={({ field }) => (
+                      <>
+                        <SupplierAsyncSelect
+                          value={supplierPickerValue}
+                          onChange={(supplier) => {
+                            if (!supplier) return;
+                            const alreadyAdded = selectedSuppliers.some((item) => item.id === supplier.id);
+                            if (alreadyAdded) {
+                              setSupplierPickerValue(null);
+                              return;
+                            }
+                            const nextSuppliers = [...selectedSuppliers, supplier];
+                            setSelectedSuppliers(nextSuppliers);
+                            field.onChange(nextSuppliers.map((item) => item.id));
+                            setSupplierPickerValue(null);
+                          }}
+                          onBlur={field.onBlur}
+                          error={typeof errors.supplierIds?.message === "string" ? errors.supplierIds.message : undefined}
+                          placeholder="Search supplier and add"
+                          disabled={isSubmitting || saveMutation.isPending || isLoadingDetails}
+                        />
+                        <div className="mt-2 space-y-2">
+                          {selectedSuppliers.length === 0 ? (
+                            <p className="text-xs text-muted-foreground">No suppliers added yet.</p>
+                          ) : (
+                            selectedSuppliers.map((supplier) => (
+                              <div
+                                key={supplier.id}
+                                className="flex items-center justify-between rounded-md border px-3 py-2 text-sm"
+                              >
+                                <span className="truncate">{supplier.name}</span>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 px-2 text-destructive"
+                                  onClick={() => {
+                                    const nextSuppliers = selectedSuppliers.filter((item) => item.id !== supplier.id);
+                                    setSelectedSuppliers(nextSuppliers);
+                                    field.onChange(nextSuppliers.map((item) => item.id));
+                                  }}
+                                >
+                                  Remove
+                                </Button>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </>
+                    )}
+                  />
+                </div>
+              </div>
+            </section>
           ) : null}
 
-          <div className="md:col-span-2">
-            <label htmlFor="extra" className="mb-1 block text-sm font-medium">
-              Extra
-            </label>
-            <textarea
-              id="extra"
-              rows={3}
-              placeholder="Microfiber"
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              {...register("extra")}
-            />
-          </div>
-
-          <div className="md:col-span-2 flex justify-end gap-2">
+          <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>

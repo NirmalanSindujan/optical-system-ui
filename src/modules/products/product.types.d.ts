@@ -87,6 +87,7 @@ export interface ProductListItem {
   productId?: number;
   variantId?: number;
   productTypeCode?: string;
+  productName?: string | null;
   brandName?: string | null;
   companyName?: string | null;
   name?: string;
@@ -100,6 +101,7 @@ export interface ProductListItem {
   attributes?: Record<string, unknown> | null;
   variantType?: ProductVariantType;
   supplierId?: number;
+  supplierIds?: number[];
   supplierName?: string | null;
   supplier?: {
     id?: number;
@@ -292,6 +294,71 @@ export interface ProgressiveUpdateRequest extends BifocalUpdateRequest {}
 export interface ProgressiveCreateResponse extends BifocalCreateResponse {}
 
 export interface ProgressiveDetailResponse extends BifocalDetailResponse {}
+
+export interface ContactLensCreateRequest {
+  companyName: string;
+  name: string;
+  color: string;
+  baseCurve: string;
+  quantity: number;
+  purchasePrice: number;
+  sellingPrice: number;
+  extra?: string | null;
+  supplierId?: number;
+  supplierIds?: number[];
+}
+
+export interface ContactLensUpdateRequest {
+  companyName: string;
+  name: string;
+  color: string;
+  baseCurve: string;
+  sellingPrice: number;
+  extra?: string | null;
+  supplierId?: number;
+  supplierIds?: number[];
+}
+
+export interface ContactLensCreateResponse {
+  productId?: number;
+  variantId?: number;
+  sku?: string;
+  productTypeCode?: string;
+  companyName?: string | null;
+  productName?: string | null;
+  name?: string | null;
+  lensSubType?: LensSubType | null;
+  color?: string | null;
+  baseCurve?: string | null;
+  uomCode?: string | null;
+  supplierIds?: number[];
+  suppliers?: AccessorySupplier[] | null;
+  purchasePrice?: number | null;
+  sellingPrice?: number | null;
+  quantity?: number | null;
+  extra?: string | null;
+}
+
+export interface ContactLensDetailResponse extends ProductListItem {
+  productId?: number;
+  variantId?: number;
+  sku?: string | null;
+  productTypeCode?: string | null;
+  companyName?: string | null;
+  productName?: string | null;
+  name?: string | null;
+  lensSubType?: LensSubType | null;
+  color?: string | null;
+  baseCurve?: string | null;
+  uomCode?: string | null;
+  supplierId?: number;
+  supplierIds?: number[];
+  suppliers?: AccessorySupplier[] | null;
+  purchasePrice?: number | null;
+  sellingPrice?: number | null;
+  quantity?: number | null;
+  extra?: string | null;
+}
 
 export interface AccessorySupplier {
   id?: number;

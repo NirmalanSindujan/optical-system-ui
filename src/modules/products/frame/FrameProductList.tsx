@@ -1,15 +1,10 @@
 // @ts-nocheck
-import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
-import { DollarSign, MoreHorizontal, Package, Plus, Search, UserRound } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { DollarSign, Package, Plus, Search } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/components/ui/use-toast";
@@ -20,11 +15,41 @@ import {
   resolveItems,
   resolveProductId,
   resolveRowId,
-  resolveSupplierLabel
 } from "@/modules/products/components/productListShared";
+import ProductDetailsDrawer from "@/modules/products/ProductDetailsDrawer";
 import FrameEditorDrawer from "@/modules/products/FrameEditorDrawer";
+import LensRowActionsPopover from "@/modules/products/lens/components/LensRowActionsPopover";
+import { FRAME_TYPE_VALUES } from "@/modules/products/product.constants";
 import { deleteProduct, getFrames } from "@/modules/products/product.service";
-import { getSupplierById } from "@/modules/suppliers/supplier.service";
+
+const frameTypeChipClasses: Record<string, string> = {
+  [FRAME_TYPE_VALUES[0]]:
+    "border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200",
+  [FRAME_TYPE_VALUES[1]]:
+    "border-amber-300 bg-amber-100 text-amber-700 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-200",
+  [FRAME_TYPE_VALUES[2]]:
+    "border-sky-300 bg-sky-100 text-sky-700 dark:border-sky-800 dark:bg-sky-950/60 dark:text-sky-200",
+  [FRAME_TYPE_VALUES[3]]:
+    "border-emerald-300 bg-emerald-100 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200",
+  [FRAME_TYPE_VALUES[4]]:
+    "border-violet-300 bg-violet-100 text-violet-700 dark:border-violet-800 dark:bg-violet-950/60 dark:text-violet-200",
+};
+
+const getFrameTypeChipClass = (value: string) =>
+  frameTypeChipClasses[value.trim()] ?? "border-border bg-muted/60 text-foreground";
+
+function FrameTypeChip({ value }: { value: string | null | undefined }) {
+  if (!value?.trim()) return <span>-</span>;
+
+  return (
+    <Badge
+      variant="outline"
+      className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold tracking-[0.08em] ${getFrameTypeChipClass(value)}`}
+    >
+      {value}
+    </Badge>
+  );
+}
 
 function FrameProductList() {
   const PAGE_SIZE = 20;
@@ -36,6 +61,8 @@ function FrameProductList() {
   const [page, setPage] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [viewingId, setViewingId] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
   const {
@@ -69,40 +96,6 @@ function FrameProductList() {
   const items = resolveItems(productsResponse);
   const total = productsResponse?.totalCounts ?? items.length;
   const totalPages = Math.max(1, productsResponse?.totalPages ?? 1);
-  const supplierIds = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          items
-            .map((item) => Number(item?.supplierId))
-            .filter((supplierId) => Number.isInteger(supplierId) && supplierId > 0)
-        )
-      ),
-    [items]
-  );
-
-  const supplierQueries = useQueries({
-    queries: supplierIds.map((supplierId) => ({
-      queryKey: ["supplier", supplierId],
-      queryFn: () => getSupplierById(supplierId)
-    }))
-  });
-
-  const supplierNamesById = useMemo(() => {
-    const nameMap = new Map();
-
-    supplierIds.forEach((supplierId, index) => {
-      const supplierResponse = supplierQueries[index]?.data;
-      const supplier = supplierResponse?.data ?? supplierResponse;
-      const supplierName = supplier?.name ?? supplier?.supplierName;
-
-      if (typeof supplierName === "string" && supplierName.trim()) {
-        nameMap.set(supplierId, supplierName.trim());
-      }
-    });
-
-    return nameMap;
-  }, [supplierIds, supplierQueries]);
 
   useEffect(() => {
     if (!isError) return;
@@ -157,57 +150,54 @@ function FrameProductList() {
         </div>
 
         <div className="min-h-0 flex flex-1 flex-col overflow-x-auto rounded-lg border bg-card/60">
-          <Table className="min-w-[1280px] table-fixed">
+          <Table className="min-w-[1180px] table-fixed">
             <colgroup>
-              <col className="w-[16%]" />
+              <col className="w-[18%]" />
               <col className="w-[12%]" />
               <col className="w-[14%]" />
               <col className="w-[10%]" />
               <col className="w-[10%]" />
-              <col className="w-[8%]" />
-              <col className="w-[10%]" />
-              <col className="w-[10%]" />
-              <col className="w-[10%]" />
+              <col className="w-[9%]" />
+              <col className="w-[13%]" />
+              <col className="w-[13%]" />
               <col className="w-[64px]" />
             </colgroup>
             <TableHeader className="bg-muted/85 supports-[backdrop-filter]:bg-muted/65">
               <TableRow>
-                <TableHead>Name</TableHead>
+                <TableHead>Model Name</TableHead>
                 <TableHead>Code</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Color</TableHead>
                 <TableHead>Size</TableHead>
-                <TableHead>Qty</TableHead>
-                <TableHead>Purchase</TableHead>
-                <TableHead>Selling</TableHead>
-                <TableHead>Supplier</TableHead>
+                <TableHead>Quantity</TableHead>
+                <TableHead>Purchase Price</TableHead>
+                <TableHead>Sales Price</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
           </Table>
 
           <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden border-t">
-            <Table className="min-w-[1280px] table-fixed">
+            <Table className="min-w-[1180px] table-fixed">
               <colgroup>
-                <col className="w-[16%]" />
+                <col className="w-[18%]" />
                 <col className="w-[12%]" />
                 <col className="w-[14%]" />
                 <col className="w-[10%]" />
                 <col className="w-[10%]" />
-                <col className="w-[8%]" />
-                <col className="w-[10%]" />
-                <col className="w-[10%]" />
-                <col className="w-[10%]" />
+                <col className="w-[9%]" />
+                <col className="w-[13%]" />
+                <col className="w-[13%]" />
                 <col className="w-[64px]" />
               </colgroup>
               <TableBody>
                 {isLoading || isFetching ? (
                   <TableRow>
-                    <TableCell colSpan={10}>Loading products...</TableCell>
+                    <TableCell colSpan={9}>Loading products...</TableCell>
                   </TableRow>
                 ) : items.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={10}>No products found.</TableCell>
+                    <TableCell colSpan={9}>No products found.</TableCell>
                   </TableRow>
                 ) : (
                   items.map((item, index) => {
@@ -217,7 +207,9 @@ function FrameProductList() {
                       <TableRow key={rowId ?? `${item?.name ?? "frame"}-${item?.frameCode ?? "code"}-${index}`}>
                         <TableCell className="font-medium">{item?.name ?? "-"}</TableCell>
                         <TableCell>{item?.frameCode ?? "-"}</TableCell>
-                        <TableCell>{item?.frameType ?? "-"}</TableCell>
+                        <TableCell>
+                          <FrameTypeChip value={item?.frameType} />
+                        </TableCell>
                         <TableCell>{item?.color ?? "-"}</TableCell>
                         <TableCell>{item?.size ?? "-"}</TableCell>
                         <TableCell>{item?.quantity != null ? item.quantity : "-"}</TableCell>
@@ -234,31 +226,20 @@ function FrameProductList() {
                           </span>
                         </TableCell>
                         <TableCell>
-                          <span className="inline-flex items-center gap-1">
-                            <UserRound className="h-3.5 w-3.5 text-muted-foreground" />
-                            {resolveSupplierLabel(item, supplierNamesById.get(Number(item?.supplierId)))}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button className="h-8 w-8" variant="ghost" size="icon">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem disabled={!productId} onClick={() => { setEditingId(productId); setDrawerOpen(true); }}>
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-destructive"
-                                disabled={!productId}
-                                onClick={() => setConfirmDeleteId(productId)}
-                              >
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          <LensRowActionsPopover
+                            canDelete={Boolean(productId)}
+                            canView={Boolean(productId)}
+                            canEdit={Boolean(productId)}
+                            onEdit={() => {
+                              setEditingId(productId);
+                              setDrawerOpen(true);
+                            }}
+                            onDelete={() => setConfirmDeleteId(productId)}
+                            onView={() => {
+                              setViewingId(productId);
+                              setDetailsOpen(true);
+                            }}
+                          />
                         </TableCell>
                       </TableRow>
                     );
@@ -285,10 +266,23 @@ function FrameProductList() {
         onConfirm={() => confirmDeleteId && deleteMutation.mutate(confirmDeleteId)}
       />
 
+      <ProductDetailsDrawer
+        open={detailsOpen}
+        recordId={viewingId}
+        detailMode="frame"
+        onClose={() => {
+          setDetailsOpen(false);
+          setViewingId(null);
+        }}
+      />
+
       <FrameEditorDrawer
         open={drawerOpen}
         frameId={editingId}
-        onClose={() => setDrawerOpen(false)}
+        onClose={() => {
+          setDrawerOpen(false);
+          setEditingId(null);
+        }}
         onSaved={() => queryClient.invalidateQueries({ queryKey: ["products"] })}
       />
     </Card>
