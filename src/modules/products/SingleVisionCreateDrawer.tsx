@@ -5,6 +5,7 @@ import { Controller, useForm } from "react-hook-form";
 import { Box, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Sheet, SheetClose, SheetContent } from "@/components/ui/sheet";
 import { useToast } from "@/components/ui/use-toast";
 import SearchableValueSelect from "@/modules/products/components/SearchableValueSelect";
 import SupplierAsyncSelect, { type SupplierOption } from "@/modules/products/components/SupplierAsyncSelect";
@@ -182,24 +183,18 @@ function SingleVisionCreateDrawer({ open, onClose, onSaved }: SingleVisionCreate
   );
 
   return (
-    <div className={`fixed inset-0 z-50 ${open ? "" : "pointer-events-none"}`}>
-      <div
-        className={`absolute inset-0 bg-black/30 transition-opacity ${open ? "opacity-100" : "opacity-0"}`}
-        onClick={onClose}
-      />
-      <aside
-        className={`absolute right-0 top-0 h-full w-full max-w-2xl overflow-y-auto border-l bg-background p-6 shadow-xl transition-transform ${
-          open ? "translate-x-0" : "translate-x-full"
-        }`}
-      >
+    <Sheet open={open} onOpenChange={(nextOpen) => { if (!nextOpen) onClose(); }}>
+      <SheetContent side="right" hideClose className="max-w-2xl overflow-y-auto p-6 sm:max-w-2xl">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="flex items-center gap-2 text-lg font-semibold">
             <Box className="h-5 w-5 text-primary" />
             Add Single Vision Lens
           </h3>
-          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close drawer">
-            <X className="h-4 w-4" />
-          </Button>
+          <SheetClose asChild>
+            <Button variant="ghost" size="icon" aria-label="Close drawer">
+              <X className="h-4 w-4" />
+            </Button>
+          </SheetClose>
         </div>
 
         <form className="grid gap-4 md:grid-cols-2" onSubmit={handleSubmit((values) => saveMutation.mutate(values))}>
@@ -391,8 +386,8 @@ function SingleVisionCreateDrawer({ open, onClose, onSaved }: SingleVisionCreate
             </Button>
           </div>
         </form>
-      </aside>
-    </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 
