@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/cn";
+import LensTypeChips from "@/modules/products/components/LensTypeChips";
 import { PRODUCT_VARIANT_TYPES } from "@/modules/products/product.constants";
 import { getLensByVariantId, getProductById } from "@/modules/products/product.service";
 import type { AccessorySupplier, ProductListItem } from "@/modules/products/product.types";
@@ -16,7 +17,7 @@ interface ProductDetailsDrawerProps {
   onClose: () => void;
 }
 
-type ValueFormat = "text" | "money" | "power" | "number";
+type ValueFormat = "text" | "money" | "power" | "number" | "chips";
 
 interface DetailRowConfig {
   label: string;
@@ -124,9 +125,15 @@ function DetailGrid({ items }: { items: DetailRowConfig[] }) {
           )}
         >
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{item.label}</p>
-          <p className="mt-2 break-words text-sm font-medium leading-6 text-foreground">
-            {formatValue(item.value, item.format)}
-          </p>
+          {item.format === "chips" ? (
+            <div className="mt-2">
+              <LensTypeChips value={item.value} />
+            </div>
+          ) : (
+            <p className="mt-2 break-words text-sm font-medium leading-6 text-foreground">
+              {formatValue(item.value, item.format)}
+            </p>
+          )}
         </div>
       ))}
     </div>
@@ -309,7 +316,7 @@ function ProductDetailsDrawer({
 
   const lensRows: DetailRowConfig[] = [
     { label: "Material", value: product?.material },
-    { label: "Lens Type", value: normalizedLensType },
+    { label: "Lens Type", value: normalizedLensType, format: "chips" },
     { label: "Index", value: normalizedIndex, format: "number" },
     { label: "Coating", value: product?.coatingCode },
     { label: "SPH", value: product?.sph, format: "power" },

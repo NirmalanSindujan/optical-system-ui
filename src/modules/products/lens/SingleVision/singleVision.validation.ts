@@ -53,7 +53,8 @@ export const singleVisionFormSchema = z
     purchasePrice: requiredNonNegativeNumberString("Purchase price"),
     sellingPrice: requiredNonNegativeNumberString("Selling price"),
     extra: z.string().optional(),
-    supplierIds: z.array(z.number().int().positive()).min(1, "At least one supplier is required")
+    supplierIds: z.array(z.number().int().positive()).min(1, "At least one supplier is required"),
+    quantity: requiredNonNegativeNumberString("Quantity")
   })
   .superRefine((values, ctx) => {
     const validatePowerField = (fieldName: keyof SingleVisionFormValues, label: string) => {
@@ -185,7 +186,8 @@ export function buildSingleVisionPayload(values: SingleVisionFormValues): Single
     cylEnabled: Boolean(values.cylEnabled),
     purchasePrice: Number(values.purchasePrice),
     sellingPrice: Number(values.sellingPrice),
-    supplierIds: normalizeSupplierIds(values.supplierIds)
+    supplierIds: normalizeSupplierIds(values.supplierIds),
+    quantity: Number(values.quantity)
   };
 
   const extra = toNullableString(values.extra);

@@ -185,6 +185,7 @@ export interface SingleVisionCreateRequest {
   sellingPrice: number;
   extra?: string | null;
   supplierIds: number[];
+  quantity: number | null;
 }
 
 export interface SingleVisionCreateResponse {
