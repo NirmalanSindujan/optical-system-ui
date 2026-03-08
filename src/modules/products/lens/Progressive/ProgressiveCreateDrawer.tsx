@@ -12,21 +12,20 @@ import SearchableValueSelect from "@/modules/products/components/SearchableValue
 import SupplierAsyncSelect, {
   type SupplierOption,
 } from "@/modules/products/components/SupplierAsyncSelect";
+import { createProgressive } from "@/modules/products/progressive.service";
+import {
+  buildProgressivePayload,
+  progressiveFormDefaultValues,
+  progressiveFormSchema,
+  type ProgressiveFormValues,
+} from "@/modules/products/lens/Progressive/progressive.validation";
 import {
   SINGLE_VISION_ADDITION_METHOD_VALUES,
-  SINGLE_VISION_LENS_TYPE_VALUES,
   SINGLE_VISION_MATERIAL_VALUES,
 } from "@/modules/products/product.constants";
-import { createSingleVision } from "@/modules/products/singleVision.service";
-import {
-  buildSingleVisionPayload,
-  singleVisionFormDefaultValues,
-  singleVisionFormSchema,
-  type SingleVisionFormValues,
-} from "@/modules/products/lens/SingleVision/singleVision.validation";
 import { cn } from "@/lib/cn";
 
-interface SingleVisionCreateDrawerProps {
+interface ProgressiveCreateDrawerProps {
   open: boolean;
   onClose: () => void;
   onSaved?: () => void;
@@ -34,11 +33,14 @@ interface SingleVisionCreateDrawerProps {
 
 type PowerFieldName =
   | "sph"
-  | "cyl"
   | "sphStart"
   | "sphEnd"
+  | "cyl"
   | "cylStart"
-  | "cylEnd";
+  | "cylEnd"
+  | "addPower"
+  | "addPowerStart"
+  | "addPowerEnd";
 
 const buildQuarterStepOptions = (min: number, max: number): string[] => {
   const options: string[] = [];
@@ -57,6 +59,7 @@ const formatPowerValue = (value: string) => {
 
 const SPH_OPTIONS = buildQuarterStepOptions(-24, 24);
 const CYL_OPTIONS = buildQuarterStepOptions(-12, 12);
+const ADD_POWER_OPTIONS = buildQuarterStepOptions(0, 4);
 
 const getSuccessDescription = (response: unknown) => {
   const payload = response as {
@@ -68,29 +71,27 @@ const getSuccessDescription = (response: unknown) => {
   const variantCount =
     payload?.createdVariantCount ??
     payload?.totalVariants ??
-    (Array.isArray(payload?.variantIds)
-      ? payload.variantIds.length
-      : undefined);
+    (Array.isArray(payload?.variantIds) ? payload.variantIds.length : undefined);
 
   if (Number.isInteger(variantCount) && Number(variantCount) > 0) {
     return `${variantCount} variant${Number(variantCount) === 1 ? "" : "s"} created.`;
   }
 
-  return "Single vision lens variants were created.";
+  return "Progressive lens variants were created.";
 };
 
 const textareaClassName =
   "w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
-function SingleVisionCreateDrawer({
+function ProgressiveCreateDrawer({
   open,
   onClose,
   onSaved,
-}: SingleVisionCreateDrawerProps) {
+}: ProgressiveCreateDrawerProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const defaultValues = useMemo(() => singleVisionFormDefaultValues, []);
+  const defaultValues = useMemo(() => progressiveFormDefaultValues, []);
   const [supplierPickerValue, setSupplierPickerValue] =
     useState<SupplierOption | null>(null);
   const [selectedSuppliers, setSelectedSuppliers] = useState<SupplierOption[]>(
@@ -105,12 +106,14 @@ function SingleVisionCreateDrawer({
     setValue,
     watch,
     formState: { errors, isSubmitting },
-  } = useForm<SingleVisionFormValues>({
-    resolver: zodResolver(singleVisionFormSchema),
+  } = useForm<ProgressiveFormValues>({
+    resolver: zodResolver(progressiveFormSchema),
     defaultValues,
   });
 
-  const additionMethod = watch("additionMethod");
+  const sphAdditionMethod = watch("sphAdditionMethod");
+  const cylAdditionMethod = watch("cylAdditionMethod");
+  const addAdditionMethod = watch("addAdditionMethod");
   const cylEnabled = watch("cylEnabled");
 
   useEffect(() => {
@@ -135,36 +138,55 @@ function SingleVisionCreateDrawer({
   }, [selectedSuppliers, setValue]);
 
   useEffect(() => {
-    if (additionMethod === "SINGLE") {
+    if (sphAdditionMethod === "SINGLE") {
       setValue("sphStart", "", { shouldDirty: false, shouldValidate: false });
       setValue("sphEnd", "", { shouldDirty: false, shouldValidate: false });
+      return;
+    }
+
+    setValue("sph", "", { shouldDirty: false, shouldValidate: false });
+  }, [setValue, sphAdditionMethod]);
+
+  useEffect(() => {
+    if (addAdditionMethod === "SINGLE") {
+      setValue("addPowerStart", "", { shouldDirty: false, shouldValidate: false });
+      setValue("addPowerEnd", "", { shouldDirty: false, shouldValidate: false });
+      return;
+    }
+
+    setValue("addPower", "", { shouldDirty: false, shouldValidate: false });
+  }, [addAdditionMethod, setValue]);
+
+  useEffect(() => {
+    if (!cylEnabled) {
+      setValue("cyl", "", { shouldDirty: false, shouldValidate: false });
       setValue("cylStart", "", { shouldDirty: false, shouldValidate: false });
       setValue("cylEnd", "", { shouldDirty: false, shouldValidate: false });
       return;
     }
 
-    setValue("sph", "", { shouldDirty: false, shouldValidate: false });
-    setValue("cyl", "", { shouldDirty: false, shouldValidate: false });
-  }, [additionMethod, setValue]);
+    if (cylAdditionMethod === "SINGLE") {
+      setValue("cylStart", "", { shouldDirty: false, shouldValidate: false });
+      setValue("cylEnd", "", { shouldDirty: false, shouldValidate: false });
+      return;
+    }
 
-  useEffect(() => {
-    if (cylEnabled) return;
-
     setValue("cyl", "", { shouldDirty: false, shouldValidate: false });
-    setValue("cylStart", "", { shouldDirty: false, shouldValidate: false });
-    setValue("cylEnd", "", { shouldDirty: false, shouldValidate: false });
-  }, [cylEnabled, setValue]);
+  }, [cylAdditionMethod, cylEnabled, setValue]);
 
   const saveMutation = useMutation({
-    mutationFn: (values: SingleVisionFormValues) =>
-      createSingleVision(buildSingleVisionPayload(values)),
+    mutationFn: (values: ProgressiveFormValues) =>
+      createProgressive(buildProgressivePayload(values)),
     onSuccess: async (response) => {
       await queryClient.invalidateQueries({ queryKey: ["products"] });
       await queryClient.invalidateQueries({
         queryKey: ["products", "lenses", "subtabs"],
       });
+      await queryClient.invalidateQueries({
+        queryKey: ["products", "progressive"],
+      });
       toast({
-        title: "Single vision created",
+        title: "Progressive created",
         description: getSuccessDescription(response),
       });
       onSaved?.();
@@ -219,6 +241,73 @@ function SingleVisionCreateDrawer({
   const renderFieldError = (message?: string) =>
     message ? <p className="mt-1 text-xs text-destructive">{message}</p> : null;
 
+  const renderMethodToggle = (
+    fieldName: "sphAdditionMethod" | "cylAdditionMethod" | "addAdditionMethod",
+    selectedValue: ProgressiveFormValues["sphAdditionMethod"],
+  ) => (
+    <div className="flex flex-wrap gap-2">
+      {SINGLE_VISION_ADDITION_METHOD_VALUES.map((method) => {
+        const isSelected = selectedValue === method;
+
+        return (
+          <label
+            key={`${fieldName}-${method}`}
+            className={cn(
+              "inline-flex cursor-pointer items-center rounded-md border px-3 py-2 text-sm transition-colors",
+              isSelected
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-input bg-background hover:bg-accent hover:text-accent-foreground",
+            )}
+          >
+            <input
+              type="radio"
+              value={method}
+              className="sr-only"
+              {...register(fieldName)}
+            />
+            <span>{method === "RANGE" ? "Range" : "Single"}</span>
+          </label>
+        );
+      })}
+    </div>
+  );
+
+  const renderPowerConfigurator = ({
+    label,
+    fieldName,
+    selectedMethod,
+    singleField,
+    rangeStartField,
+    rangeEndField,
+    options,
+  }: {
+    label: string;
+    fieldName: "sphAdditionMethod" | "cylAdditionMethod" | "addAdditionMethod";
+    selectedMethod: ProgressiveFormValues["sphAdditionMethod"];
+    singleField: PowerFieldName;
+    rangeStartField: PowerFieldName;
+    rangeEndField: PowerFieldName;
+    options: string[];
+  }) => (
+    <div className="rounded-lg border bg-background p-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <p className="text-sm font-medium">{label}</p>
+        {renderMethodToggle(fieldName, selectedMethod)}
+      </div>
+
+      <div className="mt-4 grid gap-4 md:grid-cols-2">
+        {selectedMethod === "SINGLE" ? (
+          renderPowerSelect(singleField, label, options)
+        ) : (
+          <>
+            {renderPowerSelect(rangeStartField, `${label} Start`, options)}
+            {renderPowerSelect(rangeEndField, `${label} End`, options)}
+          </>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <Sheet
       open={open}
@@ -234,7 +323,7 @@ function SingleVisionCreateDrawer({
         <div className="mb-4 flex items-center justify-between">
           <h3 className="flex items-center gap-2 text-lg font-semibold">
             <Box className="h-5 w-5 text-primary" />
-            Add Single Vision Lens
+            Add Progressive Lens
           </h3>
           <SheetClose asChild>
             <Button variant="ghost" size="icon" aria-label="Close drawer">
@@ -253,16 +342,13 @@ function SingleVisionCreateDrawer({
                 Basic Details
               </h4>
               <p className="text-sm text-muted-foreground">
-                Start with the lens identity and stock information.
+                Start with the progressive lens identity and stock information.
               </p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <label
-                  htmlFor="companyName"
-                  className="mb-1 block text-sm font-medium"
-                >
+                <label htmlFor="companyName" className="mb-1 block text-sm font-medium">
                   Company Name
                 </label>
                 <Input
@@ -280,17 +366,14 @@ function SingleVisionCreateDrawer({
                 </label>
                 <Input
                   id="name"
-                  placeholder="SV Glass HMC"
+                  placeholder="Progressive Lens"
                   {...register("name")}
                 />
                 {renderFieldError(errors.name?.message)}
               </div>
 
               <div>
-                <label
-                  htmlFor="material"
-                  className="mb-1 block text-sm font-medium"
-                >
+                <label htmlFor="material" className="mb-1 block text-sm font-medium">
                   Material
                 </label>
                 <select
@@ -308,24 +391,6 @@ function SingleVisionCreateDrawer({
               </div>
 
               <div>
-                <label htmlFor="type" className="mb-1 block text-sm font-medium">
-                  Type
-                </label>
-                <select
-                  id="type"
-                  className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  {...register("type")}
-                >
-                  {SINGLE_VISION_LENS_TYPE_VALUES.map((lensType) => (
-                    <option key={lensType} value={lensType}>
-                      {lensType}
-                    </option>
-                  ))}
-                </select>
-                {renderFieldError(errors.type?.message)}
-              </div>
-
-              <div>
                 <label htmlFor="index" className="mb-1 block text-sm font-medium">
                   Index
                 </label>
@@ -333,17 +398,14 @@ function SingleVisionCreateDrawer({
                   id="index"
                   type="number"
                   step="0.01"
-                  placeholder="1.50"
+                  placeholder="1.56"
                   {...register("index")}
                 />
                 {renderFieldError(errors.index?.message)}
               </div>
 
               <div>
-                <label
-                  htmlFor="quantity"
-                  className="mb-1 block text-sm font-medium"
-                >
+                <label htmlFor="quantity" className="mb-1 block text-sm font-medium">
                   Pair / Quantity
                 </label>
                 <Input
@@ -379,84 +441,70 @@ function SingleVisionCreateDrawer({
                 Power Setup
               </h4>
               <p className="text-sm text-muted-foreground">
-                Choose how the lens powers should be generated.
+                Choose how SPH, CYL, and ADD values should be generated.
               </p>
             </div>
 
-            <div className="rounded-lg border border-dashed bg-muted/30 p-4">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Adding Method</p>
-                  <div className="flex flex-wrap gap-2">
-                    {SINGLE_VISION_ADDITION_METHOD_VALUES.map((method) => {
-                      const isSelected = additionMethod === method;
+            <div className="space-y-4 rounded-lg border border-dashed bg-muted/30 p-4">
+              {renderPowerConfigurator({
+                label: "SPH",
+                fieldName: "sphAdditionMethod",
+                selectedMethod: sphAdditionMethod,
+                singleField: "sph",
+                rangeStartField: "sphStart",
+                rangeEndField: "sphEnd",
+                options: SPH_OPTIONS,
+              })}
 
-                      return (
-                        <label
-                          key={method}
-                          className={cn(
-                            "inline-flex cursor-pointer items-center rounded-md border px-3 py-2 text-sm transition-colors",
-                            isSelected
-                              ? "border-primary bg-primary text-primary-foreground"
-                              : "border-input bg-background hover:bg-accent hover:text-accent-foreground",
-                          )}
-                        >
-                          <input
-                            type="radio"
-                            value={method}
-                            className="sr-only"
-                            {...register("additionMethod")}
-                          />
-                          <span>{method === "RANGE" ? "Range" : "Single"}</span>
-                        </label>
-                      );
-                    })}
+              <div className="rounded-lg border bg-background p-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <p className="text-sm font-medium">CYL</p>
+                    <p className="text-xs text-muted-foreground">
+                      Enable CYL and choose whether it is a single value or a range.
+                    </p>
                   </div>
+                  <Controller
+                    name="cylEnabled"
+                    control={control}
+                    render={({ field }) => (
+                      <div className="flex items-center justify-between gap-4 rounded-md border px-3 py-2">
+                        <span className="text-sm font-medium">Enabled</span>
+                        <Switch
+                          checked={Boolean(field.value)}
+                          onCheckedChange={field.onChange}
+                          disabled={isSubmitting || saveMutation.isPending}
+                          aria-label="Toggle CYL values"
+                        />
+                      </div>
+                    )}
+                  />
                 </div>
 
-                <Controller
-                  name="cylEnabled"
-                  control={control}
-                  render={({ field }) => (
-                    <div className="flex items-center justify-between gap-4 rounded-md border bg-background px-3 py-2 lg:min-w-64">
-                      <div>
-                        <p className="text-sm font-medium">CYL</p>
-                        <p className="text-xs text-muted-foreground">
-                          Enable CYL values for this lens setup.
-                        </p>
-                      </div>
-                      <Switch
-                        checked={Boolean(field.value)}
-                        onCheckedChange={field.onChange}
-                        disabled={isSubmitting || saveMutation.isPending}
-                        aria-label="Toggle CYL values"
-                      />
-                    </div>
-                  )}
-                />
+                {cylEnabled ? (
+                  <div className="mt-4">
+                    {renderPowerConfigurator({
+                      label: "CYL",
+                      fieldName: "cylAdditionMethod",
+                      selectedMethod: cylAdditionMethod,
+                      singleField: "cyl",
+                      rangeStartField: "cylStart",
+                      rangeEndField: "cylEnd",
+                      options: CYL_OPTIONS,
+                    })}
+                  </div>
+                ) : null}
               </div>
 
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                {additionMethod === "SINGLE" ? (
-                  <>
-                    {renderPowerSelect("sph", "SPH", SPH_OPTIONS)}
-                    {cylEnabled
-                      ? renderPowerSelect("cyl", "CYL", CYL_OPTIONS)
-                      : null}
-                  </>
-                ) : (
-                  <>
-                    {renderPowerSelect("sphStart", "SPH Start", SPH_OPTIONS)}
-                    {renderPowerSelect("sphEnd", "SPH End", SPH_OPTIONS)}
-                    {cylEnabled
-                      ? renderPowerSelect("cylStart", "CYL Start", CYL_OPTIONS)
-                      : null}
-                    {cylEnabled
-                      ? renderPowerSelect("cylEnd", "CYL End", CYL_OPTIONS)
-                      : null}
-                  </>
-                )}
-              </div>
+              {renderPowerConfigurator({
+                label: "Add Power",
+                fieldName: "addAdditionMethod",
+                selectedMethod: addAdditionMethod,
+                singleField: "addPower",
+                rangeStartField: "addPowerStart",
+                rangeEndField: "addPowerEnd",
+                options: ADD_POWER_OPTIONS,
+              })}
             </div>
           </section>
 
@@ -472,10 +520,7 @@ function SingleVisionCreateDrawer({
 
             <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <label
-                  htmlFor="purchasePrice"
-                  className="mb-1 block text-sm font-medium"
-                >
+                <label htmlFor="purchasePrice" className="mb-1 block text-sm font-medium">
                   Price (Purchase)
                 </label>
                 <Input
@@ -483,17 +528,14 @@ function SingleVisionCreateDrawer({
                   type="number"
                   min={0}
                   step="0.01"
-                  placeholder="1200.00"
+                  placeholder="1500.00"
                   {...register("purchasePrice")}
                 />
                 {renderFieldError(errors.purchasePrice?.message)}
               </div>
 
               <div>
-                <label
-                  htmlFor="sellingPrice"
-                  className="mb-1 block text-sm font-medium"
-                >
+                <label htmlFor="sellingPrice" className="mb-1 block text-sm font-medium">
                   Price (Selling)
                 </label>
                 <Input
@@ -501,16 +543,14 @@ function SingleVisionCreateDrawer({
                   type="number"
                   min={0}
                   step="0.01"
-                  placeholder="1800.00"
+                  placeholder="2200.00"
                   {...register("sellingPrice")}
                 />
                 {renderFieldError(errors.sellingPrice?.message)}
               </div>
 
               <div className="md:col-span-2">
-                <label className="mb-1 block text-sm font-medium">
-                  Suppliers
-                </label>
+                <label className="mb-1 block text-sm font-medium">Suppliers</label>
                 <Controller
                   name="supplierIds"
                   control={control}
@@ -563,9 +603,7 @@ function SingleVisionCreateDrawer({
                                     (item) => item.id !== supplier.id,
                                   );
                                   setSelectedSuppliers(nextSuppliers);
-                                  field.onChange(
-                                    nextSuppliers.map((item) => item.id),
-                                  );
+                                  field.onChange(nextSuppliers.map((item) => item.id));
                                 }}
                               >
                                 Remove
@@ -585,13 +623,8 @@ function SingleVisionCreateDrawer({
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={isSubmitting || saveMutation.isPending}
-            >
-              {isSubmitting || saveMutation.isPending
-                ? "Saving..."
-                : "Create Single Vision"}
+            <Button type="submit" disabled={isSubmitting || saveMutation.isPending}>
+              {isSubmitting || saveMutation.isPending ? "Saving..." : "Create Progressive"}
             </Button>
           </div>
         </form>
@@ -600,4 +633,4 @@ function SingleVisionCreateDrawer({
   );
 }
 
-export default SingleVisionCreateDrawer;
+export default ProgressiveCreateDrawer;

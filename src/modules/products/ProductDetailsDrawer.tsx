@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/cn";
 import LensTypeChips from "@/modules/products/components/LensTypeChips";
-import { PRODUCT_VARIANT_TYPES } from "@/modules/products/product.constants";
+import { LENS_SUB_TYPES, PRODUCT_VARIANT_TYPES } from "@/modules/products/product.constants";
 import { getLensByVariantId, getProductById } from "@/modules/products/product.service";
 import type { AccessorySupplier, ProductListItem } from "@/modules/products/product.types";
 
@@ -74,6 +74,35 @@ const formatPower = (value: unknown) => {
   if (!Number.isFinite(numericValue)) return String(value ?? "-");
   if (numericValue > 0) return `+${numericValue.toFixed(2)}`;
   return numericValue.toFixed(2);
+};
+
+const formatCompactPower = (value: unknown) => {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return null;
+  return numericValue.toFixed(2);
+};
+
+const buildBifocalDisplayName = (
+  name: string,
+  sph: unknown,
+  cyl: unknown,
+  addPower: unknown,
+) => {
+  const formattedSph = formatCompactPower(sph);
+  const formattedCyl = formatCompactPower(cyl);
+  const formattedAdd = formatCompactPower(addPower);
+
+  const bracket =
+    formattedSph && formattedCyl
+      ? ` (${formattedSph}/${formattedCyl})`
+      : formattedSph
+        ? ` (${formattedSph})`
+        : formattedCyl
+          ? ` (${formattedCyl})`
+          : "";
+  const addSuffix = formattedAdd ? `/${formattedAdd}` : "";
+
+  return `${name}${bracket}${addSuffix}`;
 };
 
 const formatValue = (value: unknown, format: ValueFormat = "text") => {
@@ -274,7 +303,11 @@ function ProductDetailsDrawer({
   const normalizedIndex = product?.index ?? product?.lensIndex;
   const normalizedLensType = product?.type ?? product?.lensType;
   const normalizedColor = product?.color ?? product?.lensColor;
-  const displayName = product?.name ?? product?.productName ?? "Unnamed Product";
+  const rawDisplayName = product?.name ?? product?.productName ?? "Unnamed Product";
+  const displayName =
+    product?.lensSubType === LENS_SUB_TYPES.BIFOCAL
+      ? buildBifocalDisplayName(rawDisplayName, product?.sph, product?.cyl, product?.addPower)
+      : rawDisplayName;
   const displayCompany = product?.companyName ?? product?.brandName ?? "No company name";
   const hasProductStatus = typeof product?.productActive === "boolean";
   const hasVariantStatus = typeof product?.variantActive === "boolean";

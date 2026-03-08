@@ -12,10 +12,10 @@ import ProductDeleteDialog from "@/modules/products/components/ProductDeleteDial
 import ProductPagination from "@/modules/products/components/ProductPagination";
 import { getListErrorMessage, resolveItems, resolveProductId, resolveRowId } from "@/modules/products/components/productListShared";
 import ProductDetailsDrawer from "@/modules/products/ProductDetailsDrawer";
-import ProductEditorDrawer from "@/modules/products/ProductEditorDrawer";
 import LensRowActionsPopover from "@/modules/products/lens/components/LensRowActionsPopover";
 import SingleVisionCreateDrawer from "@/modules/products/lens/SingleVision/SingleVisionCreateDrawer";
-import { LENS_SUB_TYPES, LENS_SUBTYPE_NAV_ITEMS, PRODUCT_VARIANT_TYPES } from "@/modules/products/product.constants";
+import SingleVisionEditDrawer from "@/modules/products/lens/SingleVision/SingleVisionEditDrawer";
+import { LENS_SUB_TYPES, LENS_SUBTYPE_NAV_ITEMS } from "@/modules/products/product.constants";
 import { deleteProduct, getLensesBySubType } from "@/modules/products/product.service";
 
 const PAGE_SIZE = 20;
@@ -30,6 +30,7 @@ function SingleVisionProductList() {
   const [createOpen, setCreateOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [editingDetailId, setEditingDetailId] = useState(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [viewingId, setViewingId] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
@@ -202,6 +203,7 @@ function SingleVisionProductList() {
                             canEdit={Boolean(productId)}
                             onEdit={() => {
                               setEditingId(productId);
+                              setEditingDetailId(rowId);
                               setDrawerOpen(true);
                             }}
                             onDelete={() => setConfirmDeleteId(productId)}
@@ -249,11 +251,15 @@ function SingleVisionProductList() {
         onClose={() => setDetailsOpen(false)}
       />
 
-      <ProductEditorDrawer
+      <SingleVisionEditDrawer
         open={drawerOpen}
         productId={editingId}
-        defaultVariantType={PRODUCT_VARIANT_TYPES.LENS}
-        onClose={() => setDrawerOpen(false)}
+        detailId={editingDetailId}
+        onClose={() => {
+          setDrawerOpen(false);
+          setEditingId(null);
+          setEditingDetailId(null);
+        }}
         onSaved={() => queryClient.invalidateQueries({ queryKey: ["products"] })}
       />
     </Card>

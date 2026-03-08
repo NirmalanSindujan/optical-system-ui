@@ -3,6 +3,8 @@ export type LensSubType = "SINGLE_VISION" | "BIFOCAL" | "PROGRESSIVE" | "CONTACT
 export type SingleVisionLensType = "UC" | "HMC" | "PGHMC" | "PBHMC" | "BB" | "PGBB";
 export type SingleVisionAdditionMethod = "SINGLE" | "RANGE";
 export type SingleVisionMaterial = "Glass" | "Plastic Lense" | "Polycarbonate Lense";
+export type BifocalAdditionMethod = "SINGLE" | "RANGE";
+export type BifocalMaterial = SingleVisionMaterial;
 export type AccessoryItemType = "Product" | "Service";
 export type FrameType =
   | "3Pieces/Rimless"
@@ -116,6 +118,7 @@ export interface ProductListItem {
   material?: string | null;
   lensIndex?: number | null;
   lensType?: string | null;
+  type?: string | null;
   coatingCode?: string | null;
   sph?: number | null;
   cyl?: number | null;
@@ -188,6 +191,20 @@ export interface SingleVisionCreateRequest {
   quantity: number | null;
 }
 
+export interface SingleVisionUpdateRequest {
+  material: SingleVisionMaterial;
+  type: SingleVisionLensType;
+  companyName: string;
+  name: string;
+  index: number;
+  sph: number;
+  cyl?: number | null;
+  sellingPrice: number;
+  extra?: string | null;
+  supplierId?: number;
+  supplierIds?: number[];
+}
+
 export interface SingleVisionCreateResponse {
   productId?: number;
   productName?: string;
@@ -197,6 +214,84 @@ export interface SingleVisionCreateResponse {
   totalVariants?: number;
   message?: string;
 }
+
+export interface BifocalCreateRequest {
+  material: BifocalMaterial;
+  companyName: string;
+  name: string;
+  index: number;
+  quantity: number | null;
+  cylEnabled: boolean;
+  sphAdditionMethod: BifocalAdditionMethod;
+  cylAdditionMethod?: BifocalAdditionMethod;
+  addAdditionMethod: BifocalAdditionMethod;
+  sph?: number;
+  cyl?: number;
+  addPower?: number;
+  sphStart?: number;
+  sphEnd?: number;
+  cylStart?: number;
+  cylEnd?: number;
+  addPowerStart?: number;
+  addPowerEnd?: number;
+  purchasePrice: number;
+  sellingPrice: number;
+  extra?: string | null;
+  supplierIds: number[];
+}
+
+export interface BifocalUpdateRequest {
+  material: BifocalMaterial;
+  companyName: string;
+  name: string;
+  index: number;
+  sph: number;
+  cyl?: number | null;
+  addPower: number;
+  sellingPrice: number;
+  extra?: string | null;
+  supplierId?: number;
+  supplierIds?: number[];
+}
+
+export interface BifocalCreateResponse {
+  productId?: number;
+  productName?: string;
+  variantId?: number;
+  variantIds?: number[];
+  createdVariantCount?: number;
+  totalVariants?: number;
+  message?: string;
+}
+
+export interface BifocalDetailResponse extends ProductListItem {
+  productId?: number;
+  variantId?: number;
+  companyName?: string | null;
+  name?: string | null;
+  material?: string | null;
+  index?: number | null;
+  sph?: number | null;
+  cyl?: number | null;
+  addPower?: number | null;
+  quantity?: number | null;
+  purchasePrice?: number | null;
+  sellingPrice?: number | null;
+  extra?: string | null;
+  supplierIds?: number[];
+  suppliers?: AccessorySupplier[] | null;
+}
+
+export type ProgressiveAdditionMethod = BifocalAdditionMethod;
+export type ProgressiveMaterial = BifocalMaterial;
+
+export interface ProgressiveCreateRequest extends BifocalCreateRequest {}
+
+export interface ProgressiveUpdateRequest extends BifocalUpdateRequest {}
+
+export interface ProgressiveCreateResponse extends BifocalCreateResponse {}
+
+export interface ProgressiveDetailResponse extends BifocalDetailResponse {}
 
 export interface AccessorySupplier {
   id?: number;

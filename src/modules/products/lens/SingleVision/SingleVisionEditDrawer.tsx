@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Controller, useForm } from "react-hook-form";
-import { Box, X } from "lucide-react";
+import { Box, Lock, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetClose, SheetContent } from "@/components/ui/sheet";
@@ -13,32 +13,30 @@ import SupplierAsyncSelect, {
   type SupplierOption,
 } from "@/modules/products/components/SupplierAsyncSelect";
 import {
-  SINGLE_VISION_ADDITION_METHOD_VALUES,
+  getLensByVariantId,
+} from "@/modules/products/product.service";
+import {
   SINGLE_VISION_LENS_TYPE_VALUES,
   SINGLE_VISION_MATERIAL_VALUES,
 } from "@/modules/products/product.constants";
-import { createSingleVision } from "@/modules/products/singleVision.service";
+import { updateSingleVision } from "@/modules/products/singleVision.service";
+import { getSuppliersByIds } from "@/modules/products/sunglasses.service";
 import {
-  buildSingleVisionPayload,
-  singleVisionFormDefaultValues,
-  singleVisionFormSchema,
-  type SingleVisionFormValues,
+  buildSingleVisionUpdatePayload,
+  singleVisionEditFormDefaultValues,
+  singleVisionEditFormSchema,
+  type SingleVisionEditFormValues,
 } from "@/modules/products/lens/SingleVision/singleVision.validation";
-import { cn } from "@/lib/cn";
 
-interface SingleVisionCreateDrawerProps {
+interface SingleVisionEditDrawerProps {
   open: boolean;
+  productId: number | string | null;
+  detailId: number | string | null;
   onClose: () => void;
   onSaved?: () => void;
 }
 
-type PowerFieldName =
-  | "sph"
-  | "cyl"
-  | "sphStart"
-  | "sphEnd"
-  | "cylStart"
-  | "cylEnd";
+type EditablePowerFieldName = "sph" | "cyl";
 
 const buildQuarterStepOptions = (min: number, max: number): string[] => {
   const options: string[] = [];
@@ -55,46 +53,40 @@ const formatPowerValue = (value: string) => {
   return parsed.toFixed(2);
 };
 
-const SPH_OPTIONS = buildQuarterStepOptions(-24, 24);
-const CYL_OPTIONS = buildQuarterStepOptions(-12, 12);
-
-const getSuccessDescription = (response: unknown) => {
-  const payload = response as {
-    createdVariantCount?: number;
-    totalVariants?: number;
-    variantIds?: number[];
-  };
-
-  const variantCount =
-    payload?.createdVariantCount ??
-    payload?.totalVariants ??
-    (Array.isArray(payload?.variantIds)
-      ? payload.variantIds.length
-      : undefined);
-
-  if (Number.isInteger(variantCount) && Number(variantCount) > 0) {
-    return `${variantCount} variant${Number(variantCount) === 1 ? "" : "s"} created.`;
-  }
-
-  return "Single vision lens variants were created.";
+const toFieldValue = (value: unknown, fallback = "") => {
+  if (value === null || typeof value === "undefined") return fallback;
+  return String(value);
 };
 
+const formatLockedNumber = (value: unknown, fractionDigits = 0) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return "";
+  return parsed.toFixed(fractionDigits);
+};
+
+const SPH_OPTIONS = buildQuarterStepOptions(-24, 24);
+const CYL_OPTIONS = buildQuarterStepOptions(-12, 12);
 const textareaClassName =
   "w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
-function SingleVisionCreateDrawer({
+function SingleVisionEditDrawer({
   open,
+  productId,
+  detailId,
   onClose,
   onSaved,
-}: SingleVisionCreateDrawerProps) {
+}: SingleVisionEditDrawerProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const defaultValues = useMemo(() => singleVisionFormDefaultValues, []);
+  const defaultValues = useMemo(() => singleVisionEditFormDefaultValues, []);
   const [supplierPickerValue, setSupplierPickerValue] =
     useState<SupplierOption | null>(null);
   const [selectedSuppliers, setSelectedSuppliers] = useState<SupplierOption[]>(
     [],
+  );
+  const [existingProduct, setExistingProduct] = useState<Record<string, any> | null>(
+    null,
   );
 
   const {
@@ -105,26 +97,157 @@ function SingleVisionCreateDrawer({
     setValue,
     watch,
     formState: { errors, isSubmitting },
-  } = useForm<SingleVisionFormValues>({
-    resolver: zodResolver(singleVisionFormSchema),
+  } = useForm<SingleVisionEditFormValues>({
+    resolver: zodResolver(singleVisionEditFormSchema),
     defaultValues,
   });
 
-  const additionMethod = watch("additionMethod");
   const cylEnabled = watch("cylEnabled");
+
+  const {
+    data: productDetails,
+    isError: isDetailsError,
+    error: detailsError,
+    isFetching: isLoadingDetails,
+  } = useQuery({
+    queryKey: ["products", "single-vision", "details", detailId],
+    queryFn: () => getLensByVariantId(detailId as number),
+    enabled: open && Boolean(detailId),
+  });
 
   useEffect(() => {
     if (!open) {
       reset(defaultValues);
       setSupplierPickerValue(null);
       setSelectedSuppliers([]);
+      setExistingProduct(null);
       return;
     }
 
-    reset(defaultValues);
-    setSupplierPickerValue(null);
-    setSelectedSuppliers([]);
-  }, [defaultValues, open, reset]);
+    if (!detailId) {
+      reset(defaultValues);
+      setSupplierPickerValue(null);
+      setSelectedSuppliers([]);
+      setExistingProduct(null);
+    }
+  }, [defaultValues, detailId, open, reset]);
+
+  useEffect(() => {
+    if (!open || !detailId || !productDetails) return;
+
+    const product = (productDetails?.data ?? productDetails) as Record<string, any>;
+    setExistingProduct(product);
+
+    const supplierIds = new Set<number>();
+    const initialSupplierMap = new Map<number, SupplierOption>();
+
+    if (Array.isArray(product?.supplierIds)) {
+      product.supplierIds.forEach((value: unknown) => {
+        const supplierId = Number(value);
+        if (!Number.isInteger(supplierId) || supplierId <= 0) return;
+        supplierIds.add(supplierId);
+      });
+    }
+
+    if (Array.isArray(product?.suppliers)) {
+      product.suppliers.forEach((supplier: any) => {
+        const supplierId = Number(supplier?.id ?? supplier?.supplierId);
+        if (!Number.isInteger(supplierId) || supplierId <= 0) return;
+        supplierIds.add(supplierId);
+        initialSupplierMap.set(supplierId, {
+          id: supplierId,
+          name: supplier?.name ?? supplier?.supplierName ?? `Supplier #${supplierId}`,
+          phone: supplier?.phone ?? null,
+          email: supplier?.email ?? null,
+          pendingAmount: supplier?.pendingAmount ?? null,
+        });
+      });
+    }
+
+    const primarySupplierId = Number(product?.supplierId);
+    if (Number.isInteger(primarySupplierId) && primarySupplierId > 0) {
+      supplierIds.add(primarySupplierId);
+      if (!initialSupplierMap.has(primarySupplierId)) {
+        initialSupplierMap.set(primarySupplierId, {
+          id: primarySupplierId,
+          name:
+            product?.supplierName ??
+            product?.supplier?.name ??
+            `Supplier #${primarySupplierId}`,
+          phone: product?.supplierPhone ?? product?.supplier?.phone ?? null,
+          email: product?.supplierEmail ?? product?.supplier?.email ?? null,
+          pendingAmount: null,
+        });
+      }
+    }
+
+    let isCancelled = false;
+    const loadSupplierNames = async () => {
+      const ids = Array.from(supplierIds);
+
+      if (ids.length === 0) {
+        if (!isCancelled) {
+          setSelectedSuppliers([]);
+          setSupplierPickerValue(null);
+        }
+        return;
+      }
+
+      const fetchedSuppliers = await getSuppliersByIds(ids);
+      const mergedMap = new Map<number, SupplierOption>(initialSupplierMap);
+
+      fetchedSuppliers.forEach((supplier) => {
+        mergedMap.set(supplier.id, {
+          id: supplier.id,
+          name: supplier.name ?? `Supplier #${supplier.id}`,
+          phone: supplier.phone ?? null,
+          email: supplier.email ?? null,
+          pendingAmount: supplier.pendingAmount ?? null,
+        });
+      });
+
+      const resolvedSuppliers = ids.map((id) => {
+        const supplier = mergedMap.get(id);
+        if (supplier) return supplier;
+
+        return {
+          id,
+          name: `Supplier #${id}`,
+          phone: null,
+          email: null,
+          pendingAmount: null,
+        };
+      });
+
+      if (!isCancelled) {
+        setSelectedSuppliers(resolvedSuppliers);
+        setSupplierPickerValue(null);
+      }
+    };
+
+    loadSupplierNames();
+
+    reset({
+      companyName: toFieldValue(product?.companyName ?? product?.brandName),
+      name: toFieldValue(product?.name ?? product?.productName),
+      material: toFieldValue(product?.material, defaultValues.material),
+      type: toFieldValue(product?.type ?? product?.lensType, defaultValues.type),
+      index: toFieldValue(
+        product?.index ?? product?.lensIndex,
+        defaultValues.index,
+      ),
+      sph: toFieldValue(product?.sph),
+      cylEnabled: Number.isFinite(Number(product?.cyl)),
+      cyl: toFieldValue(product?.cyl),
+      sellingPrice: toFieldValue(product?.sellingPrice),
+      extra: toFieldValue(product?.extra ?? product?.notes),
+      supplierIds: Array.from(supplierIds),
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [defaultValues.index, defaultValues.material, defaultValues.type, detailId, open, productDetails, reset]);
 
   useEffect(() => {
     setValue(
@@ -135,37 +258,44 @@ function SingleVisionCreateDrawer({
   }, [selectedSuppliers, setValue]);
 
   useEffect(() => {
-    if (additionMethod === "SINGLE") {
-      setValue("sphStart", "", { shouldDirty: false, shouldValidate: false });
-      setValue("sphEnd", "", { shouldDirty: false, shouldValidate: false });
-      setValue("cylStart", "", { shouldDirty: false, shouldValidate: false });
-      setValue("cylEnd", "", { shouldDirty: false, shouldValidate: false });
-      return;
-    }
-
-    setValue("sph", "", { shouldDirty: false, shouldValidate: false });
-    setValue("cyl", "", { shouldDirty: false, shouldValidate: false });
-  }, [additionMethod, setValue]);
-
-  useEffect(() => {
     if (cylEnabled) return;
-
     setValue("cyl", "", { shouldDirty: false, shouldValidate: false });
-    setValue("cylStart", "", { shouldDirty: false, shouldValidate: false });
-    setValue("cylEnd", "", { shouldDirty: false, shouldValidate: false });
   }, [cylEnabled, setValue]);
 
+  useEffect(() => {
+    if (!isDetailsError) return;
+    toast({
+      variant: "destructive",
+      title: "Failed to load single vision lens",
+      description:
+        (detailsError as any)?.response?.data?.message ??
+        "Unable to fetch lens details.",
+    });
+  }, [detailsError, isDetailsError, toast]);
+
   const saveMutation = useMutation({
-    mutationFn: (values: SingleVisionFormValues) =>
-      createSingleVision(buildSingleVisionPayload(values)),
-    onSuccess: async (response) => {
+    mutationFn: async (values: SingleVisionEditFormValues) => {
+      if (!productId) throw new Error("Missing single vision product id.");
+      if (!existingProduct) throw new Error("Single vision details are not loaded yet.");
+
+      return updateSingleVision(
+        productId,
+        buildSingleVisionUpdatePayload(values),
+      );
+    },
+    onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["products"] });
-      await queryClient.invalidateQueries({
-        queryKey: ["products", "lenses", "subtabs"],
-      });
+      if (detailId) {
+        await queryClient.invalidateQueries({
+          queryKey: ["products", "single-vision", "details", detailId],
+        });
+      }
+      if (productId) {
+        await queryClient.invalidateQueries({ queryKey: ["product", productId] });
+      }
       toast({
-        title: "Single vision created",
-        description: getSuccessDescription(response),
+        title: "Single vision updated",
+        description: "Changes were saved successfully.",
       });
       onSaved?.();
       onClose();
@@ -173,15 +303,18 @@ function SingleVisionCreateDrawer({
     onError: (error: any) => {
       toast({
         variant: "destructive",
-        title: "Save failed",
+        title: "Update failed",
         description:
           error?.response?.data?.message ?? "Server rejected the request.",
       });
     },
   });
 
+  const renderFieldError = (message?: string) =>
+    message ? <p className="mt-1 text-xs text-destructive">{message}</p> : null;
+
   const renderPowerSelect = (
-    fieldName: PowerFieldName,
+    fieldName: EditablePowerFieldName,
     label: string,
     options: string[],
   ) => (
@@ -203,7 +336,9 @@ function SingleVisionCreateDrawer({
               searchPlaceholder={`Search ${label.toLowerCase()}...`}
               emptyText={`No ${label.toLowerCase()} values found`}
               formatOptionLabel={formatPowerValue}
-              disabled={isSubmitting || saveMutation.isPending}
+              disabled={
+                isSubmitting || saveMutation.isPending || isLoadingDetails
+              }
             />
             {fieldState.error?.message ? (
               <p className="mt-1 text-xs text-destructive">
@@ -216,8 +351,11 @@ function SingleVisionCreateDrawer({
     </div>
   );
 
-  const renderFieldError = (message?: string) =>
-    message ? <p className="mt-1 text-xs text-destructive">{message}</p> : null;
+  const lockedQuantity = formatLockedNumber(existingProduct?.quantity, 0);
+  const lockedPurchasePrice = formatLockedNumber(
+    existingProduct?.purchasePrice,
+    2,
+  );
 
   return (
     <Sheet
@@ -234,7 +372,7 @@ function SingleVisionCreateDrawer({
         <div className="mb-4 flex items-center justify-between">
           <h3 className="flex items-center gap-2 text-lg font-semibold">
             <Box className="h-5 w-5 text-primary" />
-            Add Single Vision Lens
+            Edit Single Vision Lens
           </h3>
           <SheetClose asChild>
             <Button variant="ghost" size="icon" aria-label="Close drawer">
@@ -253,7 +391,7 @@ function SingleVisionCreateDrawer({
                 Basic Details
               </h4>
               <p className="text-sm text-muted-foreground">
-                Start with the lens identity and stock information.
+                Update the product identity and single-vision lens setup.
               </p>
             </div>
 
@@ -269,6 +407,7 @@ function SingleVisionCreateDrawer({
                   id="companyName"
                   autoFocus
                   placeholder="ABC Optical"
+                  disabled={isLoadingDetails}
                   {...register("companyName")}
                 />
                 {renderFieldError(errors.companyName?.message)}
@@ -281,6 +420,7 @@ function SingleVisionCreateDrawer({
                 <Input
                   id="name"
                   placeholder="SV Glass HMC"
+                  disabled={isLoadingDetails}
                   {...register("name")}
                 />
                 {renderFieldError(errors.name?.message)}
@@ -296,6 +436,7 @@ function SingleVisionCreateDrawer({
                 <select
                   id="material"
                   className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  disabled={isLoadingDetails}
                   {...register("material")}
                 >
                   {SINGLE_VISION_MATERIAL_VALUES.map((material) => (
@@ -314,6 +455,7 @@ function SingleVisionCreateDrawer({
                 <select
                   id="type"
                   className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  disabled={isLoadingDetails}
                   {...register("type")}
                 >
                   {SINGLE_VISION_LENS_TYPE_VALUES.map((lensType) => (
@@ -334,27 +476,10 @@ function SingleVisionCreateDrawer({
                   type="number"
                   step="0.01"
                   placeholder="1.50"
+                  disabled={isLoadingDetails}
                   {...register("index")}
                 />
                 {renderFieldError(errors.index?.message)}
-              </div>
-
-              <div>
-                <label
-                  htmlFor="quantity"
-                  className="mb-1 block text-sm font-medium"
-                >
-                  Pair / Quantity
-                </label>
-                <Input
-                  id="quantity"
-                  type="number"
-                  min={0}
-                  step={1}
-                  placeholder="0"
-                  {...register("quantity")}
-                />
-                {renderFieldError(errors.quantity?.message)}
               </div>
 
               <div className="md:col-span-2">
@@ -366,9 +491,9 @@ function SingleVisionCreateDrawer({
                   rows={3}
                   placeholder="Optional notes about the lens"
                   className={textareaClassName}
+                  disabled={isLoadingDetails}
                   {...register("extra")}
                 />
-                {renderFieldError(errors.extra?.message)}
               </div>
             </div>
           </section>
@@ -376,86 +501,39 @@ function SingleVisionCreateDrawer({
           <section className="rounded-lg border p-4">
             <div className="mb-4">
               <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                Power Setup
+                Power Values
               </h4>
               <p className="text-sm text-muted-foreground">
-                Choose how the lens powers should be generated.
+                Edit the single-value power setup for this lens.
               </p>
             </div>
 
             <div className="rounded-lg border border-dashed bg-muted/30 p-4">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Adding Method</p>
-                  <div className="flex flex-wrap gap-2">
-                    {SINGLE_VISION_ADDITION_METHOD_VALUES.map((method) => {
-                      const isSelected = additionMethod === method;
-
-                      return (
-                        <label
-                          key={method}
-                          className={cn(
-                            "inline-flex cursor-pointer items-center rounded-md border px-3 py-2 text-sm transition-colors",
-                            isSelected
-                              ? "border-primary bg-primary text-primary-foreground"
-                              : "border-input bg-background hover:bg-accent hover:text-accent-foreground",
-                          )}
-                        >
-                          <input
-                            type="radio"
-                            value={method}
-                            className="sr-only"
-                            {...register("additionMethod")}
-                          />
-                          <span>{method === "RANGE" ? "Range" : "Single"}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                {renderPowerSelect("sph", "SPH", SPH_OPTIONS)}
 
                 <Controller
                   name="cylEnabled"
                   control={control}
                   render={({ field }) => (
-                    <div className="flex items-center justify-between gap-4 rounded-md border bg-background px-3 py-2 lg:min-w-64">
+                    <div className="flex items-center justify-between gap-4 rounded-md border bg-background px-3 py-2">
                       <div>
                         <p className="text-sm font-medium">CYL</p>
                         <p className="text-xs text-muted-foreground">
-                          Enable CYL values for this lens setup.
+                          Enable CYL editing for this lens.
                         </p>
                       </div>
                       <Switch
                         checked={Boolean(field.value)}
                         onCheckedChange={field.onChange}
-                        disabled={isSubmitting || saveMutation.isPending}
-                        aria-label="Toggle CYL values"
+                        disabled={isLoadingDetails}
+                        aria-label="Toggle CYL editing"
                       />
                     </div>
                   )}
                 />
-              </div>
 
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                {additionMethod === "SINGLE" ? (
-                  <>
-                    {renderPowerSelect("sph", "SPH", SPH_OPTIONS)}
-                    {cylEnabled
-                      ? renderPowerSelect("cyl", "CYL", CYL_OPTIONS)
-                      : null}
-                  </>
-                ) : (
-                  <>
-                    {renderPowerSelect("sphStart", "SPH Start", SPH_OPTIONS)}
-                    {renderPowerSelect("sphEnd", "SPH End", SPH_OPTIONS)}
-                    {cylEnabled
-                      ? renderPowerSelect("cylStart", "CYL Start", CYL_OPTIONS)
-                      : null}
-                    {cylEnabled
-                      ? renderPowerSelect("cylEnd", "CYL End", CYL_OPTIONS)
-                      : null}
-                  </>
-                )}
+                {cylEnabled ? renderPowerSelect("cyl", "CYL", CYL_OPTIONS) : null}
               </div>
             </div>
           </section>
@@ -466,27 +544,47 @@ function SingleVisionCreateDrawer({
                 Pricing And Suppliers
               </h4>
               <p className="text-sm text-muted-foreground">
-                Set the commercial values and attach supplier records.
+                Selling price is editable. Quantity and purchase price stay locked.
               </p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
-              <div>
+              <div className="rounded-md border border-dashed bg-muted/20 p-3">
                 <label
-                  htmlFor="purchasePrice"
+                  htmlFor="purchasePriceLocked"
                   className="mb-1 block text-sm font-medium"
                 >
                   Price (Purchase)
                 </label>
+                <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
+                  <Lock className="h-3.5 w-3.5" />
+                  Locked for edits
+                </div>
                 <Input
-                  id="purchasePrice"
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  placeholder="1200.00"
-                  {...register("purchasePrice")}
+                  id="purchasePriceLocked"
+                  value={lockedPurchasePrice}
+                  disabled
+                  readOnly
                 />
-                {renderFieldError(errors.purchasePrice?.message)}
+              </div>
+
+              <div className="rounded-md border border-dashed bg-muted/20 p-3">
+                <label
+                  htmlFor="quantityLocked"
+                  className="mb-1 block text-sm font-medium"
+                >
+                  Pair / Quantity
+                </label>
+                <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
+                  <Lock className="h-3.5 w-3.5" />
+                  Locked for edits
+                </div>
+                <Input
+                  id="quantityLocked"
+                  value={lockedQuantity}
+                  disabled
+                  readOnly
+                />
               </div>
 
               <div>
@@ -502,6 +600,7 @@ function SingleVisionCreateDrawer({
                   min={0}
                   step="0.01"
                   placeholder="1800.00"
+                  disabled={isLoadingDetails}
                   {...register("sellingPrice")}
                 />
                 {renderFieldError(errors.sellingPrice?.message)}
@@ -539,7 +638,11 @@ function SingleVisionCreateDrawer({
                             : undefined
                         }
                         placeholder="Search supplier and add"
-                        disabled={isSubmitting || saveMutation.isPending}
+                        disabled={
+                          isSubmitting ||
+                          saveMutation.isPending ||
+                          isLoadingDetails
+                        }
                       />
                       <div className="mt-2 space-y-2">
                         {selectedSuppliers.length === 0 ? (
@@ -587,11 +690,11 @@ function SingleVisionCreateDrawer({
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting || saveMutation.isPending}
+              disabled={isSubmitting || saveMutation.isPending || isLoadingDetails}
             >
               {isSubmitting || saveMutation.isPending
                 ? "Saving..."
-                : "Create Single Vision"}
+                : "Save Changes"}
             </Button>
           </div>
         </form>
@@ -600,4 +703,4 @@ function SingleVisionCreateDrawer({
   );
 }
 
-export default SingleVisionCreateDrawer;
+export default SingleVisionEditDrawer;
