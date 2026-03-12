@@ -8,6 +8,8 @@ import FrameProductList from "@/modules/products/frame/FrameProductList";
 import LensProductList from "@/modules/products/lens/LensProductList";
 import { DEFAULT_LENS_SUBTYPE, LENS_SUBTYPE_ROUTE_SEGMENTS } from "@/modules/products/product.constants";
 import SunglassesProductList from "@/modules/products/sunglasses/SunglassesProductList";
+import StockPurchasePage from "@/modules/stock-purchases/StockPurchasePage";
+import StockUpdatePage from "@/modules/stock-updates/StockUpdatePage";
 import SupplierList from "@/modules/suppliers/SupplierList";
 import { ROLES } from "@/store/auth.store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -57,6 +59,23 @@ const router = createBrowserRouter([
             element: <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]} />,
             children: [
               {
+                path: "stock-updates",
+                element: <Navigate to="/app/stock-updates/view" replace />
+              },
+              {
+                path: "stock-updates/add",
+                element: <StockUpdatePage />
+              },
+              {
+                path: "stock-updates/view",
+                element: <StockUpdatePage />
+              }
+            ]
+          },
+          {
+            element: <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]} />,
+            children: [
+              {
                 path: "products",
                 element: <Navigate to={`/app/products/lens/${LENS_SUBTYPE_ROUTE_SEGMENTS[DEFAULT_LENS_SUBTYPE]}`} replace />
               },
@@ -79,6 +98,14 @@ const router = createBrowserRouter([
               {
                 path: "products/accessory",
                 element: <AccessoryProductList />
+              },
+              {
+                path: "products/stockupdates",
+                element: <Navigate to="/app/stock-updates/view" replace />
+              },
+              {
+                path: "stock-purchases",
+                element: <StockPurchasePage />
               }
             ]
           }

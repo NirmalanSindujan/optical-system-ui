@@ -1,4 +1,5 @@
 import api from "@/lib/api";
+import type { SupplierProductStockResponseItem } from "@/modules/stock-purchases/stock-purchase.types";
 
 export async function getSuppliers(params) {
   const { data } = await api.get("/suppliers", { params });
@@ -8,6 +9,11 @@ export async function getSuppliers(params) {
 export async function getSupplierById(id) {
   const { data } = await api.get(`/suppliers/${id}`);
   return data;
+}
+
+export async function getSupplierProducts(id: number | string): Promise<SupplierProductStockResponseItem[]> {
+  const { data } = await api.get(`/suppliers/${id}/products`);
+  return Array.isArray(data) ? data : [];
 }
 
 export async function createSupplier(payload) {

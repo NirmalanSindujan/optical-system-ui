@@ -1,6 +1,18 @@
 import { useEffect, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { Building2, ChevronDown, Circle, LayoutDashboard, Package, Square, Sun, Users, Wrench } from "lucide-react";
+import {
+  Building2,
+  Boxes,
+  ChevronDown,
+  Circle,
+  LayoutDashboard,
+  Package,
+  PackagePlus,
+  Square,
+  Sun,
+  Users,
+  Wrench
+} from "lucide-react";
 import { cn } from "@/lib/cn";
 import { ROLES, useAuthStore } from "@/store/auth.store";
 import { LENS_SUBTYPE_NAV_ITEMS, PRODUCT_NAV_ITEMS, PRODUCT_VARIANT_TYPES } from "@/modules/products/product.constants";
@@ -23,13 +35,21 @@ function Sidebar() {
   const canManageProducts = role === ROLES.SUPER_ADMIN || role === ROLES.ADMIN;
   const location = useLocation();
   const isLensRoute = location.pathname.startsWith("/app/products/lens");
+  const isStockUpdateRoute = location.pathname.startsWith("/app/stock-updates");
   const [lensMenuOpen, setLensMenuOpen] = useState(isLensRoute);
+  const [stockUpdateMenuOpen, setStockUpdateMenuOpen] = useState(isStockUpdateRoute);
 
   useEffect(() => {
     if (isLensRoute) {
       setLensMenuOpen(true);
     }
   }, [isLensRoute]);
+
+  useEffect(() => {
+    if (isStockUpdateRoute) {
+      setStockUpdateMenuOpen(true);
+    }
+  }, [isStockUpdateRoute]);
 
   return (
     <aside className="w-64 border-r bg-[hsl(var(--sidebar-background))] text-[hsl(var(--sidebar-foreground))]">
@@ -59,6 +79,85 @@ function Sidebar() {
             </NavLink>
           );
         })}
+
+        {canManageProducts ? (
+          <NavLink
+            to="/app/stock-purchases"
+            className={({ isActive }) =>
+              cn(
+                "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                isActive
+                  ? "bg-[hsl(var(--sidebar-active))] text-[hsl(var(--sidebar-active-foreground))]"
+                  : "hover:bg-accent hover:text-accent-foreground"
+              )
+            }
+          >
+            <PackagePlus className="h-4 w-4" />
+            Stock Purchases
+          </NavLink>
+        ) : null}
+
+        {canManageProducts ? (
+          <div className="space-y-1">
+            <button
+              type="button"
+              onClick={() => setStockUpdateMenuOpen((open) => !open)}
+              className={cn(
+                "flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                isStockUpdateRoute
+                  ? "bg-[hsl(var(--sidebar-active))] text-[hsl(var(--sidebar-active-foreground))]"
+                  : "hover:bg-accent hover:text-accent-foreground"
+              )}
+            >
+              <Boxes className="h-4 w-4" />
+              <span className="flex-1 text-left">Stock Updates</span>
+              <ChevronDown
+                className={cn(
+                  "h-4 w-4 transition-transform duration-200 ease-out",
+                  stockUpdateMenuOpen ? "rotate-0" : "-rotate-90"
+                )}
+              />
+            </button>
+
+            <div
+              className={cn(
+                "grid overflow-hidden transition-all duration-200 ease-out",
+                stockUpdateMenuOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+              )}
+            >
+              <div className="min-h-0">
+                <div className="ml-5 space-y-1 border-l pl-2">
+                  <NavLink
+                    to="/app/stock-updates/add"
+                    className={({ isActive }) =>
+                      cn(
+                        "flex items-center rounded-md px-3 py-1.5 text-sm transition-colors",
+                        isActive
+                          ? "bg-[hsl(var(--sidebar-active))] text-[hsl(var(--sidebar-active-foreground))]"
+                          : "hover:bg-accent hover:text-accent-foreground"
+                      )
+                    }
+                  >
+                    Add Stock Update
+                  </NavLink>
+                  <NavLink
+                    to="/app/stock-updates/view"
+                    className={({ isActive }) =>
+                      cn(
+                        "flex items-center rounded-md px-3 py-1.5 text-sm transition-colors",
+                        isActive
+                          ? "bg-[hsl(var(--sidebar-active))] text-[hsl(var(--sidebar-active-foreground))]"
+                          : "hover:bg-accent hover:text-accent-foreground"
+                      )
+                    }
+                  >
+                    View Stock Updates
+                  </NavLink>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         {canManageProducts ? (
           <div className="pt-2">
@@ -92,9 +191,9 @@ function Sidebar() {
                             ? "bg-[hsl(var(--sidebar-active))] text-[hsl(var(--sidebar-active-foreground))]"
                             : "hover:bg-accent hover:text-accent-foreground"
                         )}
-                        >
-                          <Icon className="h-3.5 w-3.5" />
-                          <span className="flex-1 text-left">{item.label}</span>
+                      >
+                        <Icon className="h-3.5 w-3.5" />
+                        <span className="flex-1 text-left">{item.label}</span>
                         <ChevronDown
                           className={cn(
                             "h-4 w-4 transition-transform duration-200 ease-out",
