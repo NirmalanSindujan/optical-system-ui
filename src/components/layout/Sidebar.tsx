@@ -110,7 +110,7 @@ function Sidebar() {
               )}
             >
               <Boxes className="h-4 w-4" />
-              <span className="flex-1 text-left">Stock Updates</span>
+              <span className="flex-1 text-left">Stocks</span>
               <ChevronDown
                 className={cn(
                   "h-4 w-4 transition-transform duration-200 ease-out",
@@ -128,19 +128,6 @@ function Sidebar() {
               <div className="min-h-0">
                 <div className="ml-5 space-y-1 border-l pl-2">
                   <NavLink
-                    to="/app/stock-updates/add"
-                    className={({ isActive }) =>
-                      cn(
-                        "flex items-center rounded-md px-3 py-1.5 text-sm transition-colors",
-                        isActive
-                          ? "bg-[hsl(var(--sidebar-active))] text-[hsl(var(--sidebar-active-foreground))]"
-                          : "hover:bg-accent hover:text-accent-foreground"
-                      )
-                    }
-                  >
-                    Add Stock Update
-                  </NavLink>
-                  <NavLink
                     to="/app/stock-updates/view"
                     className={({ isActive }) =>
                       cn(
@@ -151,7 +138,20 @@ function Sidebar() {
                       )
                     }
                   >
-                    View Stock Updates
+                    View Stocks
+                  </NavLink>
+                  <NavLink
+                    to="/app/stock-updates/add"
+                    className={({ isActive }) =>
+                      cn(
+                        "flex items-center rounded-md px-3 py-1.5 text-sm transition-colors",
+                        isActive
+                          ? "bg-[hsl(var(--sidebar-active))] text-[hsl(var(--sidebar-active-foreground))]"
+                          : "hover:bg-accent hover:text-accent-foreground"
+                      )
+                    }
+                  >
+                    Add Stocks
                   </NavLink>
                 </div>
               </div>
