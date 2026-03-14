@@ -12,7 +12,7 @@ import SearchableValueSelect from "@/modules/products/components/SearchableValue
 import SupplierAsyncSelect, {
   type SupplierOption,
 } from "@/modules/products/components/SupplierAsyncSelect";
-import { createBifocal } from "@/modules/products/bifocal.service";
+import { createBifocal } from "@/modules/products/lens/Bifocal/bifocal.service";
 import {
   buildBifocalPayload,
   bifocalFormDefaultValues,
@@ -71,7 +71,9 @@ const getSuccessDescription = (response: unknown) => {
   const variantCount =
     payload?.createdVariantCount ??
     payload?.totalVariants ??
-    (Array.isArray(payload?.variantIds) ? payload.variantIds.length : undefined);
+    (Array.isArray(payload?.variantIds)
+      ? payload.variantIds.length
+      : undefined);
 
   if (Number.isInteger(variantCount) && Number(variantCount) > 0) {
     return `${variantCount} variant${Number(variantCount) === 1 ? "" : "s"} created.`;
@@ -149,8 +151,14 @@ function BifocalCreateDrawer({
 
   useEffect(() => {
     if (addAdditionMethod === "SINGLE") {
-      setValue("addPowerStart", "", { shouldDirty: false, shouldValidate: false });
-      setValue("addPowerEnd", "", { shouldDirty: false, shouldValidate: false });
+      setValue("addPowerStart", "", {
+        shouldDirty: false,
+        shouldValidate: false,
+      });
+      setValue("addPowerEnd", "", {
+        shouldDirty: false,
+        shouldValidate: false,
+      });
       return;
     }
 
@@ -175,7 +183,8 @@ function BifocalCreateDrawer({
   }, [cylAdditionMethod, cylEnabled, setValue]);
 
   const saveMutation = useMutation({
-    mutationFn: (values: BifocalFormValues) => createBifocal(buildBifocalPayload(values)),
+    mutationFn: (values: BifocalFormValues) =>
+      createBifocal(buildBifocalPayload(values)),
     onSuccess: async (response) => {
       await queryClient.invalidateQueries({ queryKey: ["products"] });
       await queryClient.invalidateQueries({
@@ -241,31 +250,31 @@ function BifocalCreateDrawer({
     fieldName: "sphAdditionMethod" | "cylAdditionMethod" | "addAdditionMethod",
     selectedValue: BifocalFormValues["sphAdditionMethod"],
   ) => (
-      <div className="flex flex-wrap gap-2">
-        {SINGLE_VISION_ADDITION_METHOD_VALUES.map((method) => {
-          const isSelected = selectedValue === method;
+    <div className="flex flex-wrap gap-2">
+      {SINGLE_VISION_ADDITION_METHOD_VALUES.map((method) => {
+        const isSelected = selectedValue === method;
 
-          return (
-            <label
-              key={`${fieldName}-${method}`}
-              className={cn(
-                "inline-flex cursor-pointer items-center rounded-md border px-3 py-2 text-sm transition-colors",
-                isSelected
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-input bg-background hover:bg-accent hover:text-accent-foreground",
-              )}
-            >
-              <input
-                type="radio"
-                value={method}
-                className="sr-only"
-                {...register(fieldName)}
-              />
-              <span>{method === "RANGE" ? "Range" : "Single"}</span>
-            </label>
-          );
-        })}
-      </div>
+        return (
+          <label
+            key={`${fieldName}-${method}`}
+            className={cn(
+              "inline-flex cursor-pointer items-center rounded-md border px-3 py-2 text-sm transition-colors",
+              isSelected
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-input bg-background hover:bg-accent hover:text-accent-foreground",
+            )}
+          >
+            <input
+              type="radio"
+              value={method}
+              className="sr-only"
+              {...register(fieldName)}
+            />
+            <span>{method === "RANGE" ? "Range" : "Single"}</span>
+          </label>
+        );
+      })}
+    </div>
   );
 
   const renderPowerConfigurator = ({
@@ -289,7 +298,12 @@ function BifocalCreateDrawer({
     enabled?: boolean;
     helperText?: string;
   }) => (
-    <div className={cn("rounded-lg border bg-background p-4", !enabled && "opacity-60")}>
+    <div
+      className={cn(
+        "rounded-lg border bg-background p-4",
+        !enabled && "opacity-60",
+      )}
+    >
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <p className="text-sm font-medium">{label}</p>
@@ -371,7 +385,10 @@ function BifocalCreateDrawer({
               </div>
 
               <div>
-                <label htmlFor="name" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="name"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Model Name
                 </label>
                 <Input
@@ -404,7 +421,10 @@ function BifocalCreateDrawer({
               </div>
 
               <div>
-                <label htmlFor="index" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="index"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Index
                 </label>
                 <Input
@@ -436,7 +456,10 @@ function BifocalCreateDrawer({
               </div>
 
               <div className="md:col-span-2">
-                <label htmlFor="extra" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="extra"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Extra Notes
                 </label>
                 <textarea
@@ -477,7 +500,8 @@ function BifocalCreateDrawer({
                   <div>
                     <p className="text-sm font-medium">CYL</p>
                     <p className="text-xs text-muted-foreground">
-                      Enable CYL and choose whether it is a single value or a range.
+                      Enable CYL and choose whether it is a single value or a
+                      range.
                     </p>
                   </div>
                   <Controller
@@ -591,7 +615,10 @@ function BifocalCreateDrawer({
                             setSupplierPickerValue(null);
                             return;
                           }
-                          const nextSuppliers = [...selectedSuppliers, supplier];
+                          const nextSuppliers = [
+                            ...selectedSuppliers,
+                            supplier,
+                          ];
                           setSelectedSuppliers(nextSuppliers);
                           field.onChange(nextSuppliers.map((item) => item.id));
                           setSupplierPickerValue(null);
@@ -623,9 +650,10 @@ function BifocalCreateDrawer({
                                 size="sm"
                                 className="h-7 px-2 text-destructive"
                                 onClick={() => {
-                                  const nextSuppliers = selectedSuppliers.filter(
-                                    (item) => item.id !== supplier.id,
-                                  );
+                                  const nextSuppliers =
+                                    selectedSuppliers.filter(
+                                      (item) => item.id !== supplier.id,
+                                    );
                                   setSelectedSuppliers(nextSuppliers);
                                   field.onChange(
                                     nextSuppliers.map((item) => item.id),
@@ -653,7 +681,9 @@ function BifocalCreateDrawer({
               type="submit"
               disabled={isSubmitting || saveMutation.isPending}
             >
-              {isSubmitting || saveMutation.isPending ? "Saving..." : "Create Bifocal"}
+              {isSubmitting || saveMutation.isPending
+                ? "Saving..."
+                : "Create Bifocal"}
             </Button>
           </div>
         </form>

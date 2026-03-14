@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetClose, SheetContent } from "@/components/ui/sheet";
 import { useToast } from "@/components/ui/use-toast";
-import { createContactLens } from "@/modules/products/contactLens.service";
+import { createContactLens } from "@/modules/products/lens/ContactLens/contactLens.service";
 import SupplierAsyncSelect, {
   type SupplierOption,
 } from "@/modules/products/components/SupplierAsyncSelect";
@@ -155,7 +155,10 @@ function ContactLensCreateDrawer({
               </div>
 
               <div>
-                <label htmlFor="name" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="name"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Product Name
                 </label>
                 <Input
@@ -167,14 +170,13 @@ function ContactLensCreateDrawer({
               </div>
 
               <div>
-                <label htmlFor="color" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="color"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Color
                 </label>
-                <Input
-                  id="color"
-                  placeholder="Blue"
-                  {...register("color")}
-                />
+                <Input id="color" placeholder="Blue" {...register("color")} />
                 {renderFieldError(errors.color?.message)}
               </div>
 
@@ -212,7 +214,10 @@ function ContactLensCreateDrawer({
               </div>
 
               <div className="md:col-span-2">
-                <label htmlFor="extra" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="extra"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Extra Notes
                 </label>
                 <textarea
@@ -294,7 +299,10 @@ function ContactLensCreateDrawer({
                             setSupplierPickerValue(null);
                             return;
                           }
-                          const nextSuppliers = [...selectedSuppliers, supplier];
+                          const nextSuppliers = [
+                            ...selectedSuppliers,
+                            supplier,
+                          ];
                           setSelectedSuppliers(nextSuppliers);
                           field.onChange(nextSuppliers.map((item) => item.id));
                           setSupplierPickerValue(null);
@@ -326,9 +334,10 @@ function ContactLensCreateDrawer({
                                 size="sm"
                                 className="h-7 px-2 text-destructive"
                                 onClick={() => {
-                                  const nextSuppliers = selectedSuppliers.filter(
-                                    (item) => item.id !== supplier.id,
-                                  );
+                                  const nextSuppliers =
+                                    selectedSuppliers.filter(
+                                      (item) => item.id !== supplier.id,
+                                    );
                                   setSelectedSuppliers(nextSuppliers);
                                   field.onChange(
                                     nextSuppliers.map((item) => item.id),

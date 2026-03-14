@@ -15,8 +15,8 @@ import SupplierAsyncSelect, {
 import {
   getBifocalByProductId,
   updateBifocal,
-} from "@/modules/products/bifocal.service";
-import { getSuppliersByIds } from "@/modules/products/sunglasses.service";
+} from "@/modules/products/lens/Bifocal/bifocal.service";
+import { getSuppliersByIds } from "@/modules/products/sunglasses/sunglasses.service";
 import {
   bifocalEditFormDefaultValues,
   bifocalEditFormSchema,
@@ -152,7 +152,10 @@ function BifocalEditDrawer({
         supplierIds.add(supplierId);
         initialSupplierMap.set(supplierId, {
           id: supplierId,
-          name: supplier?.name ?? supplier?.supplierName ?? `Supplier #${supplierId}`,
+          name:
+            supplier?.name ??
+            supplier?.supplierName ??
+            `Supplier #${supplierId}`,
           phone: supplier?.phone ?? null,
           email: supplier?.email ?? null,
           pendingAmount: supplier?.pendingAmount ?? null,
@@ -230,7 +233,10 @@ function BifocalEditDrawer({
       companyName: toFieldValue(product?.companyName ?? product?.brandName),
       name: toFieldValue(product?.name),
       material: toFieldValue(product?.material, defaultValues.material),
-      index: toFieldValue(product?.index ?? product?.lensIndex, defaultValues.index),
+      index: toFieldValue(
+        product?.index ?? product?.lensIndex,
+        defaultValues.index,
+      ),
       sph: toFieldValue(product?.sph),
       cylEnabled: Number.isFinite(Number(product?.cyl)),
       cyl: toFieldValue(product?.cyl),
@@ -243,7 +249,14 @@ function BifocalEditDrawer({
     return () => {
       isCancelled = true;
     };
-  }, [defaultValues.index, defaultValues.material, open, productDetails, productId, reset]);
+  }, [
+    defaultValues.index,
+    defaultValues.material,
+    open,
+    productDetails,
+    productId,
+    reset,
+  ]);
 
   useEffect(() => {
     setValue(
@@ -272,7 +285,8 @@ function BifocalEditDrawer({
   const saveMutation = useMutation({
     mutationFn: async (values: BifocalEditFormValues) => {
       if (!productId) throw new Error("Missing bifocal product id.");
-      if (!existingProduct) throw new Error("Bifocal details are not loaded yet.");
+      if (!existingProduct)
+        throw new Error("Bifocal details are not loaded yet.");
 
       return updateBifocal(productId, buildBifocalUpdatePayload(values));
     },
@@ -282,7 +296,9 @@ function BifocalEditDrawer({
         await queryClient.invalidateQueries({
           queryKey: ["products", "bifocal", "details", productId],
         });
-        await queryClient.invalidateQueries({ queryKey: ["product", productId] });
+        await queryClient.invalidateQueries({
+          queryKey: ["product", productId],
+        });
       }
       toast({
         title: "Bifocal updated",
@@ -405,7 +421,10 @@ function BifocalEditDrawer({
               </div>
 
               <div>
-                <label htmlFor="name" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="name"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Model Name
                 </label>
                 <Input
@@ -440,7 +459,10 @@ function BifocalEditDrawer({
               </div>
 
               <div>
-                <label htmlFor="index" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="index"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Index
                 </label>
                 <Input
@@ -455,7 +477,10 @@ function BifocalEditDrawer({
               </div>
 
               <div className="md:col-span-2">
-                <label htmlFor="extra" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="extra"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Extra Notes
                 </label>
                 <textarea
@@ -506,7 +531,9 @@ function BifocalEditDrawer({
                   )}
                 />
 
-                {cylEnabled ? renderPowerSelect("cyl", "CYL", CYL_OPTIONS) : null}
+                {cylEnabled
+                  ? renderPowerSelect("cyl", "CYL", CYL_OPTIONS)
+                  : null}
               </div>
             </div>
           </section>
@@ -517,7 +544,8 @@ function BifocalEditDrawer({
                 Pricing And Suppliers
               </h4>
               <p className="text-sm text-muted-foreground">
-                Selling price is editable. Quantity and purchase price stay locked.
+                Selling price is editable. Quantity and purchase price stay
+                locked.
               </p>
             </div>
 
@@ -599,7 +627,10 @@ function BifocalEditDrawer({
                             setSupplierPickerValue(null);
                             return;
                           }
-                          const nextSuppliers = [...selectedSuppliers, supplier];
+                          const nextSuppliers = [
+                            ...selectedSuppliers,
+                            supplier,
+                          ];
                           setSelectedSuppliers(nextSuppliers);
                           field.onChange(nextSuppliers.map((item) => item.id));
                           setSupplierPickerValue(null);
@@ -635,9 +666,10 @@ function BifocalEditDrawer({
                                 size="sm"
                                 className="h-7 px-2 text-destructive"
                                 onClick={() => {
-                                  const nextSuppliers = selectedSuppliers.filter(
-                                    (item) => item.id !== supplier.id,
-                                  );
+                                  const nextSuppliers =
+                                    selectedSuppliers.filter(
+                                      (item) => item.id !== supplier.id,
+                                    );
                                   setSelectedSuppliers(nextSuppliers);
                                   field.onChange(
                                     nextSuppliers.map((item) => item.id),
@@ -663,9 +695,13 @@ function BifocalEditDrawer({
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting || saveMutation.isPending || isLoadingDetails}
+              disabled={
+                isSubmitting || saveMutation.isPending || isLoadingDetails
+              }
             >
-              {isSubmitting || saveMutation.isPending ? "Saving..." : "Save Changes"}
+              {isSubmitting || saveMutation.isPending
+                ? "Saving..."
+                : "Save Changes"}
             </Button>
           </div>
         </form>

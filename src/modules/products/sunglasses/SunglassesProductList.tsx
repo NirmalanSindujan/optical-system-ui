@@ -17,7 +17,7 @@ import {
 } from "@/modules/products/components/productListShared";
 import ProductDetailsDrawer from "@/modules/products/ProductDetailsDrawer";
 import LensRowActionsPopover from "@/modules/products/lens/components/LensRowActionsPopover";
-import SunglassesEditorDrawer from "@/modules/products/SunglassesEditorDrawer";
+import SunglassesEditorDrawer from "@/modules/products/sunglasses/SunglassesEditorDrawer";
 import { deleteProduct, getSunglasses } from "@/modules/products/product.service";
 
 function SunglassesProductList() {

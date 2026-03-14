@@ -1,13 +1,12 @@
 import api from "@/lib/api";
 import { getSupplierProducts } from "@/modules/suppliers/supplier.service";
-import type {
-  StockPurchaseCreateRequest,
+import {   StockPurchaseCreateRequest,
   StockPurchaseCreateResponse,
   StockPurchaseListParams,
   StockPurchaseListResponse,
   StockPurchaseRecord,
-  StockPurchaseVariantOption
-} from "@/modules/stock-purchases/stock-purchase.types";
+  StockPurchaseVariantOption } from "./stock-purchase.types";
+
 
 const normalizeText = (value: unknown): string => {
   if (typeof value !== "string") return "";

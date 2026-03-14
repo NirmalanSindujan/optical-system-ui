@@ -12,8 +12,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useToast } from "@/components/ui/use-toast";
-import { getBifocalByProductId } from "@/modules/products/bifocal.service";
-import { getSuppliersByIds } from "@/modules/products/sunglasses.service";
+import { getBifocalByProductId } from "@/modules/products/lens/Bifocal/bifocal.service";
+import { getSuppliersByIds } from "@/modules/products/sunglasses/sunglasses.service";
 import {
   SINGLE_VISION_MATERIAL_VALUES,
   LENS_SUB_TYPES,
@@ -71,7 +71,8 @@ const formatPower = (value: unknown) => {
 };
 
 const getMaterialChipClass = (value: string) =>
-  materialChipClasses[value.trim()] ?? "border-border bg-muted/60 text-foreground";
+  materialChipClasses[value.trim()] ??
+  "border-border bg-muted/60 text-foreground";
 
 function MaterialChip({ value }: { value: string | null | undefined }) {
   if (!value?.trim()) return <span>-</span>;
@@ -136,11 +137,7 @@ function DetailCard({
   );
 }
 
-function SupplierPanel({
-  suppliers,
-}: {
-  suppliers: ResolvedSupplier[];
-}) {
+function SupplierPanel({ suppliers }: { suppliers: ResolvedSupplier[] }) {
   if (suppliers.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-border/70 bg-muted/20 px-4 py-5 text-sm text-muted-foreground">
@@ -193,7 +190,9 @@ function BifocalDetailsDrawer({
   onClose,
 }: BifocalDetailsDrawerProps) {
   const { toast } = useToast();
-  const [resolvedSuppliers, setResolvedSuppliers] = useState<ResolvedSupplier[]>([]);
+  const [resolvedSuppliers, setResolvedSuppliers] = useState<
+    ResolvedSupplier[]
+  >([]);
 
   const {
     data: productDetails,
@@ -307,7 +306,12 @@ function BifocalDetailsDrawer({
     () => [
       { label: "Company", value: product?.companyName ?? product?.brandName },
       { label: "Material", value: product?.material },
-      { label: "Index", value: hasValue(product?.index ?? product?.lensIndex) ? Number(product?.index ?? product?.lensIndex).toFixed(2) : null },
+      {
+        label: "Index",
+        value: hasValue(product?.index ?? product?.lensIndex)
+          ? Number(product?.index ?? product?.lensIndex).toFixed(2)
+          : null,
+      },
       { label: "SKU", value: product?.sku },
       { label: "Barcode", value: product?.barcode },
       { label: "Extra", value: product?.extra },
@@ -338,7 +342,8 @@ function BifocalDetailsDrawer({
                 Bifocal Details
               </SheetTitle>
               <SheetDescription className="text-sm text-muted-foreground">
-                Pricing, lens powers, and supplier details for this bifocal product.
+                Pricing, lens powers, and supplier details for this bifocal
+                product.
               </SheetDescription>
             </SheetHeader>
             <SheetClose asChild>
@@ -373,14 +378,20 @@ function BifocalDetailsDrawer({
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="secondary">Lens</Badge>
                   <Badge variant="outline">Bifocal</Badge>
-                  {product?.material ? <MaterialChip value={product.material} /> : null}
+                  {product?.material ? (
+                    <MaterialChip value={product.material} />
+                  ) : null}
                   {typeof product?.productActive === "boolean" ? (
-                    <Badge variant={product.productActive ? "default" : "secondary"}>
+                    <Badge
+                      variant={product.productActive ? "default" : "secondary"}
+                    >
                       Product {product.productActive ? "Active" : "Inactive"}
                     </Badge>
                   ) : null}
                   {typeof product?.variantActive === "boolean" ? (
-                    <Badge variant={product.variantActive ? "default" : "secondary"}>
+                    <Badge
+                      variant={product.variantActive ? "default" : "secondary"}
+                    >
                       Variant {product.variantActive ? "Active" : "Inactive"}
                     </Badge>
                   ) : null}
@@ -391,7 +402,9 @@ function BifocalDetailsDrawer({
                     {product?.name ?? "Unnamed Bifocal Lens"}
                   </h4>
                   <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-                    {product?.companyName ?? product?.brandName ?? "No company name"}
+                    {product?.companyName ??
+                      product?.brandName ??
+                      "No company name"}
                   </p>
                 </div>
               </section>
@@ -408,7 +421,11 @@ function BifocalDetailsDrawer({
                 />
                 <Metric
                   label="Quantity"
-                  value={hasValue(product?.quantity) ? String(product?.quantity) : "N/A"}
+                  value={
+                    hasValue(product?.quantity)
+                      ? String(product?.quantity)
+                      : "N/A"
+                  }
                 />
               </div>
 
@@ -423,7 +440,11 @@ function BifocalDetailsDrawer({
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {overviewCards.map((item) => (
-                    <DetailCard key={item.label} label={item.label} value={item.value}>
+                    <DetailCard
+                      key={item.label}
+                      label={item.label}
+                      value={item.value}
+                    >
                       {item.label === "Material" ? (
                         <div className="mt-2">
                           <MaterialChip value={product?.material} />
@@ -446,7 +467,10 @@ function BifocalDetailsDrawer({
                 <div className="grid gap-3 sm:grid-cols-3">
                   <DetailCard label="SPH" value={formatPower(product?.sph)} />
                   <DetailCard label="CYL" value={formatPower(product?.cyl)} />
-                  <DetailCard label="Add Power" value={formatPower(product?.addPower)} />
+                  <DetailCard
+                    label="Add Power"
+                    value={formatPower(product?.addPower)}
+                  />
                 </div>
               </section>
 

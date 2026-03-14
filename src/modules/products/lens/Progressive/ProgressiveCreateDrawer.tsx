@@ -12,7 +12,7 @@ import SearchableValueSelect from "@/modules/products/components/SearchableValue
 import SupplierAsyncSelect, {
   type SupplierOption,
 } from "@/modules/products/components/SupplierAsyncSelect";
-import { createProgressive } from "@/modules/products/progressive.service";
+import { createProgressive } from "@/modules/products/lens/Progressive/progressive.service";
 import {
   buildProgressivePayload,
   progressiveFormDefaultValues,
@@ -71,7 +71,9 @@ const getSuccessDescription = (response: unknown) => {
   const variantCount =
     payload?.createdVariantCount ??
     payload?.totalVariants ??
-    (Array.isArray(payload?.variantIds) ? payload.variantIds.length : undefined);
+    (Array.isArray(payload?.variantIds)
+      ? payload.variantIds.length
+      : undefined);
 
   if (Number.isInteger(variantCount) && Number(variantCount) > 0) {
     return `${variantCount} variant${Number(variantCount) === 1 ? "" : "s"} created.`;
@@ -149,8 +151,14 @@ function ProgressiveCreateDrawer({
 
   useEffect(() => {
     if (addAdditionMethod === "SINGLE") {
-      setValue("addPowerStart", "", { shouldDirty: false, shouldValidate: false });
-      setValue("addPowerEnd", "", { shouldDirty: false, shouldValidate: false });
+      setValue("addPowerStart", "", {
+        shouldDirty: false,
+        shouldValidate: false,
+      });
+      setValue("addPowerEnd", "", {
+        shouldDirty: false,
+        shouldValidate: false,
+      });
       return;
     }
 
@@ -348,7 +356,10 @@ function ProgressiveCreateDrawer({
 
             <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <label htmlFor="companyName" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="companyName"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Company Name
                 </label>
                 <Input
@@ -361,7 +372,10 @@ function ProgressiveCreateDrawer({
               </div>
 
               <div>
-                <label htmlFor="name" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="name"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Model Name
                 </label>
                 <Input
@@ -373,7 +387,10 @@ function ProgressiveCreateDrawer({
               </div>
 
               <div>
-                <label htmlFor="material" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="material"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Material
                 </label>
                 <select
@@ -391,7 +408,10 @@ function ProgressiveCreateDrawer({
               </div>
 
               <div>
-                <label htmlFor="index" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="index"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Index
                 </label>
                 <Input
@@ -405,7 +425,10 @@ function ProgressiveCreateDrawer({
               </div>
 
               <div>
-                <label htmlFor="quantity" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="quantity"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Pair / Quantity
                 </label>
                 <Input
@@ -420,7 +443,10 @@ function ProgressiveCreateDrawer({
               </div>
 
               <div className="md:col-span-2">
-                <label htmlFor="extra" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="extra"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Extra Notes
                 </label>
                 <textarea
@@ -461,7 +487,8 @@ function ProgressiveCreateDrawer({
                   <div>
                     <p className="text-sm font-medium">CYL</p>
                     <p className="text-xs text-muted-foreground">
-                      Enable CYL and choose whether it is a single value or a range.
+                      Enable CYL and choose whether it is a single value or a
+                      range.
                     </p>
                   </div>
                   <Controller
@@ -520,7 +547,10 @@ function ProgressiveCreateDrawer({
 
             <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <label htmlFor="purchasePrice" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="purchasePrice"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Price (Purchase)
                 </label>
                 <Input
@@ -535,7 +565,10 @@ function ProgressiveCreateDrawer({
               </div>
 
               <div>
-                <label htmlFor="sellingPrice" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="sellingPrice"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Price (Selling)
                 </label>
                 <Input
@@ -550,7 +583,9 @@ function ProgressiveCreateDrawer({
               </div>
 
               <div className="md:col-span-2">
-                <label className="mb-1 block text-sm font-medium">Suppliers</label>
+                <label className="mb-1 block text-sm font-medium">
+                  Suppliers
+                </label>
                 <Controller
                   name="supplierIds"
                   control={control}
@@ -567,7 +602,10 @@ function ProgressiveCreateDrawer({
                             setSupplierPickerValue(null);
                             return;
                           }
-                          const nextSuppliers = [...selectedSuppliers, supplier];
+                          const nextSuppliers = [
+                            ...selectedSuppliers,
+                            supplier,
+                          ];
                           setSelectedSuppliers(nextSuppliers);
                           field.onChange(nextSuppliers.map((item) => item.id));
                           setSupplierPickerValue(null);
@@ -599,11 +637,14 @@ function ProgressiveCreateDrawer({
                                 size="sm"
                                 className="h-7 px-2 text-destructive"
                                 onClick={() => {
-                                  const nextSuppliers = selectedSuppliers.filter(
-                                    (item) => item.id !== supplier.id,
-                                  );
+                                  const nextSuppliers =
+                                    selectedSuppliers.filter(
+                                      (item) => item.id !== supplier.id,
+                                    );
                                   setSelectedSuppliers(nextSuppliers);
-                                  field.onChange(nextSuppliers.map((item) => item.id));
+                                  field.onChange(
+                                    nextSuppliers.map((item) => item.id),
+                                  );
                                 }}
                               >
                                 Remove
@@ -623,8 +664,13 @@ function ProgressiveCreateDrawer({
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting || saveMutation.isPending}>
-              {isSubmitting || saveMutation.isPending ? "Saving..." : "Create Progressive"}
+            <Button
+              type="submit"
+              disabled={isSubmitting || saveMutation.isPending}
+            >
+              {isSubmitting || saveMutation.isPending
+                ? "Saving..."
+                : "Create Progressive"}
             </Button>
           </div>
         </form>

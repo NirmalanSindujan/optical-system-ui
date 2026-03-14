@@ -4,9 +4,19 @@ import { DollarSign, Package, Palette, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useToast } from "@/components/ui/use-toast";
-import { deleteContactLens, getContactLenses } from "@/modules/products/contactLens.service";
+import {
+  deleteContactLens,
+  getContactLenses,
+} from "@/modules/products/lens/ContactLens/contactLens.service";
 import ProductDeleteDialog from "@/modules/products/components/ProductDeleteDialog";
 import ProductPagination from "@/modules/products/components/ProductPagination";
 import {
@@ -18,7 +28,10 @@ import ContactLensCreateDrawer from "@/modules/products/lens/ContactLens/Contact
 import ContactLensDetailsDrawer from "@/modules/products/lens/ContactLens/ContactLensDetailsDrawer";
 import ContactLensEditDrawer from "@/modules/products/lens/ContactLens/ContactLensEditDrawer";
 import LensRowActionsPopover from "@/modules/products/lens/components/LensRowActionsPopover";
-import { LENS_SUB_TYPES, LENS_SUBTYPE_NAV_ITEMS } from "@/modules/products/product.constants";
+import {
+  LENS_SUB_TYPES,
+  LENS_SUBTYPE_NAV_ITEMS,
+} from "@/modules/products/product.constants";
 
 const PAGE_SIZE = 20;
 
@@ -113,7 +126,10 @@ function ContactLensProductList() {
               Manage contact lens products.
             </p>
           </div>
-          <Button className="w-full sm:w-auto" onClick={() => setCreateOpen(true)}>
+          <Button
+            className="w-full sm:w-auto"
+            onClick={() => setCreateOpen(true)}
+          >
             <Plus className="mr-2 h-4 w-4" />
             Add Contact Lens
           </Button>
@@ -259,13 +275,17 @@ function ContactLensProductList() {
       <ProductDeleteDialog
         open={Boolean(confirmDeleteId)}
         onOpenChange={(open) => !open && setConfirmDeleteId(null)}
-        onConfirm={() => confirmDeleteId && deleteMutation.mutate(confirmDeleteId)}
+        onConfirm={() =>
+          confirmDeleteId && deleteMutation.mutate(confirmDeleteId)
+        }
       />
 
       <ContactLensCreateDrawer
         open={createOpen}
         onClose={() => setCreateOpen(false)}
-        onSaved={() => queryClient.invalidateQueries({ queryKey: ["products"] })}
+        onSaved={() =>
+          queryClient.invalidateQueries({ queryKey: ["products"] })
+        }
       />
 
       <ContactLensDetailsDrawer
@@ -281,7 +301,9 @@ function ContactLensProductList() {
           setDrawerOpen(false);
           setEditingId(null);
         }}
-        onSaved={() => queryClient.invalidateQueries({ queryKey: ["products"] })}
+        onSaved={() =>
+          queryClient.invalidateQueries({ queryKey: ["products"] })
+        }
       />
     </Card>
   );

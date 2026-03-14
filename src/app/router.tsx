@@ -8,8 +8,8 @@ import FrameProductList from "@/modules/products/frame/FrameProductList";
 import LensProductList from "@/modules/products/lens/LensProductList";
 import { DEFAULT_LENS_SUBTYPE, LENS_SUBTYPE_ROUTE_SEGMENTS } from "@/modules/products/product.constants";
 import SunglassesProductList from "@/modules/products/sunglasses/SunglassesProductList";
-import StockPurchasePage from "@/modules/stock-purchases/StockPurchasePage";
-import StockUpdatePage from "@/modules/stock-updates/StockUpdatePage";
+import StockUpdateAddPage from "@/modules/stock-updates/StockUpdateAddPage";
+import StockUpdateViewPage from "@/modules/stock-updates/StockUpdateViewPage";
 import SupplierList from "@/modules/suppliers/SupplierList";
 import { ROLES } from "@/store/auth.store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -64,11 +64,11 @@ const router = createBrowserRouter([
               },
               {
                 path: "stock-updates/add",
-                element: <StockUpdatePage />
+                element: <StockUpdateAddPage />
               },
               {
                 path: "stock-updates/view",
-                element: <StockUpdatePage />
+                element: <StockUpdateViewPage />
               }
             ]
           },
@@ -103,10 +103,7 @@ const router = createBrowserRouter([
                 path: "products/stockupdates",
                 element: <Navigate to="/app/stock-updates/view" replace />
               },
-              {
-                path: "stock-purchases",
-                element: <StockPurchasePage />
-              }
+              
             ]
           }
         ]

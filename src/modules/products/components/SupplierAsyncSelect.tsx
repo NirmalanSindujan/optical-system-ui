@@ -2,9 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { cn } from "@/lib/cn";
-import { searchSuppliers } from "@/modules/products/sunglasses.service";
+import { searchSuppliers } from "@/modules/products/sunglasses/sunglasses.service";
 
 const PAGE_SIZE = 20;
 
@@ -25,7 +29,9 @@ interface SupplierAsyncSelectProps {
   placeholder?: string;
 }
 
-const getSupplierLabel = (supplier: Partial<SupplierOption> | null | undefined) => {
+const getSupplierLabel = (
+  supplier: Partial<SupplierOption> | null | undefined,
+) => {
   const contact = supplier?.phone || supplier?.email || "-";
   return `${supplier?.name ?? "Unknown"} - ${contact}`;
 };
@@ -36,7 +42,7 @@ function SupplierAsyncSelect({
   onBlur,
   disabled,
   error,
-  placeholder = "Select supplier"
+  placeholder = "Select supplier",
 }: SupplierAsyncSelectProps) {
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const requestIdRef = useRef(0);
@@ -63,7 +69,7 @@ function SupplierAsyncSelect({
       const response = await searchSuppliers({
         page: 0,
         size: PAGE_SIZE,
-        q: queryText || undefined
+        q: queryText || undefined,
       });
 
       if (requestIdRef.current !== requestId) return;
@@ -74,7 +80,9 @@ function SupplierAsyncSelect({
       if (requestIdRef.current !== requestId) return;
       setOptions([]);
       setHighlightedIndex(-1);
-      setLoadError(errorResponse?.response?.data?.message ?? "Failed to load suppliers.");
+      setLoadError(
+        errorResponse?.response?.data?.message ?? "Failed to load suppliers.",
+      );
     } finally {
       if (requestIdRef.current === requestId) {
         setIsLoading(false);
@@ -99,7 +107,7 @@ function SupplierAsyncSelect({
       onChange(supplier);
       closeDropdown();
     },
-    [closeDropdown, onChange]
+    [closeDropdown, onChange],
   );
 
   useEffect(() => {
@@ -108,7 +116,7 @@ function SupplierAsyncSelect({
       () => {
         loadOptions(searchText.trim());
       },
-      searchText.trim() ? 300 : 0
+      searchText.trim() ? 300 : 0,
     );
     return () => clearTimeout(handle);
   }, [isOpen, loadOptions, searchText]);
@@ -134,9 +142,16 @@ function SupplierAsyncSelect({
           <Button
             type="button"
             variant="outline"
-            className={cn("w-full justify-between font-normal", !value && "text-muted-foreground")}
+            className={cn(
+              "w-full justify-between font-normal",
+              !value && "text-muted-foreground",
+            )}
             onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " " || event.key === "ArrowDown") {
+              if (
+                event.key === "Enter" ||
+                event.key === " " ||
+                event.key === "ArrowDown"
+              ) {
                 event.preventDefault();
                 openDropdown();
               }
@@ -146,11 +161,19 @@ function SupplierAsyncSelect({
             aria-haspopup="listbox"
           >
             <span className="truncate text-left">{selectedLabel}</span>
-            <ChevronDown className={cn("h-4 w-4 shrink-0 opacity-60 transition-transform", isOpen && "rotate-180")} />
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 shrink-0 opacity-60 transition-transform",
+                isOpen && "rotate-180",
+              )}
+            />
           </Button>
         </PopoverTrigger>
 
-        <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] p-2">
+        <PopoverContent
+          align="start"
+          className="w-[var(--radix-popover-trigger-width)] p-2"
+        >
           <Input
             ref={searchInputRef}
             value={searchText}
@@ -199,9 +222,13 @@ function SupplierAsyncSelect({
               </div>
             ) : null}
 
-            {!isLoading && loadError ? <p className="px-3 py-2 text-sm text-destructive">{loadError}</p> : null}
+            {!isLoading && loadError ? (
+              <p className="px-3 py-2 text-sm text-destructive">{loadError}</p>
+            ) : null}
             {!isLoading && !loadError && options.length === 0 ? (
-              <p className="px-3 py-2 text-sm text-muted-foreground">No suppliers found</p>
+              <p className="px-3 py-2 text-sm text-muted-foreground">
+                No suppliers found
+              </p>
             ) : null}
 
             {!isLoading && !loadError && options.length > 0
@@ -214,14 +241,18 @@ function SupplierAsyncSelect({
                       type="button"
                       className={cn(
                         "flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground",
-                        isHighlighted && "bg-accent text-accent-foreground"
+                        isHighlighted && "bg-accent text-accent-foreground",
                       )}
                       onMouseEnter={() => setHighlightedIndex(index)}
                       onMouseDown={(event) => event.preventDefault()}
                       onClick={() => handleSelect(supplier)}
                     >
-                      <span className="truncate">{getSupplierLabel(supplier)}</span>
-                      {isSelected ? <Check className="h-4 w-4 shrink-0" /> : null}
+                      <span className="truncate">
+                        {getSupplierLabel(supplier)}
+                      </span>
+                      {isSelected ? (
+                        <Check className="h-4 w-4 shrink-0" />
+                      ) : null}
                     </button>
                   );
                 })

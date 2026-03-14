@@ -12,8 +12,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useToast } from "@/components/ui/use-toast";
-import { getProgressiveByProductId } from "@/modules/products/progressive.service";
-import { getSuppliersByIds } from "@/modules/products/sunglasses.service";
+import { getProgressiveByProductId } from "@/modules/products/lens/Progressive/progressive.service";
+import { getSuppliersByIds } from "@/modules/products/sunglasses/sunglasses.service";
 import { SINGLE_VISION_MATERIAL_VALUES } from "@/modules/products/product.constants";
 import type {
   AccessorySupplier,
@@ -68,7 +68,8 @@ const formatPower = (value: unknown) => {
 };
 
 const getMaterialChipClass = (value: string) =>
-  materialChipClasses[value.trim()] ?? "border-border bg-muted/60 text-foreground";
+  materialChipClasses[value.trim()] ??
+  "border-border bg-muted/60 text-foreground";
 
 function MaterialChip({ value }: { value: string | null | undefined }) {
   if (!value?.trim()) return <span>-</span>;
@@ -186,7 +187,9 @@ function ProgressiveDetailsDrawer({
   onClose,
 }: ProgressiveDetailsDrawerProps) {
   const { toast } = useToast();
-  const [resolvedSuppliers, setResolvedSuppliers] = useState<ResolvedSupplier[]>([]);
+  const [resolvedSuppliers, setResolvedSuppliers] = useState<
+    ResolvedSupplier[]
+  >([]);
 
   const {
     data: productDetails,
@@ -336,7 +339,8 @@ function ProgressiveDetailsDrawer({
                 Progressive Details
               </SheetTitle>
               <SheetDescription className="text-sm text-muted-foreground">
-                Pricing, lens powers, and supplier details for this progressive product.
+                Pricing, lens powers, and supplier details for this progressive
+                product.
               </SheetDescription>
             </SheetHeader>
             <SheetClose asChild>
@@ -371,14 +375,20 @@ function ProgressiveDetailsDrawer({
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="secondary">Lens</Badge>
                   <Badge variant="outline">Progressive</Badge>
-                  {product?.material ? <MaterialChip value={product.material} /> : null}
+                  {product?.material ? (
+                    <MaterialChip value={product.material} />
+                  ) : null}
                   {typeof product?.productActive === "boolean" ? (
-                    <Badge variant={product.productActive ? "default" : "secondary"}>
+                    <Badge
+                      variant={product.productActive ? "default" : "secondary"}
+                    >
                       Product {product.productActive ? "Active" : "Inactive"}
                     </Badge>
                   ) : null}
                   {typeof product?.variantActive === "boolean" ? (
-                    <Badge variant={product.variantActive ? "default" : "secondary"}>
+                    <Badge
+                      variant={product.variantActive ? "default" : "secondary"}
+                    >
                       Variant {product.variantActive ? "Active" : "Inactive"}
                     </Badge>
                   ) : null}
@@ -389,7 +399,9 @@ function ProgressiveDetailsDrawer({
                     {product?.name ?? "Unnamed Progressive Lens"}
                   </h4>
                   <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-                    {product?.companyName ?? product?.brandName ?? "No company name"}
+                    {product?.companyName ??
+                      product?.brandName ??
+                      "No company name"}
                   </p>
                 </div>
               </section>
@@ -406,7 +418,11 @@ function ProgressiveDetailsDrawer({
                 />
                 <Metric
                   label="Quantity"
-                  value={hasValue(product?.quantity) ? String(product?.quantity) : "N/A"}
+                  value={
+                    hasValue(product?.quantity)
+                      ? String(product?.quantity)
+                      : "N/A"
+                  }
                 />
               </div>
 
@@ -421,7 +437,11 @@ function ProgressiveDetailsDrawer({
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {overviewCards.map((item) => (
-                    <DetailCard key={item.label} label={item.label} value={item.value}>
+                    <DetailCard
+                      key={item.label}
+                      label={item.label}
+                      value={item.value}
+                    >
                       {item.label === "Material" ? (
                         <div className="mt-2">
                           <MaterialChip value={product?.material} />
@@ -444,7 +464,10 @@ function ProgressiveDetailsDrawer({
                 <div className="grid gap-3 sm:grid-cols-3">
                   <DetailCard label="SPH" value={formatPower(product?.sph)} />
                   <DetailCard label="CYL" value={formatPower(product?.cyl)} />
-                  <DetailCard label="Add Power" value={formatPower(product?.addPower)} />
+                  <DetailCard
+                    label="Add Power"
+                    value={formatPower(product?.addPower)}
+                  />
                 </div>
               </section>
 

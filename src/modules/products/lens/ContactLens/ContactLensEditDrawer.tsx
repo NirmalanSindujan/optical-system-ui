@@ -7,7 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetClose, SheetContent } from "@/components/ui/sheet";
 import { useToast } from "@/components/ui/use-toast";
-import { getContactLensByProductId, updateContactLens } from "@/modules/products/contactLens.service";
+import {
+  getContactLensByProductId,
+  updateContactLens,
+} from "@/modules/products/lens/ContactLens/contactLens.service";
 import SupplierAsyncSelect, {
   type SupplierOption,
 } from "@/modules/products/components/SupplierAsyncSelect";
@@ -18,7 +21,7 @@ import {
   type ContactLensEditFormValues,
 } from "@/modules/products/lens/ContactLens/contactLens.validation";
 import type { ContactLensDetailResponse } from "@/modules/products/product.types";
-import { getSuppliersByIds } from "@/modules/products/sunglasses.service";
+import { getSuppliersByIds } from "@/modules/products/sunglasses/sunglasses.service";
 
 interface ContactLensEditDrawerProps {
   open: boolean;
@@ -216,7 +219,10 @@ function ContactLensEditDrawer({
   const saveMutation = useMutation({
     mutationFn: async (values: ContactLensEditFormValues) => {
       if (!productId) throw new Error("Missing contact lens product id.");
-      return updateContactLens(productId, buildContactLensUpdatePayload(values));
+      return updateContactLens(
+        productId,
+        buildContactLensUpdatePayload(values),
+      );
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["products"] });
@@ -308,7 +314,10 @@ function ContactLensEditDrawer({
               </div>
 
               <div>
-                <label htmlFor="name" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="name"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Product Name
                 </label>
                 <Input
@@ -321,7 +330,10 @@ function ContactLensEditDrawer({
               </div>
 
               <div>
-                <label htmlFor="color" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="color"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Color
                 </label>
                 <Input
@@ -350,7 +362,10 @@ function ContactLensEditDrawer({
               </div>
 
               <div className="md:col-span-2">
-                <label htmlFor="extra" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="extra"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Extra Notes
                 </label>
                 <textarea
@@ -372,7 +387,8 @@ function ContactLensEditDrawer({
                 Pricing And Suppliers
               </h4>
               <p className="text-sm text-muted-foreground">
-                Selling price is editable. Quantity and purchase price stay locked.
+                Selling price is editable. Quantity and purchase price stay
+                locked.
               </p>
             </div>
 
@@ -454,7 +470,10 @@ function ContactLensEditDrawer({
                             setSupplierPickerValue(null);
                             return;
                           }
-                          const nextSuppliers = [...selectedSuppliers, supplier];
+                          const nextSuppliers = [
+                            ...selectedSuppliers,
+                            supplier,
+                          ];
                           setSelectedSuppliers(nextSuppliers);
                           field.onChange(nextSuppliers.map((item) => item.id));
                           setSupplierPickerValue(null);
@@ -490,9 +509,10 @@ function ContactLensEditDrawer({
                                 size="sm"
                                 className="h-7 px-2 text-destructive"
                                 onClick={() => {
-                                  const nextSuppliers = selectedSuppliers.filter(
-                                    (item) => item.id !== supplier.id,
-                                  );
+                                  const nextSuppliers =
+                                    selectedSuppliers.filter(
+                                      (item) => item.id !== supplier.id,
+                                    );
                                   setSelectedSuppliers(nextSuppliers);
                                   field.onChange(
                                     nextSuppliers.map((item) => item.id),
@@ -518,7 +538,9 @@ function ContactLensEditDrawer({
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting || saveMutation.isPending || isLoadingDetails}
+              disabled={
+                isSubmitting || saveMutation.isPending || isLoadingDetails
+              }
             >
               {isSubmitting || saveMutation.isPending
                 ? "Saving..."

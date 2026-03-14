@@ -8,15 +8,21 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetClose, SheetContent } from "@/components/ui/sheet";
 import { useToast } from "@/components/ui/use-toast";
 import { FRAME_TYPE_VALUES } from "@/modules/products/product.constants";
-import SupplierAsyncSelect, { type SupplierOption } from "@/modules/products/components/SupplierAsyncSelect";
-import { createFrame, getFrameById, updateFrame } from "@/modules/products/frame.service";
+import SupplierAsyncSelect, {
+  type SupplierOption,
+} from "@/modules/products/components/SupplierAsyncSelect";
+import {
+  createFrame,
+  getFrameById,
+  updateFrame,
+} from "@/modules/products/frame/frame.service";
 import {
   buildFramePayload,
   frameFormDefaultValues,
   frameFormSchema,
-  type FrameFormValues
-} from "@/modules/products/frame.validation";
-import { getSuppliersByIds } from "@/modules/products/sunglasses.service";
+  type FrameFormValues,
+} from "@/modules/products/frame/frame.validation";
+import { getSuppliersByIds } from "@/modules/products/sunglasses/sunglasses.service";
 
 interface FrameEditorDrawerProps {
   open: boolean;
@@ -30,14 +36,22 @@ const toFieldValue = (value: unknown) => {
   return String(value);
 };
 
-function FrameEditorDrawer({ open, frameId, onClose, onSaved }: FrameEditorDrawerProps) {
+function FrameEditorDrawer({
+  open,
+  frameId,
+  onClose,
+  onSaved,
+}: FrameEditorDrawerProps) {
   const isEdit = Boolean(frameId);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const defaultValues = useMemo(() => frameFormDefaultValues, []);
-  const [supplierPickerValue, setSupplierPickerValue] = useState<SupplierOption | null>(null);
-  const [selectedSuppliers, setSelectedSuppliers] = useState<SupplierOption[]>([]);
+  const [supplierPickerValue, setSupplierPickerValue] =
+    useState<SupplierOption | null>(null);
+  const [selectedSuppliers, setSelectedSuppliers] = useState<SupplierOption[]>(
+    [],
+  );
 
   const {
     register,
@@ -45,21 +59,21 @@ function FrameEditorDrawer({ open, frameId, onClose, onSaved }: FrameEditorDrawe
     handleSubmit,
     reset,
     setValue,
-    formState: { errors, isSubmitting }
+    formState: { errors, isSubmitting },
   } = useForm<FrameFormValues>({
     resolver: zodResolver(frameFormSchema),
-    defaultValues
+    defaultValues,
   });
 
   const {
     data: frameDetails,
     isError: isDetailsError,
     error: detailsError,
-    isFetching: isLoadingDetails
+    isFetching: isLoadingDetails,
   } = useQuery({
     queryKey: ["products", "frames", frameId],
     queryFn: () => getFrameById(frameId as number),
-    enabled: open && isEdit
+    enabled: open && isEdit,
   });
 
   useEffect(() => {
@@ -99,7 +113,7 @@ function FrameEditorDrawer({ open, frameId, onClose, onSaved }: FrameEditorDrawe
         name: `Supplier #${primarySupplierId}`,
         phone: null,
         email: null,
-        pendingAmount: null
+        pendingAmount: null,
       });
     }
 
@@ -129,7 +143,7 @@ function FrameEditorDrawer({ open, frameId, onClose, onSaved }: FrameEditorDrawe
           name: `Supplier #${id}`,
           phone: null,
           email: null,
-          pendingAmount: null
+          pendingAmount: null,
         };
       });
 
@@ -151,7 +165,7 @@ function FrameEditorDrawer({ open, frameId, onClose, onSaved }: FrameEditorDrawe
       purchasePrice: toFieldValue(frameDetails?.purchasePrice),
       sellingPrice: toFieldValue(frameDetails?.sellingPrice),
       extra: toFieldValue(frameDetails?.extra),
-      supplierIds: Array.from(supplierIds)
+      supplierIds: Array.from(supplierIds),
     });
 
     return () => {
@@ -163,7 +177,7 @@ function FrameEditorDrawer({ open, frameId, onClose, onSaved }: FrameEditorDrawe
     setValue(
       "supplierIds",
       selectedSuppliers.map((supplier) => supplier.id),
-      { shouldDirty: false, shouldValidate: true }
+      { shouldDirty: false, shouldValidate: true },
     );
   }, [selectedSuppliers, setValue]);
 
@@ -172,7 +186,9 @@ function FrameEditorDrawer({ open, frameId, onClose, onSaved }: FrameEditorDrawe
     toast({
       variant: "destructive",
       title: "Failed to load frame",
-      description: (detailsError as any)?.response?.data?.message ?? "Unable to fetch frame details."
+      description:
+        (detailsError as any)?.response?.data?.message ??
+        "Unable to fetch frame details.",
     });
   }, [detailsError, isDetailsError, toast]);
 
@@ -187,11 +203,15 @@ function FrameEditorDrawer({ open, frameId, onClose, onSaved }: FrameEditorDrawe
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["products"] });
       if (frameId) {
-        await queryClient.invalidateQueries({ queryKey: ["products", "frames", frameId] });
+        await queryClient.invalidateQueries({
+          queryKey: ["products", "frames", frameId],
+        });
       }
       toast({
         title: isEdit ? "Frame updated" : "Frame created",
-        description: isEdit ? "Changes were saved successfully." : "New frame item was saved."
+        description: isEdit
+          ? "Changes were saved successfully."
+          : "New frame item was saved.",
       });
       onSaved?.();
       onClose();
@@ -200,14 +220,24 @@ function FrameEditorDrawer({ open, frameId, onClose, onSaved }: FrameEditorDrawe
       toast({
         variant: "destructive",
         title: isEdit ? "Update failed" : "Save failed",
-        description: error?.response?.data?.message ?? "Server rejected the request."
+        description:
+          error?.response?.data?.message ?? "Server rejected the request.",
       });
-    }
+    },
   });
 
   return (
-    <Sheet open={open} onOpenChange={(nextOpen) => { if (!nextOpen) onClose(); }}>
-      <SheetContent side="right" hideClose className="max-w-xl overflow-y-auto p-6 sm:max-w-xl">
+    <Sheet
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) onClose();
+      }}
+    >
+      <SheetContent
+        side="right"
+        hideClose
+        className="max-w-xl overflow-y-auto p-6 sm:max-w-xl"
+      >
         <div className="mb-4 flex items-center justify-between">
           <h3 className="flex items-center gap-2 text-lg font-semibold">
             <Box className="h-5 w-5 text-primary" />
@@ -220,13 +250,25 @@ function FrameEditorDrawer({ open, frameId, onClose, onSaved }: FrameEditorDrawe
           </SheetClose>
         </div>
 
-        <form className="grid gap-4 md:grid-cols-2" onSubmit={handleSubmit((values) => saveMutation.mutate(values))}>
+        <form
+          className="grid gap-4 md:grid-cols-2"
+          onSubmit={handleSubmit((values) => saveMutation.mutate(values))}
+        >
           <div>
             <label htmlFor="name" className="mb-1 block text-sm font-medium">
               Name
             </label>
-            <Input id="name" autoFocus placeholder="Rayban 3025" {...register("name")} />
-            {errors.name ? <p className="mt-1 text-xs text-destructive">{errors.name.message}</p> : null}
+            <Input
+              id="name"
+              autoFocus
+              placeholder="Rayban 3025"
+              {...register("name")}
+            />
+            {errors.name ? (
+              <p className="mt-1 text-xs text-destructive">
+                {errors.name.message}
+              </p>
+            ) : null}
           </div>
 
           <div>
@@ -234,7 +276,11 @@ function FrameEditorDrawer({ open, frameId, onClose, onSaved }: FrameEditorDrawe
               Code
             </label>
             <Input id="code" placeholder="FR-3025" {...register("code")} />
-            {errors.code ? <p className="mt-1 text-xs text-destructive">{errors.code.message}</p> : null}
+            {errors.code ? (
+              <p className="mt-1 text-xs text-destructive">
+                {errors.code.message}
+              </p>
+            ) : null}
           </div>
 
           <div>
@@ -254,7 +300,11 @@ function FrameEditorDrawer({ open, frameId, onClose, onSaved }: FrameEditorDrawe
                 </option>
               ))}
             </select>
-            {errors.type ? <p className="mt-1 text-xs text-destructive">{errors.type.message}</p> : null}
+            {errors.type ? (
+              <p className="mt-1 text-xs text-destructive">
+                {errors.type.message}
+              </p>
+            ) : null}
           </div>
 
           <div>
@@ -272,30 +322,68 @@ function FrameEditorDrawer({ open, frameId, onClose, onSaved }: FrameEditorDrawe
           </div>
 
           <div>
-            <label htmlFor="quantity" className="mb-1 block text-sm font-medium">
+            <label
+              htmlFor="quantity"
+              className="mb-1 block text-sm font-medium"
+            >
               Quantity
             </label>
-            <Input id="quantity" type="number" min={0} step={1} placeholder="0" {...register("quantity")} />
-            {errors.quantity ? <p className="mt-1 text-xs text-destructive">{errors.quantity.message}</p> : null}
-          </div>
-
-          <div>
-            <label htmlFor="purchasePrice" className="mb-1 block text-sm font-medium">
-              Price (Purchase)
-            </label>
-            <Input id="purchasePrice" type="number" min={0} step="0.01" placeholder="0.00" {...register("purchasePrice")} />
-            {errors.purchasePrice ? (
-              <p className="mt-1 text-xs text-destructive">{errors.purchasePrice.message}</p>
+            <Input
+              id="quantity"
+              type="number"
+              min={0}
+              step={1}
+              placeholder="0"
+              {...register("quantity")}
+            />
+            {errors.quantity ? (
+              <p className="mt-1 text-xs text-destructive">
+                {errors.quantity.message}
+              </p>
             ) : null}
           </div>
 
           <div>
-            <label htmlFor="sellingPrice" className="mb-1 block text-sm font-medium">
+            <label
+              htmlFor="purchasePrice"
+              className="mb-1 block text-sm font-medium"
+            >
+              Price (Purchase)
+            </label>
+            <Input
+              id="purchasePrice"
+              type="number"
+              min={0}
+              step="0.01"
+              placeholder="0.00"
+              {...register("purchasePrice")}
+            />
+            {errors.purchasePrice ? (
+              <p className="mt-1 text-xs text-destructive">
+                {errors.purchasePrice.message}
+              </p>
+            ) : null}
+          </div>
+
+          <div>
+            <label
+              htmlFor="sellingPrice"
+              className="mb-1 block text-sm font-medium"
+            >
               Price (Selling)
             </label>
-            <Input id="sellingPrice" type="number" min={0} step="0.01" placeholder="0.00" {...register("sellingPrice")} />
+            <Input
+              id="sellingPrice"
+              type="number"
+              min={0}
+              step="0.01"
+              placeholder="0.00"
+              {...register("sellingPrice")}
+            />
             {errors.sellingPrice ? (
-              <p className="mt-1 text-xs text-destructive">{errors.sellingPrice.message}</p>
+              <p className="mt-1 text-xs text-destructive">
+                {errors.sellingPrice.message}
+              </p>
             ) : null}
           </div>
 
@@ -310,7 +398,9 @@ function FrameEditorDrawer({ open, frameId, onClose, onSaved }: FrameEditorDrawe
                     value={supplierPickerValue}
                     onChange={(supplier) => {
                       if (!supplier) return;
-                      const alreadyAdded = selectedSuppliers.some((item) => item.id === supplier.id);
+                      const alreadyAdded = selectedSuppliers.some(
+                        (item) => item.id === supplier.id,
+                      );
                       if (alreadyAdded) {
                         setSupplierPickerValue(null);
                         return;
@@ -321,16 +411,27 @@ function FrameEditorDrawer({ open, frameId, onClose, onSaved }: FrameEditorDrawe
                       setSupplierPickerValue(null);
                     }}
                     onBlur={field.onBlur}
-                    error={typeof errors.supplierIds?.message === "string" ? errors.supplierIds.message : undefined}
+                    error={
+                      typeof errors.supplierIds?.message === "string"
+                        ? errors.supplierIds.message
+                        : undefined
+                    }
                     placeholder="Search supplier and add"
-                    disabled={isSubmitting || saveMutation.isPending || isLoadingDetails}
+                    disabled={
+                      isSubmitting || saveMutation.isPending || isLoadingDetails
+                    }
                   />
                   <div className="mt-2 space-y-2">
                     {selectedSuppliers.length === 0 ? (
-                      <p className="text-xs text-muted-foreground">No suppliers added yet.</p>
+                      <p className="text-xs text-muted-foreground">
+                        No suppliers added yet.
+                      </p>
                     ) : (
                       selectedSuppliers.map((supplier) => (
-                        <div key={supplier.id} className="flex items-center justify-between rounded-md border px-2 py-1.5 text-sm">
+                        <div
+                          key={supplier.id}
+                          className="flex items-center justify-between rounded-md border px-2 py-1.5 text-sm"
+                        >
                           <span className="truncate">{supplier.name}</span>
                           <Button
                             type="button"
@@ -338,9 +439,13 @@ function FrameEditorDrawer({ open, frameId, onClose, onSaved }: FrameEditorDrawe
                             size="sm"
                             className="h-7 px-2 text-destructive"
                             onClick={() => {
-                              const nextSuppliers = selectedSuppliers.filter((item) => item.id !== supplier.id);
+                              const nextSuppliers = selectedSuppliers.filter(
+                                (item) => item.id !== supplier.id,
+                              );
                               setSelectedSuppliers(nextSuppliers);
-                              field.onChange(nextSuppliers.map((item) => item.id));
+                              field.onChange(
+                                nextSuppliers.map((item) => item.id),
+                              );
                             }}
                           >
                             Remove
@@ -371,8 +476,15 @@ function FrameEditorDrawer({ open, frameId, onClose, onSaved }: FrameEditorDrawe
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting || saveMutation.isPending || isLoadingDetails}>
-              {isSubmitting || saveMutation.isPending ? "Saving..." : "Save Frame"}
+            <Button
+              type="submit"
+              disabled={
+                isSubmitting || saveMutation.isPending || isLoadingDetails
+              }
+            >
+              {isSubmitting || saveMutation.isPending
+                ? "Saving..."
+                : "Save Frame"}
             </Button>
           </div>
         </form>

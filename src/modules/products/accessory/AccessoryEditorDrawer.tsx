@@ -7,20 +7,22 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetClose, SheetContent } from "@/components/ui/sheet";
 import { useToast } from "@/components/ui/use-toast";
-import SupplierAsyncSelect, { type SupplierOption } from "@/modules/products/components/SupplierAsyncSelect";
+import SupplierAsyncSelect, {
+  type SupplierOption,
+} from "@/modules/products/components/SupplierAsyncSelect";
 import { ACCESSORY_ITEM_TYPE_VALUES } from "@/modules/products/product.constants";
 import {
   createAccessory,
   getAccessoryById,
-  updateAccessory
-} from "@/modules/products/accessory.service";
+  updateAccessory,
+} from "@/modules/products/accessory/accessory.service";
 import {
   accessoryFormDefaultValues,
   accessoryFormSchema,
   buildAccessoryPayload,
-  type AccessoryFormValues
-} from "@/modules/products/accessory.validation";
-import { getSuppliersByIds } from "@/modules/products/sunglasses.service";
+  type AccessoryFormValues,
+} from "@/modules/products/accessory/accessory.validation";
+import { getSuppliersByIds } from "@/modules/products/sunglasses/sunglasses.service";
 
 interface AccessoryEditorDrawerProps {
   open: boolean;
@@ -37,14 +39,22 @@ const toFieldValue = (value: unknown) => {
   return String(value);
 };
 
-function AccessoryEditorDrawer({ open, accessoryId, onClose, onSaved }: AccessoryEditorDrawerProps) {
+function AccessoryEditorDrawer({
+  open,
+  accessoryId,
+  onClose,
+  onSaved,
+}: AccessoryEditorDrawerProps) {
   const isEdit = Boolean(accessoryId);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const defaultValues = useMemo(() => accessoryFormDefaultValues, []);
-  const [supplierPickerValue, setSupplierPickerValue] = useState<SupplierOption | null>(null);
-  const [selectedSuppliers, setSelectedSuppliers] = useState<SupplierOption[]>([]);
+  const [supplierPickerValue, setSupplierPickerValue] =
+    useState<SupplierOption | null>(null);
+  const [selectedSuppliers, setSelectedSuppliers] = useState<SupplierOption[]>(
+    [],
+  );
 
   const {
     register,
@@ -53,10 +63,10 @@ function AccessoryEditorDrawer({ open, accessoryId, onClose, onSaved }: Accessor
     reset,
     watch,
     setValue,
-    formState: { errors, isSubmitting }
+    formState: { errors, isSubmitting },
   } = useForm<AccessoryFormValues>({
     resolver: zodResolver(accessoryFormSchema),
-    defaultValues
+    defaultValues,
   });
 
   const accessoryType = watch("type");
@@ -66,11 +76,11 @@ function AccessoryEditorDrawer({ open, accessoryId, onClose, onSaved }: Accessor
     data: accessoryDetails,
     isError: isDetailsError,
     error: detailsError,
-    isFetching: isLoadingDetails
+    isFetching: isLoadingDetails,
   } = useQuery({
     queryKey: ["products", "accessories", accessoryId],
     queryFn: () => getAccessoryById(accessoryId as number),
-    enabled: open && isEdit
+    enabled: open && isEdit,
   });
 
   useEffect(() => {
@@ -109,23 +119,30 @@ function AccessoryEditorDrawer({ open, accessoryId, onClose, onSaved }: Accessor
         supplierIds.add(supplierId);
         initialSupplierMap.set(supplierId, {
           id: supplierId,
-          name: supplier?.name ?? supplier?.supplierName ?? `Supplier #${supplierId}`,
+          name:
+            supplier?.name ??
+            supplier?.supplierName ??
+            `Supplier #${supplierId}`,
           phone: supplier?.phone ?? null,
           email: supplier?.email ?? null,
-          pendingAmount: null
+          pendingAmount: null,
         });
       });
     }
 
     const primarySupplierId = Number(accessoryDetails?.supplierId);
-    if (Number.isInteger(primarySupplierId) && primarySupplierId > 0 && !initialSupplierMap.has(primarySupplierId)) {
+    if (
+      Number.isInteger(primarySupplierId) &&
+      primarySupplierId > 0 &&
+      !initialSupplierMap.has(primarySupplierId)
+    ) {
       supplierIds.add(primarySupplierId);
       initialSupplierMap.set(primarySupplierId, {
         id: primarySupplierId,
         name: `Supplier #${primarySupplierId}`,
         phone: null,
         email: null,
-        pendingAmount: null
+        pendingAmount: null,
       });
     }
 
@@ -155,7 +172,7 @@ function AccessoryEditorDrawer({ open, accessoryId, onClose, onSaved }: Accessor
           name: `Supplier #${id}`,
           phone: null,
           email: null,
-          pendingAmount: null
+          pendingAmount: null,
         };
       });
 
@@ -175,7 +192,7 @@ function AccessoryEditorDrawer({ open, accessoryId, onClose, onSaved }: Accessor
       purchasePrice: toFieldValue(accessoryDetails?.purchasePrice),
       sellingPrice: toFieldValue(accessoryDetails?.sellingPrice),
       extra: toFieldValue(accessoryDetails?.extra),
-      supplierIds: Array.from(supplierIds)
+      supplierIds: Array.from(supplierIds),
     });
 
     return () => {
@@ -187,7 +204,7 @@ function AccessoryEditorDrawer({ open, accessoryId, onClose, onSaved }: Accessor
     setValue(
       "supplierIds",
       selectedSuppliers.map((supplier) => supplier.id),
-      { shouldDirty: false, shouldValidate: true }
+      { shouldDirty: false, shouldValidate: true },
     );
   }, [selectedSuppliers, setValue]);
 
@@ -206,7 +223,9 @@ function AccessoryEditorDrawer({ open, accessoryId, onClose, onSaved }: Accessor
     toast({
       variant: "destructive",
       title: "Failed to load accessory",
-      description: (detailsError as any)?.response?.data?.message ?? "Unable to fetch accessory details."
+      description:
+        (detailsError as any)?.response?.data?.message ??
+        "Unable to fetch accessory details.",
     });
   }, [detailsError, isDetailsError, toast]);
 
@@ -221,11 +240,15 @@ function AccessoryEditorDrawer({ open, accessoryId, onClose, onSaved }: Accessor
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["products"] });
       if (accessoryId) {
-        await queryClient.invalidateQueries({ queryKey: ["products", "accessories", accessoryId] });
+        await queryClient.invalidateQueries({
+          queryKey: ["products", "accessories", accessoryId],
+        });
       }
       toast({
         title: isEdit ? "Accessory updated" : "Accessory created",
-        description: isEdit ? "Changes were saved successfully." : "New accessory item was saved."
+        description: isEdit
+          ? "Changes were saved successfully."
+          : "New accessory item was saved.",
       });
       onSaved?.();
       onClose();
@@ -234,17 +257,27 @@ function AccessoryEditorDrawer({ open, accessoryId, onClose, onSaved }: Accessor
       toast({
         variant: "destructive",
         title: isEdit ? "Update failed" : "Save failed",
-        description: error?.response?.data?.message ?? "Server rejected the request."
+        description:
+          error?.response?.data?.message ?? "Server rejected the request.",
       });
-    }
+    },
   });
 
   const renderFieldError = (message?: string) =>
     message ? <p className="mt-1 text-xs text-destructive">{message}</p> : null;
 
   return (
-    <Sheet open={open} onOpenChange={(nextOpen) => { if (!nextOpen) onClose(); }}>
-      <SheetContent side="right" hideClose className="max-w-2xl overflow-y-auto p-6 sm:max-w-2xl">
+    <Sheet
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) onClose();
+      }}
+    >
+      <SheetContent
+        side="right"
+        hideClose
+        className="max-w-2xl overflow-y-auto p-6 sm:max-w-2xl"
+      >
         <div className="mb-4 flex items-center justify-between">
           <h3 className="flex items-center gap-2 text-lg font-semibold">
             <Package className="h-5 w-5 text-primary" />
@@ -257,36 +290,58 @@ function AccessoryEditorDrawer({ open, accessoryId, onClose, onSaved }: Accessor
           </SheetClose>
         </div>
 
-        <form className="space-y-6" onSubmit={handleSubmit((values) => saveMutation.mutate(values))}>
+        <form
+          className="space-y-6"
+          onSubmit={handleSubmit((values) => saveMutation.mutate(values))}
+        >
           <section className="rounded-lg border p-4">
             <div className="mb-4">
               <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                 Basic Details
               </h4>
               <p className="text-sm text-muted-foreground">
-                Capture the accessory identity and classify it as a product or service.
+                Capture the accessory identity and classify it as a product or
+                service.
               </p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <label htmlFor="companyName" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="companyName"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Company Name
                 </label>
-                <Input id="companyName" autoFocus placeholder="Rayban" {...register("companyName")} />
+                <Input
+                  id="companyName"
+                  autoFocus
+                  placeholder="Rayban"
+                  {...register("companyName")}
+                />
                 {renderFieldError(errors.companyName?.message)}
               </div>
 
               <div>
-                <label htmlFor="modelName" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="modelName"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Model Name
                 </label>
-                <Input id="modelName" placeholder="Cleaning Cloth" {...register("modelName")} />
+                <Input
+                  id="modelName"
+                  placeholder="Cleaning Cloth"
+                  {...register("modelName")}
+                />
                 {renderFieldError(errors.modelName?.message)}
               </div>
 
               <div>
-                <label htmlFor="type" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="type"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Type
                 </label>
                 <select
@@ -305,13 +360,17 @@ function AccessoryEditorDrawer({ open, accessoryId, onClose, onSaved }: Accessor
                 {renderFieldError(errors.type?.message)}
                 {accessoryType === "Service" ? (
                   <p className="mt-1 text-xs text-muted-foreground">
-                    For services, only company, model, type, and selling price are required.
+                    For services, only company, model, type, and selling price
+                    are required.
                   </p>
                 ) : null}
               </div>
 
               <div className="md:col-span-2">
-                <label htmlFor="extra" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="extra"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Extra
                 </label>
                 <textarea
@@ -332,7 +391,8 @@ function AccessoryEditorDrawer({ open, accessoryId, onClose, onSaved }: Accessor
                 Pricing And Inventory
               </h4>
               <p className="text-sm text-muted-foreground">
-                Set prices and stock values. Product accessories require quantity and purchase price.
+                Set prices and stock values. Product accessories require
+                quantity and purchase price.
               </p>
             </div>
 
@@ -340,15 +400,28 @@ function AccessoryEditorDrawer({ open, accessoryId, onClose, onSaved }: Accessor
               {isProductType ? (
                 <>
                   <div>
-                    <label htmlFor="quantity" className="mb-1 block text-sm font-medium">
+                    <label
+                      htmlFor="quantity"
+                      className="mb-1 block text-sm font-medium"
+                    >
                       Quantity
                     </label>
-                    <Input id="quantity" type="number" min={0} step={1} placeholder="0" {...register("quantity")} />
+                    <Input
+                      id="quantity"
+                      type="number"
+                      min={0}
+                      step={1}
+                      placeholder="0"
+                      {...register("quantity")}
+                    />
                     {renderFieldError(errors.quantity?.message)}
                   </div>
 
                   <div>
-                    <label htmlFor="purchasePrice" className="mb-1 block text-sm font-medium">
+                    <label
+                      htmlFor="purchasePrice"
+                      className="mb-1 block text-sm font-medium"
+                    >
                       Purchase Price
                     </label>
                     <Input
@@ -365,10 +438,20 @@ function AccessoryEditorDrawer({ open, accessoryId, onClose, onSaved }: Accessor
               ) : null}
 
               <div>
-                <label htmlFor="sellingPrice" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="sellingPrice"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Sales Price
                 </label>
-                <Input id="sellingPrice" type="number" min={0} step="0.01" placeholder="0.00" {...register("sellingPrice")} />
+                <Input
+                  id="sellingPrice"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  placeholder="0.00"
+                  {...register("sellingPrice")}
+                />
                 {renderFieldError(errors.sellingPrice?.message)}
               </div>
             </div>
@@ -387,7 +470,9 @@ function AccessoryEditorDrawer({ open, accessoryId, onClose, onSaved }: Accessor
 
               <div className="grid gap-4">
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Suppliers</label>
+                  <label className="mb-1 block text-sm font-medium">
+                    Suppliers
+                  </label>
                   <Controller
                     name="supplierIds"
                     control={control}
@@ -397,40 +482,64 @@ function AccessoryEditorDrawer({ open, accessoryId, onClose, onSaved }: Accessor
                           value={supplierPickerValue}
                           onChange={(supplier) => {
                             if (!supplier) return;
-                            const alreadyAdded = selectedSuppliers.some((item) => item.id === supplier.id);
+                            const alreadyAdded = selectedSuppliers.some(
+                              (item) => item.id === supplier.id,
+                            );
                             if (alreadyAdded) {
                               setSupplierPickerValue(null);
                               return;
                             }
-                            const nextSuppliers = [...selectedSuppliers, supplier];
+                            const nextSuppliers = [
+                              ...selectedSuppliers,
+                              supplier,
+                            ];
                             setSelectedSuppliers(nextSuppliers);
-                            field.onChange(nextSuppliers.map((item) => item.id));
+                            field.onChange(
+                              nextSuppliers.map((item) => item.id),
+                            );
                             setSupplierPickerValue(null);
                           }}
                           onBlur={field.onBlur}
-                          error={typeof errors.supplierIds?.message === "string" ? errors.supplierIds.message : undefined}
+                          error={
+                            typeof errors.supplierIds?.message === "string"
+                              ? errors.supplierIds.message
+                              : undefined
+                          }
                           placeholder="Search supplier and add"
-                          disabled={isSubmitting || saveMutation.isPending || isLoadingDetails}
+                          disabled={
+                            isSubmitting ||
+                            saveMutation.isPending ||
+                            isLoadingDetails
+                          }
                         />
                         <div className="mt-2 space-y-2">
                           {selectedSuppliers.length === 0 ? (
-                            <p className="text-xs text-muted-foreground">No suppliers added yet.</p>
+                            <p className="text-xs text-muted-foreground">
+                              No suppliers added yet.
+                            </p>
                           ) : (
                             selectedSuppliers.map((supplier) => (
                               <div
                                 key={supplier.id}
                                 className="flex items-center justify-between rounded-md border px-3 py-2 text-sm"
                               >
-                                <span className="truncate">{supplier.name}</span>
+                                <span className="truncate">
+                                  {supplier.name}
+                                </span>
                                 <Button
                                   type="button"
                                   variant="ghost"
                                   size="sm"
                                   className="h-7 px-2 text-destructive"
                                   onClick={() => {
-                                    const nextSuppliers = selectedSuppliers.filter((item) => item.id !== supplier.id);
+                                    const nextSuppliers =
+                                      selectedSuppliers.filter(
+                                        (item) => item.id !== supplier.id,
+                                      );
                                     setSelectedSuppliers(nextSuppliers);
-                                    field.onChange(nextSuppliers.map((item) => item.id));
+                                    field.onChange(
+                                      nextSuppliers.map((item) => item.id),
+                                    );
                                   }}
                                 >
                                   Remove
@@ -451,8 +560,15 @@ function AccessoryEditorDrawer({ open, accessoryId, onClose, onSaved }: Accessor
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting || saveMutation.isPending || isLoadingDetails}>
-              {isSubmitting || saveMutation.isPending ? "Saving..." : "Save Accessory"}
+            <Button
+              type="submit"
+              disabled={
+                isSubmitting || saveMutation.isPending || isLoadingDetails
+              }
+            >
+              {isSubmitting || saveMutation.isPending
+                ? "Saving..."
+                : "Save Accessory"}
             </Button>
           </div>
         </form>

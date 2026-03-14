@@ -12,15 +12,13 @@ import SearchableValueSelect from "@/modules/products/components/SearchableValue
 import SupplierAsyncSelect, {
   type SupplierOption,
 } from "@/modules/products/components/SupplierAsyncSelect";
-import {
-  getLensByVariantId,
-} from "@/modules/products/product.service";
+import { getLensByVariantId } from "@/modules/products/product.service";
 import {
   SINGLE_VISION_LENS_TYPE_VALUES,
   SINGLE_VISION_MATERIAL_VALUES,
 } from "@/modules/products/product.constants";
-import { updateSingleVision } from "@/modules/products/singleVision.service";
-import { getSuppliersByIds } from "@/modules/products/sunglasses.service";
+import { updateSingleVision } from "@/modules/products/lens/SingleVision/singleVision.service";
+import { getSuppliersByIds } from "@/modules/products/sunglasses/sunglasses.service";
 import {
   buildSingleVisionUpdatePayload,
   singleVisionEditFormDefaultValues,
@@ -85,9 +83,10 @@ function SingleVisionEditDrawer({
   const [selectedSuppliers, setSelectedSuppliers] = useState<SupplierOption[]>(
     [],
   );
-  const [existingProduct, setExistingProduct] = useState<Record<string, any> | null>(
-    null,
-  );
+  const [existingProduct, setExistingProduct] = useState<Record<
+    string,
+    any
+  > | null>(null);
 
   const {
     register,
@@ -135,7 +134,10 @@ function SingleVisionEditDrawer({
   useEffect(() => {
     if (!open || !detailId || !productDetails) return;
 
-    const product = (productDetails?.data ?? productDetails) as Record<string, any>;
+    const product = (productDetails?.data ?? productDetails) as Record<
+      string,
+      any
+    >;
     setExistingProduct(product);
 
     const supplierIds = new Set<number>();
@@ -156,7 +158,10 @@ function SingleVisionEditDrawer({
         supplierIds.add(supplierId);
         initialSupplierMap.set(supplierId, {
           id: supplierId,
-          name: supplier?.name ?? supplier?.supplierName ?? `Supplier #${supplierId}`,
+          name:
+            supplier?.name ??
+            supplier?.supplierName ??
+            `Supplier #${supplierId}`,
           phone: supplier?.phone ?? null,
           email: supplier?.email ?? null,
           pendingAmount: supplier?.pendingAmount ?? null,
@@ -231,7 +236,10 @@ function SingleVisionEditDrawer({
       companyName: toFieldValue(product?.companyName ?? product?.brandName),
       name: toFieldValue(product?.name ?? product?.productName),
       material: toFieldValue(product?.material, defaultValues.material),
-      type: toFieldValue(product?.type ?? product?.lensType, defaultValues.type),
+      type: toFieldValue(
+        product?.type ?? product?.lensType,
+        defaultValues.type,
+      ),
       index: toFieldValue(
         product?.index ?? product?.lensIndex,
         defaultValues.index,
@@ -247,7 +255,15 @@ function SingleVisionEditDrawer({
     return () => {
       isCancelled = true;
     };
-  }, [defaultValues.index, defaultValues.material, defaultValues.type, detailId, open, productDetails, reset]);
+  }, [
+    defaultValues.index,
+    defaultValues.material,
+    defaultValues.type,
+    detailId,
+    open,
+    productDetails,
+    reset,
+  ]);
 
   useEffect(() => {
     setValue(
@@ -276,7 +292,8 @@ function SingleVisionEditDrawer({
   const saveMutation = useMutation({
     mutationFn: async (values: SingleVisionEditFormValues) => {
       if (!productId) throw new Error("Missing single vision product id.");
-      if (!existingProduct) throw new Error("Single vision details are not loaded yet.");
+      if (!existingProduct)
+        throw new Error("Single vision details are not loaded yet.");
 
       return updateSingleVision(
         productId,
@@ -291,7 +308,9 @@ function SingleVisionEditDrawer({
         });
       }
       if (productId) {
-        await queryClient.invalidateQueries({ queryKey: ["product", productId] });
+        await queryClient.invalidateQueries({
+          queryKey: ["product", productId],
+        });
       }
       toast({
         title: "Single vision updated",
@@ -414,7 +433,10 @@ function SingleVisionEditDrawer({
               </div>
 
               <div>
-                <label htmlFor="name" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="name"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Model Name
                 </label>
                 <Input
@@ -449,7 +471,10 @@ function SingleVisionEditDrawer({
               </div>
 
               <div>
-                <label htmlFor="type" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="type"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Type
                 </label>
                 <select
@@ -468,7 +493,10 @@ function SingleVisionEditDrawer({
               </div>
 
               <div>
-                <label htmlFor="index" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="index"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Index
                 </label>
                 <Input
@@ -483,7 +511,10 @@ function SingleVisionEditDrawer({
               </div>
 
               <div className="md:col-span-2">
-                <label htmlFor="extra" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="extra"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Extra Notes
                 </label>
                 <textarea
@@ -533,7 +564,9 @@ function SingleVisionEditDrawer({
                   )}
                 />
 
-                {cylEnabled ? renderPowerSelect("cyl", "CYL", CYL_OPTIONS) : null}
+                {cylEnabled
+                  ? renderPowerSelect("cyl", "CYL", CYL_OPTIONS)
+                  : null}
               </div>
             </div>
           </section>
@@ -544,7 +577,8 @@ function SingleVisionEditDrawer({
                 Pricing And Suppliers
               </h4>
               <p className="text-sm text-muted-foreground">
-                Selling price is editable. Quantity and purchase price stay locked.
+                Selling price is editable. Quantity and purchase price stay
+                locked.
               </p>
             </div>
 
@@ -626,7 +660,10 @@ function SingleVisionEditDrawer({
                             setSupplierPickerValue(null);
                             return;
                           }
-                          const nextSuppliers = [...selectedSuppliers, supplier];
+                          const nextSuppliers = [
+                            ...selectedSuppliers,
+                            supplier,
+                          ];
                           setSelectedSuppliers(nextSuppliers);
                           field.onChange(nextSuppliers.map((item) => item.id));
                           setSupplierPickerValue(null);
@@ -662,9 +699,10 @@ function SingleVisionEditDrawer({
                                 size="sm"
                                 className="h-7 px-2 text-destructive"
                                 onClick={() => {
-                                  const nextSuppliers = selectedSuppliers.filter(
-                                    (item) => item.id !== supplier.id,
-                                  );
+                                  const nextSuppliers =
+                                    selectedSuppliers.filter(
+                                      (item) => item.id !== supplier.id,
+                                    );
                                   setSelectedSuppliers(nextSuppliers);
                                   field.onChange(
                                     nextSuppliers.map((item) => item.id),
@@ -690,7 +728,9 @@ function SingleVisionEditDrawer({
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting || saveMutation.isPending || isLoadingDetails}
+              disabled={
+                isSubmitting || saveMutation.isPending || isLoadingDetails
+              }
             >
               {isSubmitting || saveMutation.isPending
                 ? "Saving..."

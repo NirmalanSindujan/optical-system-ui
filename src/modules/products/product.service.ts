@@ -105,3 +105,16 @@ export async function deleteProduct(productId) {
   const { data } = await api.delete(`/products/${productId}`);
   return data;
 }
+
+export async function getBillingProducts({ supplierId, type, page = 0, size = 10 }) {
+  const response = await api.get("/productList", {
+    params: {
+      supplierId,
+      type,
+      page,
+      size
+    }
+  });
+
+  return response.data;
+}

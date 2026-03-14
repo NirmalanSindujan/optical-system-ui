@@ -12,13 +12,13 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useToast } from "@/components/ui/use-toast";
-import { getContactLensByProductId } from "@/modules/products/contactLens.service";
+import { getContactLensByProductId } from "@/modules/products/lens/ContactLens/contactLens.service";
 import type {
   AccessorySupplier,
   ContactLensDetailResponse,
   SupplierSearchItem,
 } from "@/modules/products/product.types";
-import { getSuppliersByIds } from "@/modules/products/sunglasses.service";
+import { getSuppliersByIds } from "@/modules/products/sunglasses/sunglasses.service";
 
 interface ContactLensDetailsDrawerProps {
   open: boolean;
@@ -75,13 +75,7 @@ function Metric({
   );
 }
 
-function DetailCard({
-  label,
-  value,
-}: {
-  label: string;
-  value?: unknown;
-}) {
+function DetailCard({ label, value }: { label: string; value?: unknown }) {
   if (!hasValue(value)) return null;
 
   return (
@@ -96,11 +90,7 @@ function DetailCard({
   );
 }
 
-function SupplierPanel({
-  suppliers,
-}: {
-  suppliers: ResolvedSupplier[];
-}) {
+function SupplierPanel({ suppliers }: { suppliers: ResolvedSupplier[] }) {
   if (suppliers.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-border/70 bg-muted/20 px-4 py-5 text-sm text-muted-foreground">
@@ -153,9 +143,9 @@ function ContactLensDetailsDrawer({
   onClose,
 }: ContactLensDetailsDrawerProps) {
   const { toast } = useToast();
-  const [resolvedSuppliers, setResolvedSuppliers] = useState<ResolvedSupplier[]>(
-    [],
-  );
+  const [resolvedSuppliers, setResolvedSuppliers] = useState<
+    ResolvedSupplier[]
+  >([]);
 
   const {
     data: productDetails,
@@ -290,7 +280,8 @@ function ContactLensDetailsDrawer({
                 Contact Lens Details
               </SheetTitle>
               <SheetDescription className="text-sm text-muted-foreground">
-                Pricing, stock, specification, and supplier details for this contact lens.
+                Pricing, stock, specification, and supplier details for this
+                contact lens.
               </SheetDescription>
             </SheetHeader>
             <SheetClose asChild>
@@ -326,12 +317,16 @@ function ContactLensDetailsDrawer({
                   <Badge variant="secondary">Lens</Badge>
                   <Badge variant="outline">Contact Lens</Badge>
                   {typeof product?.productActive === "boolean" ? (
-                    <Badge variant={product.productActive ? "default" : "secondary"}>
+                    <Badge
+                      variant={product.productActive ? "default" : "secondary"}
+                    >
                       Product {product.productActive ? "Active" : "Inactive"}
                     </Badge>
                   ) : null}
                   {typeof product?.variantActive === "boolean" ? (
-                    <Badge variant={product.variantActive ? "default" : "secondary"}>
+                    <Badge
+                      variant={product.variantActive ? "default" : "secondary"}
+                    >
                       Variant {product.variantActive ? "Active" : "Inactive"}
                     </Badge>
                   ) : null}
@@ -339,10 +334,14 @@ function ContactLensDetailsDrawer({
 
                 <div className="mt-4 space-y-2">
                   <h4 className="text-2xl font-semibold tracking-[-0.03em] text-foreground sm:text-[2rem]">
-                    {product?.name ?? product?.productName ?? "Unnamed Contact Lens"}
+                    {product?.name ??
+                      product?.productName ??
+                      "Unnamed Contact Lens"}
                   </h4>
                   <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-                    {product?.companyName ?? product?.brandName ?? "No company name"}
+                    {product?.companyName ??
+                      product?.brandName ??
+                      "No company name"}
                   </p>
                 </div>
               </section>
@@ -359,7 +358,11 @@ function ContactLensDetailsDrawer({
                 />
                 <Metric
                   label="Quantity"
-                  value={hasValue(product?.quantity) ? String(product?.quantity) : "N/A"}
+                  value={
+                    hasValue(product?.quantity)
+                      ? String(product?.quantity)
+                      : "N/A"
+                  }
                 />
               </div>
 
@@ -374,7 +377,11 @@ function ContactLensDetailsDrawer({
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {overviewCards.map((item) => (
-                    <DetailCard key={item.label} label={item.label} value={item.value} />
+                    <DetailCard
+                      key={item.label}
+                      label={item.label}
+                      value={item.value}
+                    />
                   ))}
                 </div>
               </section>

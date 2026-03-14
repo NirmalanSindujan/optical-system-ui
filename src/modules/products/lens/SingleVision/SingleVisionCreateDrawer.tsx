@@ -17,7 +17,7 @@ import {
   SINGLE_VISION_LENS_TYPE_VALUES,
   SINGLE_VISION_MATERIAL_VALUES,
 } from "@/modules/products/product.constants";
-import { createSingleVision } from "@/modules/products/singleVision.service";
+import { createSingleVision } from "@/modules/products/lens/SingleVision/singleVision.service";
 import {
   buildSingleVisionPayload,
   singleVisionFormDefaultValues,
@@ -275,7 +275,10 @@ function SingleVisionCreateDrawer({
               </div>
 
               <div>
-                <label htmlFor="name" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="name"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Model Name
                 </label>
                 <Input
@@ -308,7 +311,10 @@ function SingleVisionCreateDrawer({
               </div>
 
               <div>
-                <label htmlFor="type" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="type"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Type
                 </label>
                 <select
@@ -326,7 +332,10 @@ function SingleVisionCreateDrawer({
               </div>
 
               <div>
-                <label htmlFor="index" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="index"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Index
                 </label>
                 <Input
@@ -358,7 +367,10 @@ function SingleVisionCreateDrawer({
               </div>
 
               <div className="md:col-span-2">
-                <label htmlFor="extra" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="extra"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Extra Notes
                 </label>
                 <textarea
@@ -527,7 +539,10 @@ function SingleVisionCreateDrawer({
                             setSupplierPickerValue(null);
                             return;
                           }
-                          const nextSuppliers = [...selectedSuppliers, supplier];
+                          const nextSuppliers = [
+                            ...selectedSuppliers,
+                            supplier,
+                          ];
                           setSelectedSuppliers(nextSuppliers);
                           field.onChange(nextSuppliers.map((item) => item.id));
                           setSupplierPickerValue(null);
@@ -559,9 +574,10 @@ function SingleVisionCreateDrawer({
                                 size="sm"
                                 className="h-7 px-2 text-destructive"
                                 onClick={() => {
-                                  const nextSuppliers = selectedSuppliers.filter(
-                                    (item) => item.id !== supplier.id,
-                                  );
+                                  const nextSuppliers =
+                                    selectedSuppliers.filter(
+                                      (item) => item.id !== supplier.id,
+                                    );
                                   setSelectedSuppliers(nextSuppliers);
                                   field.onChange(
                                     nextSuppliers.map((item) => item.id),

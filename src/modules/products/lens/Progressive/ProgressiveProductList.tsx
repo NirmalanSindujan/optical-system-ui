@@ -5,7 +5,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useToast } from "@/components/ui/use-toast";
 import ProductDeleteDialog from "@/modules/products/components/ProductDeleteDialog";
 import ProductPagination from "@/modules/products/components/ProductPagination";
@@ -26,7 +33,7 @@ import {
 import {
   deleteProgressive,
   getProgressives,
-} from "@/modules/products/progressive.service";
+} from "@/modules/products/lens/Progressive/progressive.service";
 
 const PAGE_SIZE = 20;
 
@@ -40,7 +47,8 @@ const materialChipClasses: Record<string, string> = {
 };
 
 const getMaterialChipClass = (value: string) =>
-  materialChipClasses[value.trim()] ?? "border-border bg-muted/60 text-foreground";
+  materialChipClasses[value.trim()] ??
+  "border-border bg-muted/60 text-foreground";
 
 function MaterialChip({ value }: { value: string | null | undefined }) {
   if (!value?.trim()) return <span>-</span>;
@@ -81,14 +89,18 @@ function ProgressiveProductList() {
     error,
   } = useQuery({
     queryKey: ["products", "progressive", search, page, PAGE_SIZE],
-    queryFn: () => getProgressives({ page, size: PAGE_SIZE, q: search || undefined }),
+    queryFn: () =>
+      getProgressives({ page, size: PAGE_SIZE, q: search || undefined }),
     placeholderData: (previousData) => previousData,
   });
 
   const deleteMutation = useMutation({
     mutationFn: deleteProgressive,
     onSuccess: () => {
-      toast({ title: "Product deleted", description: "Product has been deleted." });
+      toast({
+        title: "Product deleted",
+        description: "Product has been deleted.",
+      });
       setConfirmDeleteId(null);
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["products", "progressive"] });
@@ -138,7 +150,10 @@ function ProgressiveProductList() {
               Manage progressive products.
             </p>
           </div>
-          <Button className="w-full sm:w-auto" onClick={() => setCreateOpen(true)}>
+          <Button
+            className="w-full sm:w-auto"
+            onClick={() => setCreateOpen(true)}
+          >
             <Plus className="mr-2 h-4 w-4" />
             Add Progressive
           </Button>
@@ -217,8 +232,12 @@ function ProgressiveProductList() {
                           `${item?.name ?? "product"}-${item?.companyName ?? item?.brandName ?? index}`
                         }
                       >
-                        <TableCell className="font-medium">{item?.name ?? "-"}</TableCell>
-                        <TableCell>{item?.companyName ?? item?.brandName ?? "-"}</TableCell>
+                        <TableCell className="font-medium">
+                          {item?.name ?? "-"}
+                        </TableCell>
+                        <TableCell>
+                          {item?.companyName ?? item?.brandName ?? "-"}
+                        </TableCell>
                         <TableCell>
                           <MaterialChip value={item?.material} />
                         </TableCell>
@@ -226,13 +245,17 @@ function ProgressiveProductList() {
                         <TableCell>
                           <span className="inline-flex items-center gap-1">
                             <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
-                            {item?.purchasePrice != null ? Number(item.purchasePrice).toFixed(2) : "-"}
+                            {item?.purchasePrice != null
+                              ? Number(item.purchasePrice).toFixed(2)
+                              : "-"}
                           </span>
                         </TableCell>
                         <TableCell>
                           <span className="inline-flex items-center gap-1">
                             <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
-                            {item?.sellingPrice != null ? Number(item.sellingPrice).toFixed(2) : "-"}
+                            {item?.sellingPrice != null
+                              ? Number(item.sellingPrice).toFixed(2)
+                              : "-"}
                           </span>
                         </TableCell>
                         <TableCell>
@@ -273,13 +296,17 @@ function ProgressiveProductList() {
       <ProductDeleteDialog
         open={Boolean(confirmDeleteId)}
         onOpenChange={(open) => !open && setConfirmDeleteId(null)}
-        onConfirm={() => confirmDeleteId && deleteMutation.mutate(confirmDeleteId)}
+        onConfirm={() =>
+          confirmDeleteId && deleteMutation.mutate(confirmDeleteId)
+        }
       />
 
       <ProgressiveCreateDrawer
         open={createOpen}
         onClose={() => setCreateOpen(false)}
-        onSaved={() => queryClient.invalidateQueries({ queryKey: ["products"] })}
+        onSaved={() =>
+          queryClient.invalidateQueries({ queryKey: ["products"] })
+        }
       />
 
       <ProgressiveDetailsDrawer
@@ -295,7 +322,9 @@ function ProgressiveProductList() {
           setDrawerOpen(false);
           setEditingId(null);
         }}
-        onSaved={() => queryClient.invalidateQueries({ queryKey: ["products"] })}
+        onSaved={() =>
+          queryClient.invalidateQueries({ queryKey: ["products"] })
+        }
       />
     </Card>
   );

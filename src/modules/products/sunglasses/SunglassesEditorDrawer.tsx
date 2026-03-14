@@ -7,20 +7,22 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetClose, SheetContent } from "@/components/ui/sheet";
 import { useToast } from "@/components/ui/use-toast";
-import SupplierAsyncSelect, { type SupplierOption } from "@/modules/products/components/SupplierAsyncSelect";
+import SupplierAsyncSelect, {
+  type SupplierOption,
+} from "@/modules/products/components/SupplierAsyncSelect";
 import {
   createSunglasses,
   getSunglassesById,
   getSuppliersByIds,
-  updateSunglasses
-} from "@/modules/products/sunglasses.service";
+  updateSunglasses,
+} from "@/modules/products/sunglasses/sunglasses.service";
 import {
   buildSunglassesCreatePayload,
   buildSunglassesUpdatePayload,
   sunglassesFormDefaultValues,
   sunglassesFormSchema,
-  type SunglassesFormValues
-} from "@/modules/products/sunglasses.validation";
+  type SunglassesFormValues,
+} from "@/modules/products/sunglasses/sunglasses.validation";
 
 interface SunglassesEditorDrawerProps {
   open: boolean;
@@ -37,15 +39,26 @@ const toFieldValue = (value: unknown) => {
   return String(value);
 };
 
-function SunglassesEditorDrawer({ open, sunglassesId, onClose, onSaved }: SunglassesEditorDrawerProps) {
+function SunglassesEditorDrawer({
+  open,
+  sunglassesId,
+  onClose,
+  onSaved,
+}: SunglassesEditorDrawerProps) {
   const isEdit = Boolean(sunglassesId);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const defaultValues = useMemo(() => sunglassesFormDefaultValues, []);
-  const [supplierPickerValue, setSupplierPickerValue] = useState<SupplierOption | null>(null);
-  const [selectedSuppliers, setSelectedSuppliers] = useState<SupplierOption[]>([]);
-  const [existingProduct, setExistingProduct] = useState<Record<string, any> | null>(null);
+  const [supplierPickerValue, setSupplierPickerValue] =
+    useState<SupplierOption | null>(null);
+  const [selectedSuppliers, setSelectedSuppliers] = useState<SupplierOption[]>(
+    [],
+  );
+  const [existingProduct, setExistingProduct] = useState<Record<
+    string,
+    any
+  > | null>(null);
 
   const {
     register,
@@ -53,21 +66,21 @@ function SunglassesEditorDrawer({ open, sunglassesId, onClose, onSaved }: Sungla
     handleSubmit,
     reset,
     setValue,
-    formState: { errors, isSubmitting }
+    formState: { errors, isSubmitting },
   } = useForm<SunglassesFormValues>({
     resolver: zodResolver(sunglassesFormSchema),
-    defaultValues
+    defaultValues,
   });
 
   const {
     data: sunglassesDetails,
     isError: isDetailsError,
     error: detailsError,
-    isFetching: isLoadingDetails
+    isFetching: isLoadingDetails,
   } = useQuery({
     queryKey: ["products", "sunglasses", sunglassesId],
     queryFn: () => getSunglassesById(sunglassesId as number),
-    enabled: open && isEdit
+    enabled: open && isEdit,
   });
 
   useEffect(() => {
@@ -109,10 +122,13 @@ function SunglassesEditorDrawer({ open, sunglassesId, onClose, onSaved }: Sungla
         supplierIds.add(supplierId);
         initialSupplierMap.set(supplierId, {
           id: supplierId,
-          name: supplier?.name ?? supplier?.supplierName ?? `Supplier #${supplierId}`,
+          name:
+            supplier?.name ??
+            supplier?.supplierName ??
+            `Supplier #${supplierId}`,
           phone: supplier?.phone ?? supplier?.supplierPhone ?? null,
           email: supplier?.email ?? supplier?.supplierEmail ?? null,
-          pendingAmount: supplier?.pendingAmount ?? null
+          pendingAmount: supplier?.pendingAmount ?? null,
         });
       });
     }
@@ -123,10 +139,19 @@ function SunglassesEditorDrawer({ open, sunglassesId, onClose, onSaved }: Sungla
       if (!initialSupplierMap.has(primarySupplierId)) {
         initialSupplierMap.set(primarySupplierId, {
           id: primarySupplierId,
-          name: sunglassesDetails?.supplierName ?? sunglassesDetails?.supplier?.name ?? `Supplier #${primarySupplierId}`,
-          phone: sunglassesDetails?.supplierPhone ?? sunglassesDetails?.supplier?.phone ?? null,
-          email: sunglassesDetails?.supplierEmail ?? sunglassesDetails?.supplier?.email ?? null,
-          pendingAmount: null
+          name:
+            sunglassesDetails?.supplierName ??
+            sunglassesDetails?.supplier?.name ??
+            `Supplier #${primarySupplierId}`,
+          phone:
+            sunglassesDetails?.supplierPhone ??
+            sunglassesDetails?.supplier?.phone ??
+            null,
+          email:
+            sunglassesDetails?.supplierEmail ??
+            sunglassesDetails?.supplier?.email ??
+            null,
+          pendingAmount: null,
         });
       }
     }
@@ -151,7 +176,7 @@ function SunglassesEditorDrawer({ open, sunglassesId, onClose, onSaved }: Sungla
           name: supplier.name ?? `Supplier #${supplier.id}`,
           phone: supplier.phone ?? null,
           email: supplier.email ?? null,
-          pendingAmount: supplier.pendingAmount ?? null
+          pendingAmount: supplier.pendingAmount ?? null,
         });
       });
 
@@ -163,7 +188,7 @@ function SunglassesEditorDrawer({ open, sunglassesId, onClose, onSaved }: Sungla
           name: `Supplier #${id}`,
           phone: null,
           email: null,
-          pendingAmount: null
+          pendingAmount: null,
         };
       });
 
@@ -176,14 +201,19 @@ function SunglassesEditorDrawer({ open, sunglassesId, onClose, onSaved }: Sungla
     loadSupplierNames();
 
     reset({
-      companyName: toFieldValue(sunglassesDetails?.companyName ?? sunglassesDetails?.brandName),
+      companyName: toFieldValue(
+        sunglassesDetails?.companyName ?? sunglassesDetails?.brandName,
+      ),
       name: toFieldValue(sunglassesDetails?.name),
-      description: toFieldValue(sunglassesDetails?.description ?? sunglassesDetails?.sunglassesDescription),
+      description: toFieldValue(
+        sunglassesDetails?.description ??
+          sunglassesDetails?.sunglassesDescription,
+      ),
       quantity: toFieldValue(sunglassesDetails?.quantity),
       purchasePrice: toFieldValue(sunglassesDetails?.purchasePrice),
       sellingPrice: toFieldValue(sunglassesDetails?.sellingPrice),
       notes: toFieldValue(sunglassesDetails?.notes),
-      supplierIds: Array.from(supplierIds)
+      supplierIds: Array.from(supplierIds),
     });
 
     return () => {
@@ -195,7 +225,7 @@ function SunglassesEditorDrawer({ open, sunglassesId, onClose, onSaved }: Sungla
     setValue(
       "supplierIds",
       selectedSuppliers.map((supplier) => supplier.id),
-      { shouldDirty: false, shouldValidate: true }
+      { shouldDirty: false, shouldValidate: true },
     );
   }, [selectedSuppliers, setValue]);
 
@@ -204,26 +234,36 @@ function SunglassesEditorDrawer({ open, sunglassesId, onClose, onSaved }: Sungla
     toast({
       variant: "destructive",
       title: "Failed to load sunglasses",
-      description: (detailsError as any)?.response?.data?.message ?? "Unable to fetch sunglasses details."
+      description:
+        (detailsError as any)?.response?.data?.message ??
+        "Unable to fetch sunglasses details.",
     });
   }, [detailsError, isDetailsError, toast]);
 
   const saveMutation = useMutation({
     mutationFn: async (values: SunglassesFormValues) => {
       if (isEdit && sunglassesId) {
-        if (!existingProduct) throw new Error("Sunglasses details are not loaded yet.");
-        return updateSunglasses(sunglassesId, buildSunglassesUpdatePayload(values, existingProduct));
+        if (!existingProduct)
+          throw new Error("Sunglasses details are not loaded yet.");
+        return updateSunglasses(
+          sunglassesId,
+          buildSunglassesUpdatePayload(values, existingProduct),
+        );
       }
       return createSunglasses(buildSunglassesCreatePayload(values));
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["products"] });
       if (sunglassesId) {
-        await queryClient.invalidateQueries({ queryKey: ["products", "sunglasses", sunglassesId] });
+        await queryClient.invalidateQueries({
+          queryKey: ["products", "sunglasses", sunglassesId],
+        });
       }
       toast({
         title: isEdit ? "Sunglasses updated" : "Sunglasses created",
-        description: isEdit ? "Changes were saved successfully." : "New sunglasses item was saved."
+        description: isEdit
+          ? "Changes were saved successfully."
+          : "New sunglasses item was saved.",
       });
       onSaved?.();
       onClose();
@@ -232,17 +272,27 @@ function SunglassesEditorDrawer({ open, sunglassesId, onClose, onSaved }: Sungla
       toast({
         variant: "destructive",
         title: isEdit ? "Update failed" : "Save failed",
-        description: error?.response?.data?.message ?? "Server rejected the request."
+        description:
+          error?.response?.data?.message ?? "Server rejected the request.",
       });
-    }
+    },
   });
 
   const renderFieldError = (message?: string) =>
     message ? <p className="mt-1 text-xs text-destructive">{message}</p> : null;
 
   return (
-    <Sheet open={open} onOpenChange={(nextOpen) => { if (!nextOpen) onClose(); }}>
-      <SheetContent side="right" hideClose className="max-w-2xl overflow-y-auto p-6 sm:max-w-2xl">
+    <Sheet
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) onClose();
+      }}
+    >
+      <SheetContent
+        side="right"
+        hideClose
+        className="max-w-2xl overflow-y-auto p-6 sm:max-w-2xl"
+      >
         <div className="mb-4 flex items-center justify-between">
           <h3 className="flex items-center gap-2 text-lg font-semibold">
             <Glasses className="h-5 w-5 text-primary" />
@@ -255,7 +305,10 @@ function SunglassesEditorDrawer({ open, sunglassesId, onClose, onSaved }: Sungla
           </SheetClose>
         </div>
 
-        <form className="space-y-6" onSubmit={handleSubmit((values) => saveMutation.mutate(values))}>
+        <form
+          className="space-y-6"
+          onSubmit={handleSubmit((values) => saveMutation.mutate(values))}
+        >
           <section className="rounded-lg border p-4">
             <div className="mb-4">
               <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -268,23 +321,41 @@ function SunglassesEditorDrawer({ open, sunglassesId, onClose, onSaved }: Sungla
 
             <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <label htmlFor="companyName" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="companyName"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Company Name
                 </label>
-                <Input id="companyName" autoFocus placeholder="Ray-Ban" {...register("companyName")} />
+                <Input
+                  id="companyName"
+                  autoFocus
+                  placeholder="Ray-Ban"
+                  {...register("companyName")}
+                />
                 {renderFieldError(errors.companyName?.message)}
               </div>
 
               <div>
-                <label htmlFor="name" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="name"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Model Name
                 </label>
-                <Input id="name" placeholder="Aviator Classic" {...register("name")} />
+                <Input
+                  id="name"
+                  placeholder="Aviator Classic"
+                  {...register("name")}
+                />
                 {renderFieldError(errors.name?.message)}
               </div>
 
               <div className="md:col-span-2">
-                <label htmlFor="description" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="description"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Description
                 </label>
                 <textarea
@@ -298,7 +369,10 @@ function SunglassesEditorDrawer({ open, sunglassesId, onClose, onSaved }: Sungla
               </div>
 
               <div className="md:col-span-2">
-                <label htmlFor="notes" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="notes"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Notes
                 </label>
                 <textarea
@@ -319,13 +393,17 @@ function SunglassesEditorDrawer({ open, sunglassesId, onClose, onSaved }: Sungla
                 Inventory And Pricing
               </h4>
               <p className="text-sm text-muted-foreground">
-                Set stock and commercial values. Quantity and purchase price remain locked in edit mode.
+                Set stock and commercial values. Quantity and purchase price
+                remain locked in edit mode.
               </p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-3">
               <div>
-                <label htmlFor="quantity" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="quantity"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Quantity
                 </label>
                 <Input
@@ -341,7 +419,10 @@ function SunglassesEditorDrawer({ open, sunglassesId, onClose, onSaved }: Sungla
               </div>
 
               <div>
-                <label htmlFor="purchasePrice" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="purchasePrice"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Purchase Price
                 </label>
                 <Input
@@ -357,7 +438,10 @@ function SunglassesEditorDrawer({ open, sunglassesId, onClose, onSaved }: Sungla
               </div>
 
               <div>
-                <label htmlFor="sellingPrice" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="sellingPrice"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Sales Price
                 </label>
                 <Input
@@ -385,7 +469,9 @@ function SunglassesEditorDrawer({ open, sunglassesId, onClose, onSaved }: Sungla
 
             <div className="grid gap-4">
               <div>
-                <label className="mb-1 block text-sm font-medium">Suppliers</label>
+                <label className="mb-1 block text-sm font-medium">
+                  Suppliers
+                </label>
                 <Controller
                   name="supplierIds"
                   control={control}
@@ -395,24 +481,39 @@ function SunglassesEditorDrawer({ open, sunglassesId, onClose, onSaved }: Sungla
                         value={supplierPickerValue}
                         onChange={(supplier) => {
                           if (!supplier) return;
-                          const alreadyAdded = selectedSuppliers.some((item) => item.id === supplier.id);
+                          const alreadyAdded = selectedSuppliers.some(
+                            (item) => item.id === supplier.id,
+                          );
                           if (alreadyAdded) {
                             setSupplierPickerValue(null);
                             return;
                           }
-                          const nextSuppliers = [...selectedSuppliers, supplier];
+                          const nextSuppliers = [
+                            ...selectedSuppliers,
+                            supplier,
+                          ];
                           setSelectedSuppliers(nextSuppliers);
                           field.onChange(nextSuppliers.map((item) => item.id));
                           setSupplierPickerValue(null);
                         }}
                         onBlur={field.onBlur}
-                        error={typeof errors.supplierIds?.message === "string" ? errors.supplierIds.message : undefined}
+                        error={
+                          typeof errors.supplierIds?.message === "string"
+                            ? errors.supplierIds.message
+                            : undefined
+                        }
                         placeholder="Search supplier and add"
-                        disabled={isSubmitting || saveMutation.isPending || isLoadingDetails}
+                        disabled={
+                          isSubmitting ||
+                          saveMutation.isPending ||
+                          isLoadingDetails
+                        }
                       />
                       <div className="mt-2 space-y-2">
                         {selectedSuppliers.length === 0 ? (
-                          <p className="text-xs text-muted-foreground">No suppliers added yet.</p>
+                          <p className="text-xs text-muted-foreground">
+                            No suppliers added yet.
+                          </p>
                         ) : (
                           selectedSuppliers.map((supplier) => (
                             <div
@@ -426,9 +527,14 @@ function SunglassesEditorDrawer({ open, sunglassesId, onClose, onSaved }: Sungla
                                 size="sm"
                                 className="h-7 px-2 text-destructive"
                                 onClick={() => {
-                                  const nextSuppliers = selectedSuppliers.filter((item) => item.id !== supplier.id);
+                                  const nextSuppliers =
+                                    selectedSuppliers.filter(
+                                      (item) => item.id !== supplier.id,
+                                    );
                                   setSelectedSuppliers(nextSuppliers);
-                                  field.onChange(nextSuppliers.map((item) => item.id));
+                                  field.onChange(
+                                    nextSuppliers.map((item) => item.id),
+                                  );
                                 }}
                               >
                                 Remove
@@ -448,8 +554,15 @@ function SunglassesEditorDrawer({ open, sunglassesId, onClose, onSaved }: Sungla
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting || saveMutation.isPending || isLoadingDetails}>
-              {isSubmitting || saveMutation.isPending ? "Saving..." : "Save Sunglasses"}
+            <Button
+              type="submit"
+              disabled={
+                isSubmitting || saveMutation.isPending || isLoadingDetails
+              }
+            >
+              {isSubmitting || saveMutation.isPending
+                ? "Saving..."
+                : "Save Sunglasses"}
             </Button>
           </div>
         </form>

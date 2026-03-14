@@ -17,7 +17,7 @@ import {
   resolveRowId,
 } from "@/modules/products/components/productListShared";
 import ProductDetailsDrawer from "@/modules/products/ProductDetailsDrawer";
-import FrameEditorDrawer from "@/modules/products/FrameEditorDrawer";
+import FrameEditorDrawer from "@/modules/products/frame/FrameEditorDrawer";
 import LensRowActionsPopover from "@/modules/products/lens/components/LensRowActionsPopover";
 import { FRAME_TYPE_VALUES } from "@/modules/products/product.constants";
 import { deleteProduct, getFrames } from "@/modules/products/product.service";

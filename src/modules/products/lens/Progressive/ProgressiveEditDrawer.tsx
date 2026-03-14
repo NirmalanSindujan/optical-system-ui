@@ -15,8 +15,8 @@ import SupplierAsyncSelect, {
 import {
   getProgressiveByProductId,
   updateProgressive,
-} from "@/modules/products/progressive.service";
-import { getSuppliersByIds } from "@/modules/products/sunglasses.service";
+} from "@/modules/products/lens/Progressive/progressive.service";
+import { getSuppliersByIds } from "@/modules/products/sunglasses/sunglasses.service";
 import {
   buildProgressiveUpdatePayload,
   progressiveEditFormDefaultValues,
@@ -152,7 +152,10 @@ function ProgressiveEditDrawer({
         supplierIds.add(supplierId);
         initialSupplierMap.set(supplierId, {
           id: supplierId,
-          name: supplier?.name ?? supplier?.supplierName ?? `Supplier #${supplierId}`,
+          name:
+            supplier?.name ??
+            supplier?.supplierName ??
+            `Supplier #${supplierId}`,
           phone: supplier?.phone ?? null,
           email: supplier?.email ?? null,
           pendingAmount: supplier?.pendingAmount ?? null,
@@ -230,7 +233,10 @@ function ProgressiveEditDrawer({
       companyName: toFieldValue(product?.companyName ?? product?.brandName),
       name: toFieldValue(product?.name),
       material: toFieldValue(product?.material, defaultValues.material),
-      index: toFieldValue(product?.index ?? product?.lensIndex, defaultValues.index),
+      index: toFieldValue(
+        product?.index ?? product?.lensIndex,
+        defaultValues.index,
+      ),
       sph: toFieldValue(product?.sph),
       cylEnabled: Number.isFinite(Number(product?.cyl)),
       cyl: toFieldValue(product?.cyl),
@@ -243,7 +249,14 @@ function ProgressiveEditDrawer({
     return () => {
       isCancelled = true;
     };
-  }, [defaultValues.index, defaultValues.material, open, productDetails, productId, reset]);
+  }, [
+    defaultValues.index,
+    defaultValues.material,
+    open,
+    productDetails,
+    productId,
+    reset,
+  ]);
 
   useEffect(() => {
     setValue(
@@ -272,9 +285,13 @@ function ProgressiveEditDrawer({
   const saveMutation = useMutation({
     mutationFn: async (values: ProgressiveEditFormValues) => {
       if (!productId) throw new Error("Missing progressive product id.");
-      if (!existingProduct) throw new Error("Progressive details are not loaded yet.");
+      if (!existingProduct)
+        throw new Error("Progressive details are not loaded yet.");
 
-      return updateProgressive(productId, buildProgressiveUpdatePayload(values));
+      return updateProgressive(
+        productId,
+        buildProgressiveUpdatePayload(values),
+      );
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["products"] });
@@ -282,7 +299,9 @@ function ProgressiveEditDrawer({
         await queryClient.invalidateQueries({
           queryKey: ["products", "progressive", "details", productId],
         });
-        await queryClient.invalidateQueries({ queryKey: ["product", productId] });
+        await queryClient.invalidateQueries({
+          queryKey: ["product", productId],
+        });
       }
       toast({
         title: "Progressive updated",
@@ -343,7 +362,10 @@ function ProgressiveEditDrawer({
   );
 
   const lockedQuantity = formatLockedNumber(existingProduct?.quantity, 0);
-  const lockedPurchasePrice = formatLockedNumber(existingProduct?.purchasePrice, 2);
+  const lockedPurchasePrice = formatLockedNumber(
+    existingProduct?.purchasePrice,
+    2,
+  );
 
   return (
     <Sheet
@@ -385,7 +407,10 @@ function ProgressiveEditDrawer({
 
             <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <label htmlFor="companyName" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="companyName"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Company Name
                 </label>
                 <Input
@@ -399,7 +424,10 @@ function ProgressiveEditDrawer({
               </div>
 
               <div>
-                <label htmlFor="name" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="name"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Model Name
                 </label>
                 <Input
@@ -412,7 +440,10 @@ function ProgressiveEditDrawer({
               </div>
 
               <div>
-                <label htmlFor="material" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="material"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Material
                 </label>
                 <select
@@ -431,7 +462,10 @@ function ProgressiveEditDrawer({
               </div>
 
               <div>
-                <label htmlFor="index" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="index"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Index
                 </label>
                 <Input
@@ -446,7 +480,10 @@ function ProgressiveEditDrawer({
               </div>
 
               <div className="md:col-span-2">
-                <label htmlFor="extra" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="extra"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Extra Notes
                 </label>
                 <textarea
@@ -497,7 +534,9 @@ function ProgressiveEditDrawer({
                   )}
                 />
 
-                {cylEnabled ? renderPowerSelect("cyl", "CYL", CYL_OPTIONS) : null}
+                {cylEnabled
+                  ? renderPowerSelect("cyl", "CYL", CYL_OPTIONS)
+                  : null}
               </div>
             </div>
           </section>
@@ -508,13 +547,17 @@ function ProgressiveEditDrawer({
                 Pricing And Suppliers
               </h4>
               <p className="text-sm text-muted-foreground">
-                Selling price is editable. Quantity and purchase price stay locked.
+                Selling price is editable. Quantity and purchase price stay
+                locked.
               </p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rounded-md border border-dashed bg-muted/20 p-3">
-                <label htmlFor="purchasePriceLocked" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="purchasePriceLocked"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Price (Purchase)
                 </label>
                 <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
@@ -530,7 +573,10 @@ function ProgressiveEditDrawer({
               </div>
 
               <div className="rounded-md border border-dashed bg-muted/20 p-3">
-                <label htmlFor="quantityLocked" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="quantityLocked"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Pair / Quantity
                 </label>
                 <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
@@ -546,7 +592,10 @@ function ProgressiveEditDrawer({
               </div>
 
               <div>
-                <label htmlFor="sellingPrice" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor="sellingPrice"
+                  className="mb-1 block text-sm font-medium"
+                >
                   Price (Selling)
                 </label>
                 <Input
@@ -562,7 +611,9 @@ function ProgressiveEditDrawer({
               </div>
 
               <div className="md:col-span-2">
-                <label className="mb-1 block text-sm font-medium">Suppliers</label>
+                <label className="mb-1 block text-sm font-medium">
+                  Suppliers
+                </label>
                 <Controller
                   name="supplierIds"
                   control={control}
@@ -579,7 +630,10 @@ function ProgressiveEditDrawer({
                             setSupplierPickerValue(null);
                             return;
                           }
-                          const nextSuppliers = [...selectedSuppliers, supplier];
+                          const nextSuppliers = [
+                            ...selectedSuppliers,
+                            supplier,
+                          ];
                           setSelectedSuppliers(nextSuppliers);
                           field.onChange(nextSuppliers.map((item) => item.id));
                           setSupplierPickerValue(null);
@@ -615,11 +669,14 @@ function ProgressiveEditDrawer({
                                 size="sm"
                                 className="h-7 px-2 text-destructive"
                                 onClick={() => {
-                                  const nextSuppliers = selectedSuppliers.filter(
-                                    (item) => item.id !== supplier.id,
-                                  );
+                                  const nextSuppliers =
+                                    selectedSuppliers.filter(
+                                      (item) => item.id !== supplier.id,
+                                    );
                                   setSelectedSuppliers(nextSuppliers);
-                                  field.onChange(nextSuppliers.map((item) => item.id));
+                                  field.onChange(
+                                    nextSuppliers.map((item) => item.id),
+                                  );
                                 }}
                               >
                                 Remove
@@ -641,9 +698,13 @@ function ProgressiveEditDrawer({
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting || saveMutation.isPending || isLoadingDetails}
+              disabled={
+                isSubmitting || saveMutation.isPending || isLoadingDetails
+              }
             >
-              {isSubmitting || saveMutation.isPending ? "Saving..." : "Save Changes"}
+              {isSubmitting || saveMutation.isPending
+                ? "Saving..."
+                : "Save Changes"}
             </Button>
           </div>
         </form>

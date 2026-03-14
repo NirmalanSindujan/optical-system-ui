@@ -4,9 +4,16 @@ import { DollarSign, Package, Plus, Search, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useToast } from "@/components/ui/use-toast";
-import AccessoryEditorDrawer from "@/modules/products/AccessoryEditorDrawer";
+import AccessoryEditorDrawer from "@/modules/products/accessory/AccessoryEditorDrawer";
 import ProductDeleteDialog from "@/modules/products/components/ProductDeleteDialog";
 import ProductPagination from "@/modules/products/components/ProductPagination";
 import ProductDetailsDrawer from "@/modules/products/ProductDetailsDrawer";
@@ -14,12 +21,12 @@ import {
   getListErrorMessage,
   resolveProductId,
   resolveRowId,
-  resolveSupplierLabel
+  resolveSupplierLabel,
 } from "@/modules/products/components/productListShared";
 import LensRowActionsPopover from "@/modules/products/lens/components/LensRowActionsPopover";
 import { PRODUCT_VARIANT_TYPES } from "@/modules/products/product.constants";
 import { deleteProduct } from "@/modules/products/product.service";
-import { getAccessories } from "@/modules/products/accessory.service";
+import { getAccessories } from "@/modules/products/accessory/accessory.service";
 import type { AccessoryListItem } from "@/modules/products/product.types";
 
 function AccessoryProductList() {
@@ -41,17 +48,27 @@ function AccessoryProductList() {
     isLoading,
     isFetching,
     isError,
-    error
+    error,
   } = useQuery({
-    queryKey: ["products", PRODUCT_VARIANT_TYPES.ACCESSORY, search, page, PAGE_SIZE],
-    queryFn: () => getAccessories({ page, size: PAGE_SIZE, q: search || undefined }),
-    placeholderData: (previousData) => previousData
+    queryKey: [
+      "products",
+      PRODUCT_VARIANT_TYPES.ACCESSORY,
+      search,
+      page,
+      PAGE_SIZE,
+    ],
+    queryFn: () =>
+      getAccessories({ page, size: PAGE_SIZE, q: search || undefined }),
+    placeholderData: (previousData) => previousData,
   });
 
   const deleteMutation = useMutation({
     mutationFn: deleteProduct,
     onSuccess: () => {
-      toast({ title: "Product deleted", description: "Product has been deleted." });
+      toast({
+        title: "Product deleted",
+        description: "Product has been deleted.",
+      });
       setConfirmDeleteId(null);
       queryClient.invalidateQueries({ queryKey: ["products"] });
     },
@@ -59,12 +76,15 @@ function AccessoryProductList() {
       toast({
         variant: "destructive",
         title: "Delete failed",
-        description: mutationError?.response?.data?.message ?? "Could not delete product."
+        description:
+          mutationError?.response?.data?.message ?? "Could not delete product.",
       });
-    }
+    },
   });
 
-  const items: AccessoryListItem[] = Array.isArray(productsResponse?.items) ? productsResponse.items : [];
+  const items: AccessoryListItem[] = Array.isArray(productsResponse?.items)
+    ? productsResponse.items
+    : [];
   const total = productsResponse?.totalCounts ?? items.length;
   const totalPages = Math.max(1, productsResponse?.totalPages ?? 1);
 
@@ -73,7 +93,7 @@ function AccessoryProductList() {
     toast({
       variant: "destructive",
       title: "Failed to load accessories",
-      description: getListErrorMessage(error as any)
+      description: getListErrorMessage(error as any),
     });
   }, [error, isError, toast]);
 
@@ -94,7 +114,9 @@ function AccessoryProductList() {
               <Package className="h-5 w-5 text-primary" />
               Accessory Products
             </CardTitle>
-            <p className="text-sm text-muted-foreground">Manage accessory inventory.</p>
+            <p className="text-sm text-muted-foreground">
+              Manage accessory inventory.
+            </p>
           </div>
           <Button
             className="w-full sm:w-auto"
@@ -185,7 +207,9 @@ function AccessoryProductList() {
                           `${item?.name ?? "accessory"}-${item?.brandName ?? "company"}-${index}`
                         }
                       >
-                        <TableCell className="font-medium">{item?.name ?? "-"}</TableCell>
+                        <TableCell className="font-medium">
+                          {item?.name ?? "-"}
+                        </TableCell>
                         <TableCell>{item?.brandName ?? "-"}</TableCell>
                         <TableCell>{item?.itemType ?? "-"}</TableCell>
                         <TableCell>
@@ -197,16 +221,22 @@ function AccessoryProductList() {
                         <TableCell>
                           <span className="inline-flex items-center gap-1">
                             <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
-                            {item?.purchasePrice != null ? Number(item.purchasePrice).toFixed(2) : "-"}
+                            {item?.purchasePrice != null
+                              ? Number(item.purchasePrice).toFixed(2)
+                              : "-"}
                           </span>
                         </TableCell>
                         <TableCell>
                           <span className="inline-flex items-center gap-1">
                             <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
-                            {item?.sellingPrice != null ? Number(item.sellingPrice).toFixed(2) : "-"}
+                            {item?.sellingPrice != null
+                              ? Number(item.sellingPrice).toFixed(2)
+                              : "-"}
                           </span>
                         </TableCell>
-                        <TableCell>{item?.quantity != null ? item.quantity : "-"}</TableCell>
+                        <TableCell>
+                          {item?.quantity != null ? item.quantity : "-"}
+                        </TableCell>
                         <TableCell>
                           <LensRowActionsPopover
                             canDelete={Boolean(productId)}
@@ -245,7 +275,9 @@ function AccessoryProductList() {
       <ProductDeleteDialog
         open={Boolean(confirmDeleteId)}
         onOpenChange={(open) => !open && setConfirmDeleteId(null)}
-        onConfirm={() => confirmDeleteId && deleteMutation.mutate(confirmDeleteId)}
+        onConfirm={() =>
+          confirmDeleteId && deleteMutation.mutate(confirmDeleteId)
+        }
       />
 
       <ProductDetailsDrawer
@@ -265,7 +297,9 @@ function AccessoryProductList() {
           setDrawerOpen(false);
           setEditingId(null);
         }}
-        onSaved={() => queryClient.invalidateQueries({ queryKey: ["products"] })}
+        onSaved={() =>
+          queryClient.invalidateQueries({ queryKey: ["products"] })
+        }
       />
     </Card>
   );
