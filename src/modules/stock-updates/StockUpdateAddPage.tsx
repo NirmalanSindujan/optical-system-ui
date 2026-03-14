@@ -1,18 +1,18 @@
 import { useDeferredValue, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { format } from "date-fns";
 import {
   CalendarDays,
   CreditCard,
   Landmark,
   Loader2,
   PackagePlus,
-  Receipt,
   Search,
-  Trash2,
   Wallet,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Card,
   CardContent,
@@ -29,13 +29,18 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import BranchSelect from "@/modules/branches/components/BranchSelect";
 import SupplierAsyncSelect, {
   type SupplierOption,
 } from "@/modules/products/components/SupplierAsyncSelect";
-import {
-  createStockPurchase,
-  getStockPurchaseVariantsBySupplier,
-} from "@/modules/stock-updates/stock-purchase.service";
+import { getBillingProducts } from "@/modules/products/product.service";
+import StockReceiptPanel from "@/modules/stock-updates/StockReceiptPanel";
+import { createStockPurchase } from "@/modules/stock-updates/stock-purchase.service";
 import type {
   StockPurchaseCreateRequest,
   StockPurchasePaymentMode,
@@ -56,15 +61,92 @@ import {
 } from "@/modules/stock-updates/stock-update-page.utils";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuthStore } from "@/store/auth.store";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/cn";
+
+type BillingVariantOption = StockPurchaseVariantOption & {
+  category: Exclude<ProductCategory, "ALL">;
+};
+
+const normalizeNumber = (value: unknown): number => {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : 0;
+};
+
+const formatQuantityValue = (value: number) =>
+  Number.isInteger(value) ? String(value) : value.toFixed(2);
+
+const parseDateValue = (value: string) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined;
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
+};
+
+const normalizeVariantOption = (
+  item: Record<string, unknown>,
+): BillingVariantOption | null => {
+  const productId = Number(item.productId ?? item.id);
+  const variantId = Number(item.variantId);
+
+  if (!Number.isInteger(productId) || productId <= 0) return null;
+  if (!Number.isInteger(variantId) || variantId <= 0) return null;
+
+  const name =
+    typeof item.name === "string" && item.name.trim()
+      ? item.name.trim()
+      : typeof item.productName === "string" && item.productName.trim()
+        ? item.productName.trim()
+        : `Variant #${variantId}`;
+
+  const sku = typeof item.sku === "string" ? item.sku.trim() : "";
+  const variantType =
+    typeof item.variantType === "string" ? item.variantType : undefined;
+
+  return {
+    productId,
+    variantId,
+    name,
+    sku,
+    sellingPrice: normalizeNumber(item.sellingPrice),
+    currentQuantity: normalizeNumber(item.currentQuantity ?? item.quantity),
+    category: detectProductCategory({
+      productId,
+      variantId,
+      name,
+      sku,
+      sellingPrice: normalizeNumber(item.sellingPrice),
+      currentQuantity: normalizeNumber(item.currentQuantity ?? item.quantity),
+      ...(variantType ? { variantType } : {}),
+    } as StockPurchaseVariantOption & { variantType?: string }),
+  };
+};
+
+const resolveVariantOptions = (data: unknown): BillingVariantOption[] => {
+  const rawItems = Array.isArray(data)
+    ? data
+    : Array.isArray((data as { content?: unknown[] } | null)?.content)
+      ? ((data as { content: unknown[] }).content ?? [])
+      : Array.isArray((data as { items?: unknown[] } | null)?.items)
+        ? ((data as { items: unknown[] }).items ?? [])
+        : [];
+
+  return rawItems
+    .map((item) =>
+      item && typeof item === "object"
+        ? normalizeVariantOption(item as Record<string, unknown>)
+        : null,
+    )
+    .filter((item): item is BillingVariantOption => item !== null)
+    .sort((left, right) => left.name.localeCompare(right.name));
+};
 
 function StockUpdateAddPage() {
   const { toast } = useToast();
   const authBranchId = useAuthStore((state) => state.branchId);
   const [selectedSupplier, setSelectedSupplier] =
     useState<SupplierOption | null>(null);
-  const [branchIdInput, setBranchIdInput] = useState(
-    authBranchId != null ? String(authBranchId) : "",
+  const [selectedBranchId, setSelectedBranchId] = useState<number | null>(
+    authBranchId,
   );
   const [purchaseDate, setPurchaseDate] = useState(getTodayDate);
   const [billNumber, setBillNumber] = useState("");
@@ -77,40 +159,38 @@ function StockUpdateAddPage() {
   const [selectedPaymentMethod, setSelectedPaymentMethod] =
     useState<StockPurchasePaymentMode | null>(null);
   const [paymentAmountInput, setPaymentAmountInput] = useState("");
+  const [selectedVariant, setSelectedVariant] =
+    useState<BillingVariantOption | null>(null);
+  const [addItemDialogOpen, setAddItemDialogOpen] = useState(false);
+  const [addQuantityInput, setAddQuantityInput] = useState("1");
+  const [addPriceInput, setAddPriceInput] = useState("");
   const deferredItemSearch = useDeferredValue(itemSearch.trim().toLowerCase());
 
   const CURRENCY_CODE = "LKR";
 
   const supplierProductsQuery = useQuery({
-    queryKey: ["supplier-products", selectedSupplier?.id ?? null],
-    queryFn: () => getStockPurchaseVariantsBySupplier(selectedSupplier!.id),
+    queryKey: [
+      "billing-products",
+      selectedSupplier?.id ?? null,
+      activeCategory,
+      deferredItemSearch,
+    ],
+    queryFn: () =>
+      getBillingProducts({
+        supplierId: selectedSupplier!.id,
+        search: deferredItemSearch || undefined,
+        type: activeCategory === "ALL" ? undefined : activeCategory,
+        page: 0,
+        size: 100,
+      }),
     enabled: Boolean(selectedSupplier?.id),
     placeholderData: (previousData) => previousData,
   });
 
-  const categorizedProducts = useMemo(
-    () =>
-      (supplierProductsQuery.data ?? []).map((variant) => ({
-        ...variant,
-        category: detectProductCategory(variant),
-      })),
+  const supplierProducts = useMemo(
+    () => resolveVariantOptions(supplierProductsQuery.data),
     [supplierProductsQuery.data],
   );
-
-  const filteredProducts = useMemo(() => {
-    const byCategory =
-      activeCategory === "ALL"
-        ? categorizedProducts
-        : categorizedProducts.filter(
-            (item) => item.category === activeCategory,
-          );
-    if (!deferredItemSearch) return byCategory;
-    return byCategory.filter((variant) =>
-      `${variant.name} ${variant.sku} ${variant.variantId}`
-        .toLowerCase()
-        .includes(deferredItemSearch),
-    );
-  }, [activeCategory, categorizedProducts, deferredItemSearch]);
 
   const totalAmount = useMemo(
     () =>
@@ -139,7 +219,7 @@ function StockUpdateAddPage() {
 
   const resetForm = () => {
     setSelectedSupplier(null);
-    setBranchIdInput(authBranchId != null ? String(authBranchId) : "");
+    setSelectedBranchId(authBranchId);
     setPurchaseDate(getTodayDate());
     setBillNumber("");
     setNotes("");
@@ -150,6 +230,10 @@ function StockUpdateAddPage() {
     setPaymentDialogOpen(false);
     setSelectedPaymentMethod(null);
     setPaymentAmountInput("");
+    setSelectedVariant(null);
+    setAddItemDialogOpen(false);
+    setAddQuantityInput("1");
+    setAddPriceInput("");
   };
 
   const createMutation = useMutation({
@@ -175,32 +259,102 @@ function StockUpdateAddPage() {
     },
   });
 
-  const handleAddVariant = (variant: StockPurchaseVariantOption) => {
-    if (items.some((item) => item.variantId === variant.variantId)) {
+  const handleAddVariant = (variant: BillingVariantOption) => {
+    setSelectedVariant(variant);
+    setAddQuantityInput("1");
+    setAddPriceInput(String(roundMoney(variant.sellingPrice).toFixed(2)));
+    setAddItemDialogOpen(true);
+    setFormError("");
+  };
+
+  const handleConfirmAddVariant = () => {
+    if (!selectedVariant) return;
+
+    const quantity = parseOptionalNumber(addQuantityInput);
+    const purchasePrice = parseOptionalNumber(addPriceInput);
+
+    if (quantity == null || Number.isNaN(quantity) || quantity < 0.01) {
+      const message = "Quantity must be at least 0.01.";
+      setFormError(message);
       toast({
         variant: "destructive",
-        title: "Duplicate item",
-        description: "This product is already added to the receipt.",
+        title: "Validation failed",
+        description: message,
       });
       return;
     }
 
-    setItems((current) => [
-      ...current,
-      {
-        variantId: variant.variantId,
-        productId: variant.productId,
-        name: variant.name,
-        sku: variant.sku,
-        quantity: "1",
-        purchasePrice: String(roundMoney(variant.sellingPrice).toFixed(2)),
-        notes: "",
-        currentQuantity: variant.currentQuantity,
-        sellingPrice: variant.sellingPrice,
-        category: detectProductCategory(variant),
-      },
-    ]);
+    if (
+      purchasePrice == null ||
+      Number.isNaN(purchasePrice) ||
+      purchasePrice < 0
+    ) {
+      const message = "Price must be 0.00 or more.";
+      setFormError(message);
+      toast({
+        variant: "destructive",
+        title: "Validation failed",
+        description: message,
+      });
+      return;
+    }
+
+    setItems((current) => {
+      const existingItem = current.find(
+        (item) => item.variantId === selectedVariant.variantId,
+      );
+
+      if (existingItem) {
+        return current.map((item) => {
+          if (item.variantId !== selectedVariant.variantId) return item;
+          const nextQuantity = normalizeNumber(item.quantity) + quantity;
+          return {
+            ...item,
+            quantity: formatQuantityValue(nextQuantity),
+            purchasePrice: String(roundMoney(purchasePrice).toFixed(2)),
+          };
+        });
+      }
+
+      return [
+        ...current,
+        {
+          variantId: selectedVariant.variantId,
+          productId: selectedVariant.productId,
+          name: selectedVariant.name,
+          sku: selectedVariant.sku,
+          quantity: formatQuantityValue(quantity),
+          purchasePrice: String(roundMoney(purchasePrice).toFixed(2)),
+          notes: "",
+          currentQuantity: selectedVariant.currentQuantity,
+          sellingPrice: selectedVariant.sellingPrice,
+          category: detectProductCategory(selectedVariant),
+        },
+      ];
+    });
     setFormError("");
+    setAddItemDialogOpen(false);
+    setSelectedVariant(null);
+    setAddQuantityInput("1");
+    setAddPriceInput("");
+  };
+
+  const handleRemoveItem = (variantId: number) => {
+    setItems((current) =>
+      current.filter((entry) => entry.variantId !== variantId),
+    );
+  };
+
+  const handleUpdateItem = (
+    variantId: number,
+    field: "quantity" | "purchasePrice",
+    value: string,
+  ) => {
+    setItems((current) =>
+      current.map((entry) =>
+        entry.variantId === variantId ? { ...entry, [field]: value } : entry,
+      ),
+    );
   };
 
   const handleSubmit = (
@@ -212,13 +366,6 @@ function StockUpdateAddPage() {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(purchaseDate))
       errors.push("Purchase date must be in YYYY-MM-DD format.");
 
-    const branchId = parseOptionalNumber(branchIdInput);
-    if (
-      branchIdInput.trim() &&
-      (!Number.isInteger(branchId) || Number(branchId) <= 0)
-    ) {
-      errors.push("Branch ID must be a positive whole number.");
-    }
     if (!items.length) errors.push("Add at least one item.");
     if (paymentMode !== "CREDIT" && paidAmount <= 0)
       errors.push("Paid amount must be greater than 0.00.");
@@ -265,337 +412,245 @@ function StockUpdateAddPage() {
     if (normalizeText(billNumber))
       payload.billNumber = normalizeText(billNumber);
     if (normalizeText(notes)) payload.notes = normalizeText(notes);
-    if (branchIdInput.trim()) payload.branchId = Number(branchId);
+    if (selectedBranchId != null) payload.branchId = selectedBranchId;
 
     createMutation.mutate(payload);
   };
 
   return (
     <>
-      <Card className="flex min-h-[calc(100svh-11rem)] flex-col overflow-hidden border-border/70 bg-card/95">
-        <CardHeader className="border-b pb-4">
-          <div className="space-y-1">
-            <CardTitle className="flex items-center gap-2">
-              <PackagePlus className="h-5 w-5 text-primary" />
-              Add Stocks
-            </CardTitle>
-            <CardDescription>
-              POS-style stock entry using the existing supplier product and
-              stock purchase backend integration.
-            </CardDescription>
-          </div>
-        </CardHeader>
-        <CardContent className="min-h-0 flex-1 p-4">
-          <div className="grid min-h-full gap-4 xl:grid-cols-[minmax(0,1.5fr)_440px]">
-            <section className="flex min-h-0 flex-col rounded-[28px] border border-border/70 bg-card/70 shadow-sm">
-              <div className="border-b border-border/70 px-4 py-4">
-                <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_140px_140px_110px]">
-                  <div>
-                    <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                      Supplier
-                    </label>
-                    <SupplierAsyncSelect
-                      value={selectedSupplier}
-                      onChange={setSelectedSupplier}
-                      placeholder="Pick supplier"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                      Date
-                    </label>
-                    <div className="relative">
+      <div className="grid min-h-[calc(100svh-9rem)] gap-4 xl:grid-cols-[minmax(0,1fr)_480px] xl:items-stretch">
+        <div className="min-h-0">
+          <Card className="flex h-full min-h-[calc(100svh-11rem)] flex-col overflow-hidden border-border/70 bg-card/95 xl:max-h-[calc(100svh-9rem)]">
+            <CardHeader className="border-b pb-4">
+              <div className="space-y-1">
+                <CardTitle className="flex items-center gap-2">
+                  <PackagePlus className="h-5 w-5 text-primary" />
+                  Add Stocks
+                </CardTitle>
+                <CardDescription>
+                  POS-style stock entry using the existing supplier product and
+                  stock purchase backend integration.
+                </CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent className="min-h-0 flex-1 overflow-hidden p-4">
+              <div className="flex h-full min-h-0">
+                <section className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-[28px] border border-border/70 bg-card/70 shadow-sm">
+                  <div className="shrink-0 border-b border-border/70 px-4 py-4">
+                    <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_220px_minmax(0,1fr)]">
+                      <div>
+                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                          Supplier
+                        </label>
+                        <SupplierAsyncSelect
+                          value={selectedSupplier}
+                          onChange={setSelectedSupplier}
+                          placeholder="Pick supplier"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                          Date
+                        </label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className={cn(
+                                "w-full justify-between font-normal",
+                                !purchaseDate && "text-muted-foreground",
+                              )}
+                            >
+                              <span>
+                                {purchaseDate
+                                  ? format(
+                                      parseDateValue(purchaseDate) ?? new Date(),
+                                      "PPP",
+                                    )
+                                  : "Pick a date"}
+                              </span>
+                              <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent align="start" className="w-auto p-0">
+                            <Calendar
+                              mode="single"
+                              selected={parseDateValue(purchaseDate)}
+                              onSelect={(date) => {
+                                if (!date) return;
+                                setPurchaseDate(format(date, "yyyy-MM-dd"));
+                              }}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                      <div className="w-full">
+                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                          Branch
+                        </label>
+                        <BranchSelect
+                          value={selectedBranchId}
+                          onChange={(branch) =>
+                            setSelectedBranchId(branch?.id ?? null)
+                          }
+                          placeholder="Optional"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px]">
+                      <div className="relative">
+                        <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          value={itemSearch}
+                          onChange={(event) =>
+                            setItemSearch(event.target.value)
+                          }
+                          className="pl-9"
+                          placeholder={
+                            selectedSupplier
+                              ? "Filter by name, SKU or variant id"
+                              : "Select a supplier to load products"
+                          }
+                          disabled={!selectedSupplier}
+                        />
+                      </div>
                       <Input
-                        type="date"
-                        value={purchaseDate}
-                        onChange={(event) =>
-                          setPurchaseDate(event.target.value)
-                        }
+                        value={billNumber}
+                        onChange={(event) => setBillNumber(event.target.value)}
+                        placeholder="Bill No"
                       />
-                      <CalendarDays className="pointer-events-none absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
                     </div>
                   </div>
-                  <div>
-                    <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                      Branch ID
-                    </label>
-                    <Input
-                      type="number"
-                      min="1"
-                      step="1"
-                      value={branchIdInput}
-                      onChange={(event) => setBranchIdInput(event.target.value)}
-                      placeholder={
-                        authBranchId != null ? String(authBranchId) : "Optional"
-                      }
-                    />
-                  </div>
-                </div>
 
-                <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px]">
-                  <div className="relative">
-                    <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      value={itemSearch}
-                      onChange={(event) => setItemSearch(event.target.value)}
-                      className="pl-9"
-                      placeholder={
-                        selectedSupplier
-                          ? "Filter by name, SKU or variant id"
-                          : "Select a supplier to load products"
-                      }
-                      disabled={!selectedSupplier}
-                    />
-                  </div>
-                  <Input
-                    value={billNumber}
-                    onChange={(event) => setBillNumber(event.target.value)}
-                    placeholder="Bill No"
-                  />
-                </div>
-              </div>
-
-              <div className="border-b border-border/70 px-4 py-3">
-                <div className="flex flex-wrap gap-2">
-                  <Tabs defaultValue="overview" className="w-[400px]">
-                    <TabsList>
-                      {productCategoryOptions.map((category) => (
-                        <TabsTrigger value={category.value}>
-                          {category.label}
-                        </TabsTrigger>
-                      ))}
-
-                    
-                    </TabsList>
-                    <TabsContent value="overview">asdasd</TabsContent>
-                  </Tabs>
-                  
-               
-                </div>
-              </div>
-
-              <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
-                {!selectedSupplier ? (
-                  <div className="flex h-full flex-col items-center justify-center rounded-[24px] border border-dashed border-border/70 bg-muted/20 px-6 text-center">
-                    <PackagePlus className="mb-3 h-8 w-8 text-primary/70" />
-                    <p className="text-base font-semibold text-foreground">
-                      Select a supplier to load products
-                    </p>
-                  </div>
-                ) : supplierProductsQuery.isFetching ? (
-                  <div className="flex h-full items-center justify-center gap-2 rounded-[24px] border border-dashed border-border/70 bg-muted/20 text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Loading supplier products...
-                  </div>
-                ) : supplierProductsQuery.isError ? (
-                  <div className="flex h-full items-center justify-center rounded-[24px] border border-dashed border-destructive/30 bg-destructive/5 px-6 text-center text-sm text-destructive">
-                    {getApiErrorMessage(supplierProductsQuery.error)}
-                  </div>
-                ) : (
-                  <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
-                    {filteredProducts.map((variant) => (
-                      <button
-                        key={variant.variantId}
-                        type="button"
-                        onClick={() => handleAddVariant(variant)}
-                        className="rounded-[24px] border border-border/70 bg-gradient-to-b from-background via-background to-muted/40 p-4 text-left shadow-sm transition-transform hover:-translate-y-0.5 hover:border-primary/30"
+                  <div className="shrink-0 border-b border-border/70 px-4 py-3">
+                    <div className="flex flex-wrap gap-2">
+                      <Tabs
+                        value={activeCategory}
+                        onValueChange={(value) =>
+                          setActiveCategory(value as ProductCategory)
+                        }
+                        className="w-full"
                       >
-                        <div className="flex items-start justify-between gap-3">
-                          <Badge
-                            variant="outline"
-                            className="rounded-full bg-primary/5"
-                          >
-                            {productCategoryOptions.find(
-                              (item) => item.value === variant.category,
-                            )?.label ?? "Item"}
-                          </Badge>
-                          <span className="text-xs font-medium text-muted-foreground">
-                            Tap to add
-                          </span>
-                        </div>
-                        <div className="mt-4 space-y-2">
-                          <p className="line-clamp-2 text-base font-semibold text-foreground">
-                            {variant.name}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {variant.sku || "No SKU"}
-                          </p>
-                        </div>
-                        <div className="mt-5 grid grid-cols-2 gap-3">
-                          <div className="rounded-2xl bg-muted/50 px-3 py-2">
-                            <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                              Price
-                            </p>
-                            <p className="mt-1 font-semibold text-foreground">
-                              {formatMoney(variant.sellingPrice)}
-                            </p>
-                          </div>
-                          <div className="rounded-2xl bg-muted/50 px-3 py-2">
-                            <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                              Stock
-                            </p>
-                            <p className="mt-1 font-semibold text-foreground">
-                              {formatMoney(variant.currentQuantity)}
-                            </p>
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </section>
-
-            <aside className="flex min-h-0 flex-col rounded-[28px] border border-border/70 bg-zinc-950 text-zinc-50 shadow-sm">
-              <div className="border-b border-white/10 px-4 py-4">
-                <div className="flex items-center gap-2">
-                  <Receipt className="h-5 w-5 text-amber-300" />
-                  <div>
-                    <h2 className="text-lg font-semibold">Current Receipt</h2>
-                    <p className="text-sm text-zinc-400">
-                      {items.length} lines ready
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
-                {items.map((item) => {
-                  const quantity = Number(item.quantity);
-                  const purchasePrice = Number(item.purchasePrice);
-                  const lineTotal =
-                    Number.isFinite(quantity) && Number.isFinite(purchasePrice)
-                      ? roundMoney(quantity * purchasePrice)
-                      : 0;
-                  return (
-                    <div
-                      key={item.variantId}
-                      className="mb-3 rounded-[24px] border border-white/10 bg-white/[0.03] p-4"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="truncate font-semibold text-white">
-                            {item.name}
-                          </p>
-                          <p className="mt-1 text-xs text-zinc-400">
-                            {item.sku || "No SKU"}
-                          </p>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() =>
-                            setItems((current) =>
-                              current.filter(
-                                (entry) => entry.variantId !== item.variantId,
-                              ),
-                            )
-                          }
-                          className="text-zinc-400 hover:bg-white/10 hover:text-white"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <div className="mt-4 grid grid-cols-[92px_120px] gap-3">
-                        <Input
-                          type="number"
-                          min="0.01"
-                          step="0.01"
-                          value={item.quantity}
-                          onChange={(event) =>
-                            setItems((current) =>
-                              current.map((entry) =>
-                                entry.variantId === item.variantId
-                                  ? { ...entry, quantity: event.target.value }
-                                  : entry,
-                              ),
-                            )
-                          }
-                          className="border-white/10 bg-white/5 text-white"
-                        />
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={item.purchasePrice}
-                          onChange={(event) =>
-                            setItems((current) =>
-                              current.map((entry) =>
-                                entry.variantId === item.variantId
-                                  ? {
-                                      ...entry,
-                                      purchasePrice: event.target.value,
-                                    }
-                                  : entry,
-                              ),
-                            )
-                          }
-                          className="border-white/10 bg-white/5 text-white"
-                        />
-                      </div>
-                      <div className="mt-3 flex items-center justify-between text-sm">
-                        <span className="text-zinc-400">Line total</span>
-                        <span className="font-semibold text-white">
-                          {formatMoney(lineTotal)}
-                        </span>
-                      </div>
+                        <TabsList className="h-auto flex-wrap justify-start gap-2 rounded-2xl bg-transparent p-0">
+                          {productCategoryOptions.map((category) => (
+                            <TabsTrigger
+                              key={category.value}
+                              value={category.value}
+                              disabled={!selectedSupplier}
+                              className="rounded-full border border-border/70 bg-background px-4 py-2 data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                            >
+                              {category.label}
+                            </TabsTrigger>
+                          ))}
+                        </TabsList>
+                      </Tabs>
                     </div>
-                  );
-                })}
+                  </div>
+
+                  <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+                    {!selectedSupplier ? (
+                      <div className="flex h-full flex-col items-center justify-center rounded-[24px] border border-dashed border-border/70 bg-muted/20 px-6 text-center">
+                        <PackagePlus className="mb-3 h-8 w-8 text-primary/70" />
+                        <p className="text-base font-semibold text-foreground">
+                          Select a supplier to load products
+                        </p>
+                      </div>
+                    ) : supplierProductsQuery.isFetching ? (
+                      <div className="flex h-full items-center justify-center gap-2 rounded-[24px] border border-dashed border-border/70 bg-muted/20 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Loading products...
+                      </div>
+                    ) : supplierProductsQuery.isError ? (
+                      <div className="flex h-full items-center justify-center rounded-[24px] border border-dashed border-destructive/30 bg-destructive/5 px-6 text-center text-sm text-destructive">
+                        {getApiErrorMessage(supplierProductsQuery.error)}
+                      </div>
+                    ) : supplierProducts.length === 0 ? (
+                      <div className="flex h-full flex-col items-center justify-center rounded-[24px] border border-dashed border-border/70 bg-muted/20 px-6 text-center">
+                        <PackagePlus className="mb-3 h-8 w-8 text-primary/70" />
+                        <p className="text-base font-semibold text-foreground">
+                          No products found
+                        </p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          Change the category or search term to try again.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+                        {supplierProducts.map((variant) => (
+                          <button
+                            key={variant.variantId}
+                            type="button"
+                            onClick={() => handleAddVariant(variant)}
+                            className="rounded-[24px] border border-border/70 bg-gradient-to-b from-background via-background to-muted/40 p-4 text-left shadow-sm transition-transform hover:-translate-y-0.5 hover:border-primary/30"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <Badge
+                                variant="outline"
+                                className="rounded-full bg-primary/5"
+                              >
+                                {productCategoryOptions.find(
+                                  (item) => item.value === variant.category,
+                                )?.label ?? "Item"}
+                              </Badge>
+                              <span className="text-xs font-medium text-muted-foreground">
+                                Tap to enter qty
+                              </span>
+                            </div>
+                            <div className="mt-4 space-y-2">
+                              <p className="line-clamp-2 text-base font-semibold text-foreground">
+                                {variant.name}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {variant.sku || "No SKU"}
+                              </p>
+                            </div>
+                            <div className="mt-5 grid grid-cols-2 gap-3">
+                              <div className="rounded-2xl bg-muted/50 px-3 py-2">
+                                <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                                  Price
+                                </p>
+                                <p className="mt-1 font-semibold text-foreground">
+                                  {formatMoney(variant.sellingPrice)}
+                                </p>
+                              </div>
+                              <div className="rounded-2xl bg-muted/50 px-3 py-2">
+                                <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                                  Stock
+                                </p>
+                                <p className="mt-1 font-semibold text-foreground">
+                                  {formatMoney(variant.currentQuantity)}
+                                </p>
+                              </div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </section>
               </div>
-              <div className="border-t border-white/10 px-4 py-4">
-                <div className="rounded-[24px] bg-amber-300 px-4 py-4 text-zinc-950">
-                  <div className="flex items-center justify-between text-sm">
-                    <span>Items</span>
-                    <span className="font-semibold">{items.length}</span>
-                  </div>
-                  <div className="mt-2 flex items-center justify-between text-sm">
-                    <span>Total Qty</span>
-                    <span className="font-semibold">
-                      {formatMoney(totalUnits)}
-                    </span>
-                  </div>
-                  <div className="mt-3 flex items-center justify-between border-t border-zinc-950/15 pt-3">
-                    <span className="text-sm font-semibold">Grand Total</span>
-                    <span className="text-2xl font-semibold">
-                      {formatMoney(totalAmount)}
-                    </span>
-                  </div>
-                </div>
-                {formError ? (
-                  <p className="mt-3 text-sm text-rose-300">{formError}</p>
-                ) : null}
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setItems([])}
-                    disabled={createMutation.isPending}
-                    className="border-white/10 bg-transparent text-white hover:bg-white/10 hover:text-white"
-                  >
-                    Clear All
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={() => setPaymentDialogOpen(true)}
-                    disabled={
-                      createMutation.isPending ||
-                      items.length === 0 ||
-                      !selectedSupplier
-                    }
-                    className="bg-white text-zinc-950 hover:bg-zinc-100"
-                  >
-                    {createMutation.isPending ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : null}
-                    {createMutation.isPending ? "Submitting..." : "Pay"}
-                  </Button>
-                </div>
-              </div>
-            </aside>
-          </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </div>
+        <div className="min-h-0">
+          <StockReceiptPanel
+            items={items}
+            totalAmount={totalAmount}
+            totalUnits={totalUnits}
+            formError={formError}
+            isSubmitting={createMutation.isPending}
+            canSubmit={items.length > 0 && Boolean(selectedSupplier)}
+            onClearAll={() => setItems([])}
+            onPay={() => setPaymentDialogOpen(true)}
+            onRemoveItem={handleRemoveItem}
+            onUpdateItem={handleUpdateItem}
+          />
+        </div>
+      </div>
 
       <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
         <DialogContent>
@@ -680,6 +735,82 @@ function StockUpdateAddPage() {
               }
             >
               Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={addItemDialogOpen}
+        onOpenChange={(open) => {
+          setAddItemDialogOpen(open);
+          if (!open) {
+            setSelectedVariant(null);
+            setAddQuantityInput("1");
+            setAddPriceInput("");
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Item</DialogTitle>
+            <DialogDescription>
+              Enter the quantity and purchase price for this item before adding
+              it to the receipt.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedVariant ? (
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-border bg-muted/20 p-4">
+                <p className="font-medium text-foreground">
+                  {selectedVariant.name}
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {selectedVariant.sku || "No SKU"}
+                </p>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                    Quantity
+                  </label>
+                  <Input
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    value={addQuantityInput}
+                    onChange={(event) => setAddQuantityInput(event.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                    Purchase Price
+                  </label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={addPriceInput}
+                    onChange={(event) => setAddPriceInput(event.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+          ) : null}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setAddItemDialogOpen(false);
+                setSelectedVariant(null);
+                setAddQuantityInput("1");
+                setAddPriceInput("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmAddVariant} disabled={!selectedVariant}>
+              Add to Receipt
             </Button>
           </DialogFooter>
         </DialogContent>

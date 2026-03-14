@@ -106,9 +106,10 @@ export async function deleteProduct(productId) {
   return data;
 }
 
-export async function getBillingProducts({ supplierId, type, page = 0, size = 10 }) {
-  const response = await api.get("/productList", {
+export async function getBillingProducts({ search,supplierId, type, page = 0, size = 10 }) {
+  const response = await api.get("/products/productList", {
     params: {
+      search,
       supplierId,
       type,
       page,

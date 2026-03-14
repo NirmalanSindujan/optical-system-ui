@@ -73,8 +73,17 @@ export const parseOptionalNumber = (value: string) => {
 };
 
 export const detectProductCategory = (
-  variant: StockPurchaseVariantOption,
+  variant: StockPurchaseVariantOption & { variantType?: string },
 ): Exclude<ProductCategory, "ALL"> => {
+  if (variant.variantType === PRODUCT_VARIANT_TYPES.LENS)
+    return PRODUCT_VARIANT_TYPES.LENS;
+  if (variant.variantType === PRODUCT_VARIANT_TYPES.FRAME)
+    return PRODUCT_VARIANT_TYPES.FRAME;
+  if (variant.variantType === PRODUCT_VARIANT_TYPES.SUNGLASSES)
+    return PRODUCT_VARIANT_TYPES.SUNGLASSES;
+  if (variant.variantType === PRODUCT_VARIANT_TYPES.ACCESSORY)
+    return PRODUCT_VARIANT_TYPES.ACCESSORY;
+
   const signature = `${variant.sku} ${variant.name}`.trim().toUpperCase();
   if (signature.startsWith("LEN") || signature.includes("LENS"))
     return PRODUCT_VARIANT_TYPES.LENS;

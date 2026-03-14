@@ -4,7 +4,16 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Building2, Mail, MapPin, Phone, StickyNote, UserRound, Users, X } from "lucide-react";
+import {
+  Building2,
+  Mail,
+  MapPin,
+  Phone,
+  StickyNote,
+  UserRound,
+  Users,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetClose, SheetContent } from "@/components/ui/sheet";
@@ -132,10 +141,15 @@ function SupplierEditorDrawer({ open, supplierId, onClose, onSaved }) {
     <Sheet open={open} onOpenChange={(nextOpen) => { if (!nextOpen) onClose(); }}>
       <SheetContent side="right" hideClose className="max-w-xl overflow-y-auto p-6 sm:max-w-xl">
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="flex items-center gap-2 text-lg font-semibold">
-            <Users className="h-5 w-5 text-primary" />
-            {isEdit ? "Edit Supplier" : "Create Supplier"}
-          </h3>
+          <div className="space-y-1">
+            <h3 className="flex items-center gap-2 text-lg font-semibold">
+              <Users className="h-5 w-5 text-primary" />
+              {isEdit ? "Edit Supplier" : "Create Supplier"}
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Maintain supplier details with the same structured form style used in product management.
+            </p>
+          </div>
           <SheetClose asChild>
             <Button variant="ghost" size="icon" aria-label="Close drawer">
               <X className="h-4 w-4" />
@@ -143,62 +157,81 @@ function SupplierEditorDrawer({ open, supplierId, onClose, onSaved }) {
           </SheetClose>
         </div>
 
-        <form className="grid gap-4 md:grid-cols-2" onSubmit={handleSubmit(onSubmit)}>
-          <div>
-            <label className="mb-1 block text-sm font-medium">Supplier Name</label>
-            <div className="relative">
-              <Building2 className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input {...register("name")} placeholder="Supplier name" className="pl-9" />
-            </div>
-            {errors.name ? <p className="mt-1 text-xs text-destructive">{errors.name.message}</p> : null}
-          </div>
+        <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
+          <section className="rounded-lg border p-4">
+            <h4 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Supplier Details
+            </h4>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm font-medium">Supplier Name</label>
+                <div className="relative">
+                  <Building2 className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input {...register("name")} placeholder="Supplier name" className="pl-9" />
+                </div>
+                {errors.name ? <p className="mt-1 text-xs text-destructive">{errors.name.message}</p> : null}
+              </div>
 
-          <div>
-            <label className="mb-1 block text-sm font-medium">Contact Person</label>
-            <div className="relative">
-              <UserRound className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input {...register("contactPerson")} placeholder="Contact person" className="pl-9" />
-            </div>
-            {errors.contactPerson ? <p className="mt-1 text-xs text-destructive">{errors.contactPerson.message}</p> : null}
-          </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">Contact Person</label>
+                <div className="relative">
+                  <UserRound className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input {...register("contactPerson")} placeholder="Contact person" className="pl-9" />
+                </div>
+                {errors.contactPerson ? (
+                  <p className="mt-1 text-xs text-destructive">{errors.contactPerson.message}</p>
+                ) : null}
+              </div>
 
-          <div>
-            <label className="mb-1 block text-sm font-medium">Phone</label>
-            <div className="relative">
-              <Phone className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input {...register("phone")} placeholder="9876543210" className="pl-9" />
-            </div>
-            {errors.phone ? <p className="mt-1 text-xs text-destructive">{errors.phone.message}</p> : null}
-          </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">Phone</label>
+                <div className="relative">
+                  <Phone className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input {...register("phone")} placeholder="9876543210" className="pl-9" />
+                </div>
+                {errors.phone ? <p className="mt-1 text-xs text-destructive">{errors.phone.message}</p> : null}
+              </div>
 
-          <div>
-            <label className="mb-1 block text-sm font-medium">Email</label>
-            <div className="relative">
-              <Mail className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input {...register("email")} placeholder="supplier@example.com" className="pl-9" />
-            </div>
-            {errors.email ? <p className="mt-1 text-xs text-destructive">{errors.email.message}</p> : null}
-          </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">Email</label>
+                <div className="relative">
+                  <Mail className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input {...register("email")} placeholder="supplier@example.com" className="pl-9" />
+                </div>
+                {errors.email ? <p className="mt-1 text-xs text-destructive">{errors.email.message}</p> : null}
+              </div>
 
-          <div className="md:col-span-2">
-            <label className="mb-1 block text-sm font-medium">Address</label>
-            <div className="relative">
-              <MapPin className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input {...register("address")} placeholder="Address" className="pl-9" />
+              <div className="md:col-span-2">
+                <label className="mb-1 block text-sm font-medium">Address</label>
+                <div className="relative">
+                  <MapPin className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input {...register("address")} placeholder="Address" className="pl-9" />
+                </div>
+                {errors.address ? <p className="mt-1 text-xs text-destructive">{errors.address.message}</p> : null}
+              </div>
             </div>
-            {errors.address ? <p className="mt-1 text-xs text-destructive">{errors.address.message}</p> : null}
-          </div>
+          </section>
 
-          <div className="md:col-span-2">
-            <label className="mb-1 block text-sm font-medium">Notes</label>
-            <div className="relative">
-              <StickyNote className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input {...register("notes")} placeholder="Notes" className="pl-9" />
+          <section className="rounded-lg border p-4">
+            <h4 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Additional Notes
+            </h4>
+            <div>
+              <label className="mb-1 block text-sm font-medium">Notes</label>
+              <div className="relative">
+                <StickyNote className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <textarea
+                  {...register("notes")}
+                  rows={4}
+                  placeholder="Notes"
+                  className="min-h-[110px] w-full rounded-md border border-input bg-background py-2 pl-9 pr-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+              </div>
+              {errors.notes ? <p className="mt-1 text-xs text-destructive">{errors.notes.message}</p> : null}
             </div>
-            {errors.notes ? <p className="mt-1 text-xs text-destructive">{errors.notes.message}</p> : null}
-          </div>
+          </section>
 
-          <div className="md:col-span-2 flex justify-end gap-2">
+          <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>

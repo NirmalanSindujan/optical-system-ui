@@ -1,17 +1,11 @@
 // @ts-nocheck
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Building2, Mail, MoreHorizontal, Phone, Plus, Search, UserRound, Users } from "lucide-react";
+import { Building2, Mail, Phone, Plus, Search, UserRound, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -21,7 +15,9 @@ import {
   DialogTitle
 } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
+import LensRowActionsPopover from "@/modules/products/lens/components/LensRowActionsPopover";
 import { deleteSupplier, getSuppliers } from "@/modules/suppliers/supplier.service";
+import SupplierDetailsDrawer from "@/modules/suppliers/SupplierDetailsDrawer";
 import SupplierEditorDrawer from "@/modules/suppliers/SupplierEditorDrawer";
 
 function SupplierPagination({ page, totalPages, total, disabled, onPrevious, onNext }) {
@@ -53,6 +49,8 @@ function SupplierList() {
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [viewingId, setViewingId] = useState(null);
 
   const {
     data: supplierResponse,
@@ -244,26 +242,20 @@ function SupplierList() {
                       </TableCell>
                       <TableCell>{item.address || "-"}</TableCell>
                       <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button className="h-8 w-8" variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setEditingId(item.id);
-                                setDrawerOpen(true);
-                              }}
-                            >
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive" onClick={() => setConfirmDeleteId(item.id)}>
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <LensRowActionsPopover
+                          canView={Boolean(item.id)}
+                          canEdit={Boolean(item.id)}
+                          canDelete={Boolean(item.id)}
+                          onView={() => {
+                            setViewingId(item.id);
+                            setDetailsOpen(true);
+                          }}
+                          onEdit={() => {
+                            setEditingId(item.id);
+                            setDrawerOpen(true);
+                          }}
+                          onDelete={() => setConfirmDeleteId(item.id)}
+                        />
                       </TableCell>
                     </TableRow>
                   ))
@@ -303,8 +295,20 @@ function SupplierList() {
       <SupplierEditorDrawer
         open={drawerOpen}
         supplierId={editingId}
-        onClose={() => setDrawerOpen(false)}
+        onClose={() => {
+          setDrawerOpen(false);
+          setEditingId(null);
+        }}
         onSaved={() => queryClient.invalidateQueries({ queryKey: ["suppliers"] })}
+      />
+
+      <SupplierDetailsDrawer
+        open={detailsOpen}
+        supplierId={viewingId}
+        onClose={() => {
+          setDetailsOpen(false);
+          setViewingId(null);
+        }}
       />
     </Card>
   );
