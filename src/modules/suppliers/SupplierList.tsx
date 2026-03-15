@@ -1,36 +1,74 @@
 // @ts-nocheck
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Building2, Mail, Phone, Plus, Search, UserRound, Users } from "lucide-react";
+import {
+  Building2,
+  DollarSign,
+  Mail,
+  Phone,
+  Plus,
+  Search,
+  UserRound,
+  Users,
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
 import LensRowActionsPopover from "@/modules/products/lens/components/LensRowActionsPopover";
-import { deleteSupplier, getSuppliers } from "@/modules/suppliers/supplier.service";
+import {
+  deleteSupplier,
+  getSuppliers,
+} from "@/modules/suppliers/supplier.service";
 import SupplierDetailsDrawer from "@/modules/suppliers/SupplierDetailsDrawer";
 import SupplierEditorDrawer from "@/modules/suppliers/SupplierEditorDrawer";
+import { formatMoney } from "../stock-updates/stock-update-page.utils";
+import SupplierPaymentDrawer from "./SupplierPayments/SupplierPaymentDrawer";
 
-function SupplierPagination({ page, totalPages, total, disabled, onPrevious, onNext }) {
+function SupplierPagination({
+  page,
+  totalPages,
+  total,
+  disabled,
+  onPrevious,
+  onNext,
+}) {
   return (
     <div className="mt-auto flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
       <p className="text-sm text-muted-foreground">
         Page {page + 1} of {totalPages} ({total} total)
       </p>
       <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:flex">
-        <Button className="w-full sm:w-auto" variant="outline" disabled={page <= 0 || disabled} onClick={onPrevious}>
+        <Button
+          className="w-full sm:w-auto"
+          variant="outline"
+          disabled={page <= 0 || disabled}
+          onClick={onPrevious}
+        >
           Previous
         </Button>
-        <Button className="w-full sm:w-auto" variant="outline" disabled={page >= totalPages - 1 || disabled} onClick={onNext}>
+        <Button
+          className="w-full sm:w-auto"
+          variant="outline"
+          disabled={page >= totalPages - 1 || disabled}
+          onClick={onNext}
+        >
           Next
         </Button>
       </div>
@@ -51,28 +89,32 @@ function SupplierList() {
   const [editingId, setEditingId] = useState(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [viewingId, setViewingId] = useState(null);
+  const [isPaymentOpen, setIsPaymentOpen] = useState(false)
 
   const {
     data: supplierResponse,
     isLoading,
     isFetching,
     isError,
-    error
+    error,
   } = useQuery({
     queryKey: ["suppliers", { search, page, size: PAGE_SIZE }],
     queryFn: () =>
       getSuppliers({
         q: search || undefined,
         page,
-        size: PAGE_SIZE
+        size: PAGE_SIZE,
       }),
-    placeholderData: (previousData) => previousData
+    placeholderData: (previousData) => previousData,
   });
 
   const deleteMutation = useMutation({
     mutationFn: deleteSupplier,
     onSuccess: () => {
-      toast({ title: "Supplier deleted", description: "Supplier has been deleted." });
+      toast({
+        title: "Supplier deleted",
+        description: "Supplier has been deleted.",
+      });
       setConfirmDeleteId(null);
       queryClient.invalidateQueries({ queryKey: ["suppliers"] });
     },
@@ -80,9 +122,11 @@ function SupplierList() {
       toast({
         variant: "destructive",
         title: "Delete failed",
-        description: mutationError?.response?.data?.message ?? "Could not delete supplier."
+        description:
+          mutationError?.response?.data?.message ??
+          "Could not delete supplier.",
       });
-    }
+    },
   });
 
   const items = supplierResponse?.items ?? supplierResponse?.data ?? [];
@@ -94,7 +138,9 @@ function SupplierList() {
     toast({
       variant: "destructive",
       title: "Failed to load suppliers",
-      description: error?.response?.data?.message ?? "Unexpected error while fetching suppliers."
+      description:
+        error?.response?.data?.message ??
+        "Unexpected error while fetching suppliers.",
     });
   }, [error, isError, toast]);
 
@@ -121,7 +167,9 @@ function SupplierList() {
               <Building2 className="h-5 w-5 text-primary" />
               Suppliers
             </CardTitle>
-            <p className="text-sm text-muted-foreground">Manage suppliers and contact details.</p>
+            <p className="text-sm text-muted-foreground">
+              Manage suppliers and contact details.
+            </p>
           </div>
           <Button
             className="w-full sm:w-auto"
@@ -155,11 +203,11 @@ function SupplierList() {
         <div className="min-h-0 flex flex-1 flex-col overflow-x-auto rounded-lg border bg-card/60">
           <Table className="min-w-[960px] table-fixed">
             <colgroup>
-              <col className="w-[24%]" />
-              <col className="w-[20%]" />
+              <col className="w-[18%]" />
+              <col className="w-[15%]" />
               <col className="w-[16%]" />
-              <col className="w-[24%]" />
-              <col className="w-[12%]" />
+              <col className="w-[15%]" />
+              <col className="w-[15%]" />
               <col className="w-[64px]" />
             </colgroup>
             <TableHeader className="bg-muted/85 supports-[backdrop-filter]:bg-muted/65">
@@ -182,14 +230,21 @@ function SupplierList() {
                     Phone
                   </span>
                 </TableHead>
+
                 <TableHead className="whitespace-nowrap">
                   <span className="inline-flex items-center gap-1.5">
                     <Mail className="h-3.5 w-3.5 text-muted-foreground" />
                     Email
                   </span>
                 </TableHead>
+                <TableHead className="whitespace-nowrap">
+                  <span className="inline-flex items-center gap-1.5">
+                    <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
+                    Pending Payment
+                  </span>
+                </TableHead>
                 <TableHead>Address</TableHead>
-                <TableHead className="w-[50px]"></TableHead>
+                <TableHead className="w-[5%]">Actions</TableHead>
               </TableRow>
             </TableHeader>
           </Table>
@@ -197,12 +252,13 @@ function SupplierList() {
           <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden border-t">
             <Table className="min-w-[960px] table-fixed">
               <colgroup>
-                <col className="w-[24%]" />
                 <col className="w-[20%]" />
+                <col className="w-[15%]" />
                 <col className="w-[16%]" />
-                <col className="w-[24%]" />
+                <col className="w-[20%]" />
                 <col className="w-[12%]" />
-                <col className="w-[64px]" />
+                <col className="w-[20%]" />
+                <col className="w-[5%]" />
               </colgroup>
               <TableBody>
                 {isLoading || isFetching ? (
@@ -234,12 +290,23 @@ function SupplierList() {
                           {item.phone || "-"}
                         </span>
                       </TableCell>
+
                       <TableCell>
                         <span className="inline-flex items-center gap-2">
                           <Mail className="h-4 w-4 text-muted-foreground" />
                           {item.email || "-"}
                         </span>
                       </TableCell>
+                      <TableCell>
+                        <span className="inline-flex items-center justify-end gap-2">
+                          <DollarSign className="h-4 w-4 text-muted-foreground" />
+                          <Button variant="ghost" onClick={()=>{
+                             setViewingId(item.id);
+                             setIsPaymentOpen(true)
+                          }}>{formatMoney(item.pendingAmount) || "-"} </Button>
+                        </span>
+                      </TableCell>
+
                       <TableCell>{item.address || "-"}</TableCell>
                       <TableCell>
                         <LensRowActionsPopover
@@ -275,11 +342,16 @@ function SupplierList() {
         />
       </CardContent>
 
-      <Dialog open={Boolean(confirmDeleteId)} onOpenChange={(open) => !open && setConfirmDeleteId(null)}>
+      <Dialog
+        open={Boolean(confirmDeleteId)}
+        onOpenChange={(open) => !open && setConfirmDeleteId(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete Supplier</DialogTitle>
-            <DialogDescription>This action permanently deletes the selected supplier.</DialogDescription>
+            <DialogDescription>
+              This action permanently deletes the selected supplier.
+            </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setConfirmDeleteId(null)}>
@@ -299,7 +371,17 @@ function SupplierList() {
           setDrawerOpen(false);
           setEditingId(null);
         }}
-        onSaved={() => queryClient.invalidateQueries({ queryKey: ["suppliers"] })}
+        onSaved={() =>
+          queryClient.invalidateQueries({ queryKey: ["suppliers"] })
+        }
+      />
+      <SupplierPaymentDrawer
+        open={isPaymentOpen}
+        supplierId={viewingId}
+        onClose={() => {
+          setIsPaymentOpen(false);
+          setViewingId(null);
+        }}
       />
 
       <SupplierDetailsDrawer

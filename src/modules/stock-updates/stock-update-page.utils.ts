@@ -1,4 +1,4 @@
-import { PRODUCT_VARIANT_TYPES } from "@/modules/products/product.constants";
+import { LENS_SUB_TYPES, PRODUCT_VARIANT_TYPES } from "@/modules/products/product.constants";
 import type {
   StockPurchasePaymentMode,
   StockPurchaseVariantOption,
@@ -40,6 +40,13 @@ export const productCategoryOptions = [
   { value: PRODUCT_VARIANT_TYPES.SUNGLASSES, label: "Sunglasses" },
   { value: PRODUCT_VARIANT_TYPES.ACCESSORY, label: "Accessory" },
 ] as const;
+
+export const lensCategoryOptions = [
+  {value :LENS_SUB_TYPES.SINGLE_VISION , label : "Single Vision" },
+  {value :LENS_SUB_TYPES.BIFOCAL , label : "Bifocal" },
+  {value :LENS_SUB_TYPES.CONTACT_LENS , label : "Contact Lense" },
+  {value :LENS_SUB_TYPES.PROGRESSIVE , label : "Progressive" }
+]
 
 export type ProductCategory = (typeof productCategoryOptions)[number]["value"];
 

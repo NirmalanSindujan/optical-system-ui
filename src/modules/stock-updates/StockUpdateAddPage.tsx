@@ -58,14 +58,18 @@ import {
   type ProductCategory,
   type StockReceiptItem,
   normalizeText,
+  lensCategoryOptions,
 } from "@/modules/stock-updates/stock-update-page.utils";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuthStore } from "@/store/auth.store";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/cn";
+import { LENS_SUB_TYPES } from "../products/product.constants";
+import { LensSubType } from "../products/product.types";
 
 type BillingVariantOption = StockPurchaseVariantOption & {
   category: Exclude<ProductCategory, "ALL">;
+  lensSubType?: LensSubType;
 };
 
 const normalizeNumber = (value: unknown): number => {
@@ -87,7 +91,7 @@ const normalizeVariantOption = (
 ): BillingVariantOption | null => {
   const productId = Number(item.productId ?? item.id);
   const variantId = Number(item.variantId);
-
+  console.log(item);
   if (!Number.isInteger(productId) || productId <= 0) return null;
   if (!Number.isInteger(variantId) || variantId <= 0) return null;
 
@@ -109,6 +113,7 @@ const normalizeVariantOption = (
     sku,
     sellingPrice: normalizeNumber(item.sellingPrice),
     currentQuantity: normalizeNumber(item.currentQuantity ?? item.quantity),
+    lensSubType: item.lensSubType ? (item.lensSubType as LensSubType) : null,
     category: detectProductCategory({
       productId,
       variantId,
@@ -466,7 +471,8 @@ function StockUpdateAddPage() {
                               <span>
                                 {purchaseDate
                                   ? format(
-                                      parseDateValue(purchaseDate) ?? new Date(),
+                                      parseDateValue(purchaseDate) ??
+                                        new Date(),
                                       "PPP",
                                     )
                                   : "Pick a date"}
@@ -482,7 +488,6 @@ function StockUpdateAddPage() {
                                 if (!date) return;
                                 setPurchaseDate(format(date, "yyyy-MM-dd"));
                               }}
-                              initialFocus
                             />
                           </PopoverContent>
                         </Popover>
@@ -583,30 +588,36 @@ function StockUpdateAddPage() {
                         {supplierProducts.map((variant) => (
                           <button
                             key={variant.variantId}
-                            type="button"
                             onClick={() => handleAddVariant(variant)}
                             className="rounded-[24px] border border-border/70 bg-gradient-to-b from-background via-background to-muted/40 p-4 text-left shadow-sm transition-transform hover:-translate-y-0.5 hover:border-primary/30"
                           >
-                            <div className="flex items-start justify-between gap-3">
-                              <Badge
-                                variant="outline"
-                                className="rounded-full bg-primary/5"
-                              >
-                                {productCategoryOptions.find(
-                                  (item) => item.value === variant.category,
-                                )?.label ?? "Item"}
-                              </Badge>
-                              <span className="text-xs font-medium text-muted-foreground">
-                                Tap to enter qty
-                              </span>
-                            </div>
-                            <div className="mt-4 space-y-2">
+                            <div className="flex justify-between mt-1 space-y-2 items-center">
                               <p className="line-clamp-2 text-base font-semibold text-foreground">
                                 {variant.name}
                               </p>
-                              <p className="text-xs text-muted-foreground">
-                                {variant.sku || "No SKU"}
-                              </p>
+                              <div className="flex gap-1">
+                                <Badge
+                                  variant="outline"
+                                  className="rounded-full bg-primary/5"
+                                  onClick={() => console.log(variant)}
+                                >
+                                  {productCategoryOptions.find(
+                                    (item) => item.value === variant.category,
+                                  )?.label ?? "Item"}
+                                </Badge>
+                                {variant.category ===
+                                  productCategoryOptions[1].value && (
+                                  <Badge
+                                    variant="outline"
+                                    className="rounded-full bg-primary/5"
+                                  >
+                                    {lensCategoryOptions.find(
+                                      (item) =>
+                                        item.value === variant.lensSubType,
+                                    )?.label ?? "Item"}
+                                  </Badge>
+                                )}
+                              </div>
                             </div>
                             <div className="mt-5 grid grid-cols-2 gap-3">
                               <div className="rounded-2xl bg-muted/50 px-3 py-2">
@@ -779,7 +790,9 @@ function StockUpdateAddPage() {
                     min="0.01"
                     step="0.01"
                     value={addQuantityInput}
-                    onChange={(event) => setAddQuantityInput(event.target.value)}
+                    onChange={(event) =>
+                      setAddQuantityInput(event.target.value)
+                    }
                   />
                 </div>
                 <div>
@@ -809,7 +822,10 @@ function StockUpdateAddPage() {
             >
               Cancel
             </Button>
-            <Button onClick={handleConfirmAddVariant} disabled={!selectedVariant}>
+            <Button
+              onClick={handleConfirmAddVariant}
+              disabled={!selectedVariant}
+            >
               Add to Receipt
             </Button>
           </DialogFooter>

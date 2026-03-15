@@ -50,8 +50,7 @@ function StockReceiptPanel({
         <div className="flex items-center gap-2">
           <Receipt className="h-5 w-5 text-amber-300" />
           <div>
-            <h2 className="text-lg font-semibold">Current Receipt</h2>
-            <p className="text-sm text-zinc-400">{items.length} lines ready</p>
+            <h2 className="text-lg font-semibold"> Receipt</h2>
           </div>
         </div>
       </div>
@@ -68,8 +67,8 @@ function StockReceiptPanel({
             <TableRow className="hover:bg-transparent">
               <TableHead className="text-zinc-400">Item</TableHead>
               <TableHead className="text-zinc-400">Price</TableHead>
-              <TableHead className="text-zinc-400">Line Total</TableHead>
-              <TableHead className="text-right text-zinc-400">Action</TableHead>
+              <TableHead className="text-zinc-400"> Total</TableHead>
+              <TableHead className="text-right text-zinc-400"></TableHead>
             </TableRow>
           </TableHeader>
         </Table>
@@ -182,10 +181,7 @@ function StockReceiptPanel({
             <span>Items</span>
             <span className="font-semibold">{items.length}</span>
           </div>
-          <div className="mt-2 flex items-center justify-between text-sm">
-            <span>Total Qty</span>
-            <span className="font-semibold">{formatMoney(totalUnits)}</span>
-          </div>
+         
           <div className="mt-3 flex items-center justify-between border-t border-zinc-950/15 pt-3">
             <span className="text-sm font-semibold">Grand Total</span>
             <span className="text-2xl font-semibold">
