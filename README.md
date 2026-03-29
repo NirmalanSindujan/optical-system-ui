@@ -28,6 +28,7 @@ Important:
 - The frontend is served from `/var/www/eyedeal`
 - Requests to `/api` are proxied to `http://127.0.0.1:8080`
 - Change the backend port in `nginx.conf` if your backend uses a different port
+- If your backend routes already include the `/api` prefix, keep `proxy_pass http://127.0.0.1:8080;` without a trailing slash so Nginx forwards `/api/...` unchanged
 
 ### Example server steps
 
