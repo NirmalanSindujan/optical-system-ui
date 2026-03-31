@@ -10,6 +10,7 @@ import { DEFAULT_LENS_SUBTYPE, LENS_SUBTYPE_ROUTE_SEGMENTS } from "@/modules/pro
 import SunglassesProductList from "@/modules/products/sunglasses/SunglassesProductList";
 import StockUpdateAddPage from "@/modules/stock-updates/StockUpdateAddPage";
 import StockUpdateViewPage from "@/modules/stock-updates/StockUpdateViewPage";
+import BranchList from "@/modules/branches/BranchList";
 import SupplierList from "@/modules/suppliers/SupplierList";
 import { ROLES } from "@/store/auth.store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -50,6 +51,10 @@ const router = createBrowserRouter([
           {
             path: "customers",
             element: <CustomerList />
+          },
+          {
+            path: "branches",
+            element: <BranchList />
           },
           {
             path: "suppliers",

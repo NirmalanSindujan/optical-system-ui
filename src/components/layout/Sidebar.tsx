@@ -24,6 +24,7 @@ import {
 const baseNavItems = [
   { to: "/app", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/app/customers", label: "Customers", icon: Users },
+  { to: "/app/branches", label: "Branches", icon: Building2 },
   { to: "/app/suppliers", label: "Suppliers", icon: Building2 },
 ];
 
