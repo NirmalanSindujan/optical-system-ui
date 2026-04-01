@@ -5,6 +5,7 @@ import {
   Boxes,
   ChevronDown,
   Circle,
+  CreditCard,
   LayoutDashboard,
   Package,
   PackagePlus,
@@ -41,10 +42,13 @@ function Sidebar() {
   const location = useLocation();
   const isLensRoute = location.pathname.startsWith("/app/products/lens");
   const isStockUpdateRoute = location.pathname.startsWith("/app/stock-updates");
+  const isCustomerBillRoute = location.pathname.startsWith("/app/customer-bills");
   const isProductUpdateRoute = location.pathname.startsWith("/app/products");
   const [lensMenuOpen, setLensMenuOpen] = useState(isLensRoute);
   const [stockUpdateMenuOpen, setStockUpdateMenuOpen] =
     useState(isStockUpdateRoute);
+  const [customerBillMenuOpen, setCustomerBillMenuOpen] =
+    useState(isCustomerBillRoute);
   const [productUpdateMenuOpen, setProductUpdateMenuOpen] =
     useState(isProductUpdateRoute);
 
@@ -59,6 +63,12 @@ function Sidebar() {
       setStockUpdateMenuOpen(true);
     }
   }, [isStockUpdateRoute]);
+
+  useEffect(() => {
+    if (isCustomerBillRoute) {
+      setCustomerBillMenuOpen(true);
+    }
+  }, [isCustomerBillRoute]);
 
   return (
     <aside className="w-64 border-r bg-[hsl(var(--sidebar-background))] text-[hsl(var(--sidebar-foreground))]">
@@ -154,6 +164,68 @@ function Sidebar() {
             </div>
           </div>
         ) : null}
+
+        <div className="space-y-1">
+          <button
+            type="button"
+            onClick={() => setCustomerBillMenuOpen((open) => !open)}
+            className={cn(
+              "flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+              isCustomerBillRoute
+                ? "bg-[hsl(var(--sidebar-active))] text-[hsl(var(--sidebar-active-foreground))]"
+                : "hover:bg-accent hover:text-accent-foreground",
+            )}
+          >
+            <CreditCard className="h-4 w-4" />
+            <span className="flex-1 text-left">Customer Bills</span>
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 transition-transform duration-200 ease-out",
+                customerBillMenuOpen ? "rotate-0" : "-rotate-90",
+              )}
+            />
+          </button>
+
+          <div
+            className={cn(
+              "grid overflow-hidden transition-all duration-200 ease-out",
+              customerBillMenuOpen
+                ? "grid-rows-[1fr] opacity-100"
+                : "grid-rows-[0fr] opacity-0",
+            )}
+          >
+            <div className="min-h-0">
+              <div className="ml-5 space-y-1 border-l pl-2">
+                <NavLink
+                  to="/app/customer-bills/view"
+                  className={({ isActive }) =>
+                    cn(
+                      "flex items-center rounded-md px-3 py-1.5 text-sm transition-colors",
+                      isActive
+                        ? "bg-[hsl(var(--sidebar-active))] text-[hsl(var(--sidebar-active-foreground))]"
+                        : "hover:bg-accent hover:text-accent-foreground",
+                    )
+                  }
+                >
+                  View Bills
+                </NavLink>
+                <NavLink
+                  to="/app/customer-bills/add"
+                  className={({ isActive }) =>
+                    cn(
+                      "flex items-center rounded-md px-3 py-1.5 text-sm transition-colors",
+                      isActive
+                        ? "bg-[hsl(var(--sidebar-active))] text-[hsl(var(--sidebar-active-foreground))]"
+                        : "hover:bg-accent hover:text-accent-foreground",
+                    )
+                  }
+                >
+                  Add Bill
+                </NavLink>
+              </div>
+            </div>
+          </div>
+        </div>
 
         {canManageProducts ? (
           <div className="pt-2">

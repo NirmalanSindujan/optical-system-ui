@@ -8,6 +8,8 @@ import FrameProductList from "@/modules/products/frame/FrameProductList";
 import LensProductList from "@/modules/products/lens/LensProductList";
 import { DEFAULT_LENS_SUBTYPE, LENS_SUBTYPE_ROUTE_SEGMENTS } from "@/modules/products/product.constants";
 import SunglassesProductList from "@/modules/products/sunglasses/SunglassesProductList";
+import CustomerBillAddPage from "@/modules/customer-bills/CustomerBillAddPage";
+import CustomerBillViewPage from "@/modules/customer-bills/CustomerBillViewPage";
 import StockUpdateAddPage from "@/modules/stock-updates/StockUpdateAddPage";
 import StockUpdateViewPage from "@/modules/stock-updates/StockUpdateViewPage";
 import BranchList from "@/modules/branches/BranchList";
@@ -59,6 +61,18 @@ const router = createBrowserRouter([
           {
             path: "suppliers",
             element: <SupplierList />
+          },
+          {
+            path: "customer-bills",
+            element: <Navigate to="/app/customer-bills/view" replace />
+          },
+          {
+            path: "customer-bills/add",
+            element: <CustomerBillAddPage />
+          },
+          {
+            path: "customer-bills/view",
+            element: <CustomerBillViewPage />
           },
           {
             element: <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]} />,
