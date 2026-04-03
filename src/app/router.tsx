@@ -16,6 +16,7 @@ import BranchList from "@/modules/branches/BranchList";
 import SupplierList from "@/modules/suppliers/SupplierList";
 import { ROLES } from "@/store/auth.store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import UsersPage from "@/modules/users/UsersPage";
 
 function DashboardHome() {
   return (
@@ -55,8 +56,8 @@ const router = createBrowserRouter([
             element: <CustomerList />
           },
           {
-            path: "branches",
-            element: <BranchList />
+            path: "settings",
+            element: <Navigate to="/app/settings/users" replace />
           },
           {
             path: "suppliers",
@@ -78,6 +79,10 @@ const router = createBrowserRouter([
             element: <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]} />,
             children: [
               {
+                path: "settings/users",
+                element: <UsersPage />
+              },
+              {
                 path: "stock-updates",
                 element: <Navigate to="/app/stock-updates/view" replace />
               },
@@ -88,6 +93,15 @@ const router = createBrowserRouter([
               {
                 path: "stock-updates/view",
                 element: <StockUpdateViewPage />
+              }
+            ]
+          },
+          {
+            element: <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN]} />,
+            children: [
+              {
+                path: "branches",
+                element: <BranchList />
               }
             ]
           },

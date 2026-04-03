@@ -1,74 +1,328 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
-  Building2,
+  BadgeCent,
   Boxes,
+  Building2,
   ChevronDown,
   Circle,
   CreditCard,
   LayoutDashboard,
   Package,
-  PackagePlus,
+  Settings,
   Square,
   Sun,
   Users,
   Wrench,
+  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { ROLES, useAuthStore } from "@/store/auth.store";
 import {
   LENS_SUBTYPE_NAV_ITEMS,
   PRODUCT_NAV_ITEMS,
   PRODUCT_VARIANT_TYPES,
 } from "@/modules/products/product.constants";
+import { ROLES, type Role, useAuthStore } from "@/store/auth.store";
 
-const baseNavItems = [
-  { to: "/app", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { to: "/app/customers", label: "Customers", icon: Users },
-  { to: "/app/branches", label: "Branches", icon: Building2 },
-  { to: "/app/suppliers", label: "Suppliers", icon: Building2 },
-];
+type SidebarItem = {
+  id: string;
+  label: string;
+  to?: string;
+  exact?: boolean;
+  icon?: LucideIcon;
+  roles?: Role[];
+  children?: SidebarItem[];
+};
 
-const productIcons = {
+const productIcons: Record<string, LucideIcon> = {
   [PRODUCT_VARIANT_TYPES.LENS]: Circle,
   [PRODUCT_VARIANT_TYPES.FRAME]: Square,
   [PRODUCT_VARIANT_TYPES.SUNGLASSES]: Sun,
   [PRODUCT_VARIANT_TYPES.ACCESSORY]: Wrench,
 };
 
+const productNavItems: SidebarItem[] = PRODUCT_NAV_ITEMS.map((item) => ({
+  id: item.variantType.toLowerCase(),
+  label: item.label,
+  to: item.variantType === PRODUCT_VARIANT_TYPES.LENS ? undefined : item.to,
+  icon: productIcons[item.variantType] ?? Package,
+  children:
+    item.variantType === PRODUCT_VARIANT_TYPES.LENS
+      ? LENS_SUBTYPE_NAV_ITEMS.map((lensItem) => ({
+          id: lensItem.value.toLowerCase(),
+          label: lensItem.label,
+          to: lensItem.to,
+          exact: true,
+        }))
+      : undefined,
+}));
+
+const sidebarItems: SidebarItem[] = [
+  {
+    id: "dashboard",
+    label: "Dashboard",
+    to: "/app",
+    exact: true,
+    icon: LayoutDashboard,
+  },
+  {
+    id: "customers",
+    label: "Customers",
+    to: "/app/customers",
+    icon: Users,
+  },
+  {
+    id: "suppliers",
+    label: "Suppliers",
+    to: "/app/suppliers",
+    icon: Building2,
+  },
+  {
+    id: "customer-bills",
+    label: "Customer Bills",
+    icon: CreditCard,
+    children: [
+      {
+        id: "customer-bills-view",
+        label: "View Bills",
+        to: "/app/customer-bills/view",
+      },
+      {
+        id: "customer-bills-add",
+        label: "Add Bill",
+        to: "/app/customer-bills/add",
+      },
+    ],
+  },
+  {
+    id: "stocks",
+    label: "Stocks",
+    icon: Boxes,
+    roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN],
+    children: [
+      {
+        id: "stock-view",
+        label: "View Stocks",
+        to: "/app/stock-updates/view",
+      },
+      {
+        id: "stock-add",
+        label: "Add Stocks",
+        to: "/app/stock-updates/add",
+      },
+    ],
+  },
+  {
+    id: "products",
+    label: "Products",
+    icon: Package,
+    roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN],
+    children: productNavItems,
+  },
+  {
+    id: "settings",
+    label: "Settings",
+    icon: Settings,
+    children: [
+      {
+        id: "settings-branches",
+        label: "Branches",
+        to: "/app/branches",
+        icon: Building2,
+        roles: [ROLES.SUPER_ADMIN],
+      },
+      {
+        id: "settings-users",
+        label: "Users",
+        to: "/app/settings/users",
+        icon: BadgeCent,
+        roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN],
+      },
+    ],
+  },
+];
+
+const itemButtonClassName =
+  "flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors";
+
+function hasAccess(item: SidebarItem, role: Role | null) {
+  if (!item.roles?.length) {
+    return true;
+  }
+
+  return role ? item.roles.includes(role) : false;
+}
+
+function filterSidebarItems(items: SidebarItem[], role: Role | null): SidebarItem[] {
+  return items.reduce<SidebarItem[]>((acc, item) => {
+    const filteredChildren = item.children
+      ? filterSidebarItems(item.children, role)
+      : undefined;
+
+    const isAllowed = hasAccess(item, role);
+    const canShowParent = Boolean(filteredChildren?.length);
+
+    if (!isAllowed && !canShowParent) {
+      return acc;
+    }
+
+    acc.push({
+      ...item,
+      children: filteredChildren,
+    });
+
+    return acc;
+  }, []);
+}
+
+function isItemActive(item: SidebarItem, pathname: string): boolean {
+  if (item.to) {
+    return item.exact ? pathname === item.to : pathname.startsWith(item.to);
+  }
+
+  return item.children?.some((child) => isItemActive(child, pathname)) ?? false;
+}
+
+function collectActiveParentIds(items: SidebarItem[], pathname: string, parentIds: string[] = []) {
+  return items.reduce<string[]>((acc, item) => {
+    const nextParentIds = [...parentIds, item.id];
+    const isActive = isItemActive(item, pathname);
+
+    if (item.children?.length && isActive) {
+      acc.push(...parentIds, item.id);
+      acc.push(...collectActiveParentIds(item.children, pathname, nextParentIds));
+    }
+
+    return acc;
+  }, []);
+}
+
+type SidebarNodeProps = {
+  item: SidebarItem;
+  depth?: number;
+  pathname: string;
+  openItems: Record<string, boolean>;
+  onToggle: (id: string) => void;
+};
+
+function SidebarNode({
+  item,
+  depth = 0,
+  pathname,
+  openItems,
+  onToggle,
+}: SidebarNodeProps) {
+  const Icon = item.icon;
+  const hasChildren = Boolean(item.children?.length);
+  const isActive = isItemActive(item, pathname);
+  const isOpen = openItems[item.id] ?? false;
+  const paddingLeft = 12 + depth * 20;
+
+  if (!hasChildren && item.to) {
+    return (
+      <NavLink
+        to={item.to}
+        end={item.exact}
+        className={({ isActive: isLinkActive }) =>
+          cn(
+            itemButtonClassName,
+            "font-medium",
+            isLinkActive
+              ? "bg-[hsl(var(--sidebar-active))] text-[hsl(var(--sidebar-active-foreground))]"
+              : "hover:bg-accent hover:text-accent-foreground",
+          )
+        }
+        style={{ paddingLeft }}
+      >
+        {Icon ? <Icon className="h-4 w-4 shrink-0" /> : null}
+        <span className="truncate">{item.label}</span>
+      </NavLink>
+    );
+  }
+
+  return (
+    <div className="space-y-1">
+      <button
+        type="button"
+        onClick={() => onToggle(item.id)}
+        className={cn(
+          itemButtonClassName,
+          "font-medium",
+          isActive
+            ? "bg-[hsl(var(--sidebar-active))] text-[hsl(var(--sidebar-active-foreground))]"
+            : "hover:bg-accent hover:text-accent-foreground",
+        )}
+        style={{ paddingLeft }}
+      >
+        {Icon ? <Icon className="h-4 w-4 shrink-0" /> : null}
+        <span className="flex-1 truncate text-left">{item.label}</span>
+        <ChevronDown
+          className={cn(
+            "h-4 w-4 shrink-0 transition-transform duration-200 ease-out",
+            isOpen ? "rotate-0" : "-rotate-90",
+          )}
+        />
+      </button>
+
+      <div
+        className={cn(
+          "grid overflow-hidden transition-all duration-200 ease-out",
+          isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
+        )}
+      >
+        <div className="min-h-0">
+          <div
+            className="space-y-1 border-l"
+            style={{ marginLeft: paddingLeft + 8, paddingLeft: 8 }}
+          >
+            {item.children?.map((child) => (
+              <SidebarNode
+                key={child.id}
+                item={child}
+                depth={depth + 1}
+                pathname={pathname}
+                openItems={openItems}
+                onToggle={onToggle}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Sidebar() {
   const role = useAuthStore((state) => state.role);
-  const canManageProducts = role === ROLES.SUPER_ADMIN || role === ROLES.ADMIN;
   const location = useLocation();
-  const isLensRoute = location.pathname.startsWith("/app/products/lens");
-  const isStockUpdateRoute = location.pathname.startsWith("/app/stock-updates");
-  const isCustomerBillRoute = location.pathname.startsWith("/app/customer-bills");
-  const isProductUpdateRoute = location.pathname.startsWith("/app/products");
-  const [lensMenuOpen, setLensMenuOpen] = useState(isLensRoute);
-  const [stockUpdateMenuOpen, setStockUpdateMenuOpen] =
-    useState(isStockUpdateRoute);
-  const [customerBillMenuOpen, setCustomerBillMenuOpen] =
-    useState(isCustomerBillRoute);
-  const [productUpdateMenuOpen, setProductUpdateMenuOpen] =
-    useState(isProductUpdateRoute);
+  const [openItems, setOpenItems] = useState<Record<string, boolean>>({});
+
+  const visibleItems = useMemo(() => filterSidebarItems(sidebarItems, role), [role]);
 
   useEffect(() => {
-    if (isLensRoute) {
-      setLensMenuOpen(true);
-    }
-  }, [isLensRoute]);
+    const activeParentIds = collectActiveParentIds(visibleItems, location.pathname);
 
-  useEffect(() => {
-    if (isStockUpdateRoute) {
-      setStockUpdateMenuOpen(true);
+    if (!activeParentIds.length) {
+      return;
     }
-  }, [isStockUpdateRoute]);
 
-  useEffect(() => {
-    if (isCustomerBillRoute) {
-      setCustomerBillMenuOpen(true);
-    }
-  }, [isCustomerBillRoute]);
+    setOpenItems((current) => {
+      const next = { ...current };
+
+      for (const id of activeParentIds) {
+        next[id] = true;
+      }
+
+      return next;
+    });
+  }, [location.pathname, visibleItems]);
+
+  const handleToggle = (id: string) => {
+    setOpenItems((current) => ({
+      ...current,
+      [id]: !current[id],
+    }));
+  };
 
   return (
     <aside className="w-64 border-r bg-[hsl(var(--sidebar-background))] text-[hsl(var(--sidebar-foreground))]">
@@ -79,266 +333,15 @@ function Sidebar() {
         <h1 className="mt-1 text-xl font-bold">Eyedeal Admin</h1>
       </div>
       <nav className="space-y-1 p-3">
-        {baseNavItems.map((item) => {
-          const Icon = item.icon;
-          return (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.exact}
-              className={({ isActive }) =>
-                cn(
-                  "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                  isActive
-                    ? "bg-[hsl(var(--sidebar-active))] text-[hsl(var(--sidebar-active-foreground))]"
-                    : "hover:bg-accent hover:text-accent-foreground",
-                )
-              }
-            >
-              <Icon className="h-4 w-4" />
-              {item.label}
-            </NavLink>
-          );
-        })}
-
-        {canManageProducts ? (
-          <div className="space-y-1">
-            <button
-              type="button"
-              onClick={() => setStockUpdateMenuOpen((open) => !open)}
-              className={cn(
-                "flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                isStockUpdateRoute
-                  ? "bg-[hsl(var(--sidebar-active))] text-[hsl(var(--sidebar-active-foreground))]"
-                  : "hover:bg-accent hover:text-accent-foreground",
-              )}
-            >
-              <Boxes className="h-4 w-4" />
-              <span className="flex-1 text-left">Stocks</span>
-              <ChevronDown
-                className={cn(
-                  "h-4 w-4 transition-transform duration-200 ease-out",
-                  stockUpdateMenuOpen ? "rotate-0" : "-rotate-90",
-                )}
-              />
-            </button>
-
-            <div
-              className={cn(
-                "grid overflow-hidden transition-all duration-200 ease-out",
-                stockUpdateMenuOpen
-                  ? "grid-rows-[1fr] opacity-100"
-                  : "grid-rows-[0fr] opacity-0",
-              )}
-            >
-              <div className="min-h-0">
-                <div className="ml-5 space-y-1 border-l pl-2">
-                  <NavLink
-                    to="/app/stock-updates/view"
-                    className={({ isActive }) =>
-                      cn(
-                        "flex items-center rounded-md px-3 py-1.5 text-sm transition-colors",
-                        isActive
-                          ? "bg-[hsl(var(--sidebar-active))] text-[hsl(var(--sidebar-active-foreground))]"
-                          : "hover:bg-accent hover:text-accent-foreground",
-                      )
-                    }
-                  >
-                    View Stocks
-                  </NavLink>
-                  <NavLink
-                    to="/app/stock-updates/add"
-                    className={({ isActive }) =>
-                      cn(
-                        "flex items-center rounded-md px-3 py-1.5 text-sm transition-colors",
-                        isActive
-                          ? "bg-[hsl(var(--sidebar-active))] text-[hsl(var(--sidebar-active-foreground))]"
-                          : "hover:bg-accent hover:text-accent-foreground",
-                      )
-                    }
-                  >
-                    Add Stocks
-                  </NavLink>
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : null}
-
-        <div className="space-y-1">
-          <button
-            type="button"
-            onClick={() => setCustomerBillMenuOpen((open) => !open)}
-            className={cn(
-              "flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-              isCustomerBillRoute
-                ? "bg-[hsl(var(--sidebar-active))] text-[hsl(var(--sidebar-active-foreground))]"
-                : "hover:bg-accent hover:text-accent-foreground",
-            )}
-          >
-            <CreditCard className="h-4 w-4" />
-            <span className="flex-1 text-left">Customer Bills</span>
-            <ChevronDown
-              className={cn(
-                "h-4 w-4 transition-transform duration-200 ease-out",
-                customerBillMenuOpen ? "rotate-0" : "-rotate-90",
-              )}
-            />
-          </button>
-
-          <div
-            className={cn(
-              "grid overflow-hidden transition-all duration-200 ease-out",
-              customerBillMenuOpen
-                ? "grid-rows-[1fr] opacity-100"
-                : "grid-rows-[0fr] opacity-0",
-            )}
-          >
-            <div className="min-h-0">
-              <div className="ml-5 space-y-1 border-l pl-2">
-                <NavLink
-                  to="/app/customer-bills/view"
-                  className={({ isActive }) =>
-                    cn(
-                      "flex items-center rounded-md px-3 py-1.5 text-sm transition-colors",
-                      isActive
-                        ? "bg-[hsl(var(--sidebar-active))] text-[hsl(var(--sidebar-active-foreground))]"
-                        : "hover:bg-accent hover:text-accent-foreground",
-                    )
-                  }
-                >
-                  View Bills
-                </NavLink>
-                <NavLink
-                  to="/app/customer-bills/add"
-                  className={({ isActive }) =>
-                    cn(
-                      "flex items-center rounded-md px-3 py-1.5 text-sm transition-colors",
-                      isActive
-                        ? "bg-[hsl(var(--sidebar-active))] text-[hsl(var(--sidebar-active-foreground))]"
-                        : "hover:bg-accent hover:text-accent-foreground",
-                    )
-                  }
-                >
-                  Add Bill
-                </NavLink>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {canManageProducts ? (
-          <div className="pt-2">
-            <button
-              type="button"
-              onClick={() => setProductUpdateMenuOpen((open) => !open)}
-              className={cn(
-                "flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                isProductUpdateRoute
-                  ? "bg-[hsl(var(--sidebar-active))] text-[hsl(var(--sidebar-active-foreground))]"
-                  : "hover:bg-accent hover:text-accent-foreground",
-              )}
-            >
-              <Boxes className="h-4 w-4" />
-              <span className="flex-1 text-left">Products</span>
-              <ChevronDown
-                className={cn(
-                  "h-4 w-4 transition-transform duration-200 ease-out",
-                  productUpdateMenuOpen ? "rotate-0" : "-rotate-90",
-                )}
-              />
-            </button>
-            <div
-              className={cn(
-                "grid overflow-hidden transition-all duration-200 ease-out",
-                productUpdateMenuOpen
-                  ? "grid-rows-[1fr] opacity-100"
-                  : "grid-rows-[0fr] opacity-0",
-              )}
-            >
-              
-              <div className="ml-5 mt-1 space-y-1 border-l pl-2">
-                {PRODUCT_NAV_ITEMS.map((item) => {
-                  const Icon = productIcons[item.variantType] ?? Package;
-
-                  return (
-                    <div key={item.to} className="space-y-1">
-                      {item.variantType === PRODUCT_VARIANT_TYPES.LENS ? (
-                        <button
-                          type="button"
-                          onClick={() => setLensMenuOpen((open) => !open)}
-                          className={cn(
-                            "flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors",
-                            isLensRoute
-                              ? "bg-[hsl(var(--sidebar-active))] text-[hsl(var(--sidebar-active-foreground))]"
-                              : "hover:bg-accent hover:text-accent-foreground",
-                          )}
-                        >
-                          <Icon className="h-3.5 w-3.5" />
-                          <span className="flex-1 text-left">{item.label}</span>
-                          <ChevronDown
-                            className={cn(
-                              "h-4 w-4 transition-transform duration-200 ease-out",
-                              lensMenuOpen ? "rotate-0" : "-rotate-90",
-                            )}
-                          />
-                        </button>
-                      ) : (
-                        <NavLink
-                          to={item.to}
-                          className={({ isActive }) =>
-                            cn(
-                              "flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors",
-                              isActive
-                                ? "bg-[hsl(var(--sidebar-active))] text-[hsl(var(--sidebar-active-foreground))]"
-                                : "hover:bg-accent hover:text-accent-foreground",
-                            )
-                          }
-                        >
-                          <Icon className="h-3.5 w-3.5" />
-                          {item.label}
-                        </NavLink>
-                      )}
-
-                      {item.variantType === PRODUCT_VARIANT_TYPES.LENS ? (
-                        <div
-                          className={cn(
-                            "grid overflow-hidden transition-all duration-200 ease-out",
-                            lensMenuOpen
-                              ? "grid-rows-[1fr] opacity-100"
-                              : "grid-rows-[0fr] opacity-0",
-                          )}
-                        >
-                          <div className="min-h-0">
-                            <div className="ml-5 mt-1 space-y-1 border-l pl-2">
-                              {LENS_SUBTYPE_NAV_ITEMS.map((lensItem) => (
-                                <NavLink
-                                  key={lensItem.to}
-                                  to={lensItem.to}
-                                  end
-                                  className={({ isActive }) =>
-                                    cn(
-                                      "flex items-center rounded-md px-3 py-1.5 text-sm transition-colors",
-                                      isActive
-                                        ? "bg-[hsl(var(--sidebar-active))] text-[hsl(var(--sidebar-active-foreground))]"
-                                        : "hover:bg-accent hover:text-accent-foreground",
-                                    )
-                                  }
-                                >
-                                  {lensItem.label}
-                                </NavLink>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      ) : null}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        ) : null}
+        {visibleItems.map((item) => (
+          <SidebarNode
+            key={item.id}
+            item={item}
+            pathname={location.pathname}
+            openItems={openItems}
+            onToggle={handleToggle}
+          />
+        ))}
       </nav>
     </aside>
   );
