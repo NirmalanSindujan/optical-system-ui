@@ -78,6 +78,13 @@ const sidebarItems: SidebarItem[] = [
     icon: Building2,
   },
   {
+    id: "inventory",
+    label: "Inventory",
+    to: "/app/inventory",
+    icon: Boxes,
+    roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.BRANCH_USER],
+  },
+  {
     id: "customer-bills",
     label: "Customer Bills",
     icon: CreditCard,

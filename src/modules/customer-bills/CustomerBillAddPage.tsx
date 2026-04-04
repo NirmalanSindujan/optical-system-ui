@@ -1,6 +1,6 @@
-import { useDeferredValue, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { PackagePlus, Search, UserRound } from "lucide-react";
+import { CreditCard, FileText, PackagePlus, Search, Trash2, UserPlus, UserRound, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,16 +14,30 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import BranchSelect from "@/modules/branches/components/BranchSelect";
 import CustomerBillReceiptPanel from "@/modules/customer-bills/CustomerBillReceiptPanel";
+import PatientAsyncSelect from "@/modules/customer-bills/components/PatientAsyncSelect";
+import PatientCreateSheet, { type PatientCreateForm } from "@/modules/customer-bills/components/PatientCreateSheet";
 import CustomerAsyncSelect, { type CustomerOption } from "@/modules/customer-bills/components/CustomerAsyncSelect";
 import { createCustomerBill } from "@/modules/customer-bills/customer-bill.service";
 import type {
   CustomerBillCreateRequest,
   CustomerBillPaymentMode,
   CustomerBillProductOption,
+  CustomerBillPrescriptionMeasurement,
+  CustomerBillPrescriptionValues,
+  CustomerPatientRecord,
 } from "@/modules/customer-bills/customer-bill.types";
 import {
   customerBillLensCategoryOptions,
@@ -41,6 +55,7 @@ import {
   requiresCustomerForPayments,
   roundMoney,
 } from "@/modules/customer-bills/customer-bill.utils";
+import SearchableValueSelect from "@/modules/products/components/SearchableValueSelect";
 import { getBillingProducts } from "@/modules/products/product.service";
 import { ROLES, useAuthStore } from "@/store/auth.store";
 
@@ -110,14 +125,98 @@ const createEmptyPayment = (): CustomerBillDraftPayment => ({
   reference: "",
 });
 
+const createEmptyMeasurement = (): CustomerBillPrescriptionMeasurement => ({
+  sph: null,
+  cyl: null,
+  axis: null,
+  va: null,
+});
+
+const createEmptyPrescriptionValues = (): CustomerBillPrescriptionValues => ({
+  right: {
+    distance: createEmptyMeasurement(),
+    near: createEmptyMeasurement(),
+    add: { value: null },
+    contactLens: createEmptyMeasurement(),
+  },
+  left: {
+    distance: createEmptyMeasurement(),
+    near: createEmptyMeasurement(),
+    add: { value: null },
+    contactLens: createEmptyMeasurement(),
+  },
+  pdAdjustment: {
+    right: null,
+    left: null,
+    total: null,
+  },
+  otherMeasurements: {
+    va: { right: null, left: null },
+    ph: { right: null, left: null },
+  },
+});
+
+const createEmptyPatientCreateForm = (): PatientCreateForm => ({
+  name: "",
+  gender: "",
+  dob: "",
+  notes: "",
+});
+
+const buildQuarterStepOptions = (min: number, max: number): string[] => {
+  const options: string[] = [];
+  for (let value = min; value <= max + 0.0001; value += 0.25) {
+    options.push(value.toFixed(2));
+  }
+  return options;
+};
+
+const formatPowerValue = (value: string) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return value;
+  if (parsed > 0) return `+${parsed.toFixed(2)}`;
+  return parsed.toFixed(2);
+};
+
+const SPH_OPTIONS = buildQuarterStepOptions(-24, 24);
+const CYL_OPTIONS = buildQuarterStepOptions(-12, 12);
+const ADD_OPTIONS = buildQuarterStepOptions(0, 6);
+const VA_OPTIONS = ["6/4", "6/5", "6/6", "6/7.5", "6/9", "6/12", "6/18", "6/24", "6/36", "6/60"];
+
+const measurementSections = [
+  { key: "distance", label: "D" },
+  { key: "near", label: "N" },
+  { key: "contactLens", label: "CL" },
+] as const;
+
+const measurementFields = [
+  { key: "sph", label: "SPH", type: "power", options: SPH_OPTIONS },
+  { key: "cyl", label: "CYL", type: "power", options: CYL_OPTIONS },
+  { key: "axis", label: "Axis", type: "text" },
+  { key: "va", label: "VA", type: "va", options: VA_OPTIONS },
+] as const;
+
+const eyeSides = [
+  { key: "right", label: "Right Eye" },
+  { key: "left", label: "Left Eye" },
+] as const;
+
+const normalizeNullableText = (value: string) => {
+  const normalized = value.trim();
+  return normalized ? normalized : null;
+};
+
 function CustomerBillAddPage() {
   const { toast } = useToast();
   const authBranchId = useAuthStore((state) => state.branchId);
   const role = useAuthStore((state) => state.role);
   const isBranchUser = role === ROLES.BRANCH_USER;
+  const canSelectBranch = role === ROLES.SUPER_ADMIN || role === ROLES.ADMIN;
 
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerOption | null>(null);
-  const [selectedBranchId, setSelectedBranchId] = useState<number | null>(authBranchId);
+  const [selectedBranchId, setSelectedBranchId] = useState<number | null>(
+    isBranchUser ? authBranchId : null,
+  );
   const [billDate, setBillDate] = useState(getTodayDate);
   const [billNumber, setBillNumber] = useState("");
   const [itemSearch, setItemSearch] = useState("");
@@ -133,6 +232,17 @@ function CustomerBillAddPage() {
   const [addPriceInput, setAddPriceInput] = useState("");
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [draftPayment, setDraftPayment] = useState<CustomerBillDraftPayment>(createEmptyPayment);
+  const [prescriptionEnabled, setPrescriptionEnabled] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState<CustomerPatientRecord | null>(null);
+  const [patientDrawerOpen, setPatientDrawerOpen] = useState(false);
+  const [patientCreateForm, setPatientCreateForm] = useState<PatientCreateForm>(createEmptyPatientCreateForm);
+  const [patientReloadKey, setPatientReloadKey] = useState(0);
+  const [prescriptionSheetOpen, setPrescriptionSheetOpen] = useState(false);
+  const [prescriptionForm, setPrescriptionForm] = useState({
+    prescriptionDate: getTodayDate(),
+    values: createEmptyPrescriptionValues(),
+    notes: "",
+  });
   const deferredItemSearch = useDeferredValue(itemSearch.trim().toLowerCase());
 
   const productQuery = useQuery({
@@ -173,6 +283,14 @@ function CustomerBillAddPage() {
     payments.reduce((total, payment) => total + (Number(payment.amount) || 0), 0),
   );
   const balanceAmount = roundMoney(Math.max(0, totalAmount - paymentTotal));
+  const draftPaymentAmount = roundMoney(parseOptionalNumber(draftPayment.amount) ?? 0);
+  const balanceAfterDraftPayment = roundMoney(Math.max(0, totalAmount - (paymentTotal + draftPaymentAmount)));
+
+  useEffect(() => {
+    if (isBranchUser) {
+      setSelectedBranchId(authBranchId);
+    }
+  }, [authBranchId, isBranchUser]);
 
   const resetForm = () => {
     setSelectedCustomer(null);
@@ -192,6 +310,30 @@ function CustomerBillAddPage() {
     setAddPriceInput("");
     setPaymentDialogOpen(false);
     setDraftPayment(createEmptyPayment());
+    setPrescriptionEnabled(false);
+    setSelectedPatient(null);
+    setPatientDrawerOpen(false);
+    setPatientCreateForm(createEmptyPatientCreateForm());
+    setPatientReloadKey(0);
+    setPrescriptionSheetOpen(false);
+    setPrescriptionForm({
+      prescriptionDate: getTodayDate(),
+      values: createEmptyPrescriptionValues(),
+      notes: "",
+    });
+  };
+
+  const clearPrescriptionState = () => {
+    setPrescriptionEnabled(false);
+    setSelectedPatient(null);
+    setPatientDrawerOpen(false);
+    setPatientCreateForm(createEmptyPatientCreateForm());
+    setPrescriptionSheetOpen(false);
+    setPrescriptionForm({
+      prescriptionDate: billDate || getTodayDate(),
+      values: createEmptyPrescriptionValues(),
+      notes: "",
+    });
   };
 
   const createMutation = useMutation({
@@ -217,6 +359,9 @@ function CustomerBillAddPage() {
   });
 
   const handleAddVariant = (variant: CustomerBillProductOption) => {
+    if(variant.currentQuantity < 1){
+      return
+    }
     setSelectedVariant(variant);
     setAddQuantityInput("1");
     setAddPriceInput(String(roundMoney(variant.sellingPrice).toFixed(2)));
@@ -303,20 +448,139 @@ function CustomerBillAddPage() {
       },
     ]);
     setDraftPayment(createEmptyPayment());
-    setPaymentDialogOpen(false);
     setFormError("");
+  };
+
+  const handleCustomerChange = (customer: CustomerOption | null) => {
+    if (selectedCustomer?.id !== customer?.id) {
+      clearPrescriptionState();
+      setPatientReloadKey((value) => value + 1);
+    }
+    setSelectedCustomer(customer);
+    setFormError("");
+  };
+
+  const handleTogglePrescription = () => {
+    if (!selectedCustomer?.id) {
+      setFormError("Select a customer before adding a prescription.");
+      toast({
+        variant: "destructive",
+        title: "Customer required",
+        description: "Select a customer before adding a prescription.",
+      });
+      return;
+    }
+
+    if (prescriptionEnabled) {
+      setSelectedPatient(null);
+      setPrescriptionForm({
+        prescriptionDate: billDate || getTodayDate(),
+        values: createEmptyPrescriptionValues(),
+        notes: "",
+      });
+      setPrescriptionEnabled(false);
+      setPrescriptionSheetOpen(false);
+    } else {
+      setPrescriptionForm((currentForm) => ({
+        ...currentForm,
+        prescriptionDate: currentForm.prescriptionDate || billDate || getTodayDate(),
+      }));
+      setPrescriptionEnabled(true);
+      setPrescriptionSheetOpen(true);
+    }
+    setFormError("");
+  };
+
+  const updatePrescriptionMeasurementField = (
+    eye: "right" | "left",
+    section: "distance" | "near" | "contactLens",
+    field: keyof CustomerBillPrescriptionMeasurement,
+    value: string,
+  ) => {
+    setPrescriptionForm((current) => ({
+      ...current,
+      values: {
+        ...current.values,
+        [eye]: {
+          ...current.values[eye],
+          [section]: {
+            ...current.values[eye][section],
+            [field]: normalizeNullableText(value),
+          },
+        },
+      },
+    }));
+  };
+
+  const updatePrescriptionOtherMeasurement = (
+    field: "va" | "ph",
+    eye: "right" | "left",
+    value: string,
+  ) => {
+    setPrescriptionForm((current) => ({
+      ...current,
+      values: {
+        ...current.values,
+        otherMeasurements: {
+          ...current.values.otherMeasurements,
+          [field]: {
+            ...current.values.otherMeasurements[field],
+            [eye]: normalizeNullableText(value),
+          },
+        },
+      },
+    }));
+  };
+
+  const updatePrescriptionAddValue = (
+    eye: "right" | "left",
+    value: string,
+  ) => {
+    setPrescriptionForm((current) => ({
+      ...current,
+      values: {
+        ...current.values,
+        [eye]: {
+          ...current.values[eye],
+          add: {
+            ...current.values[eye].add,
+            value: normalizeNullableText(value),
+          },
+        },
+      },
+    }));
+  };
+
+  const updatePrescriptionPdAdjustment = (
+    field: "right" | "left" | "total",
+    value: string,
+  ) => {
+    setPrescriptionForm((current) => ({
+      ...current,
+      values: {
+        ...current.values,
+        pdAdjustment: {
+          ...current.values.pdAdjustment,
+          [field]: normalizeNullableText(value),
+        },
+      },
+    }));
   };
 
   const handleSubmit = () => {
     const errors: string[] = [];
+    if (!selectedCustomer?.id) errors.push("Customer is required.");
     if (!selectedBranchId) errors.push("Branch is required.");
     if (!/^\d{4}-\d{2}-\d{2}$/.test(billDate)) errors.push("Bill date must be in YYYY-MM-DD format.");
     if (!items.length) errors.push("Add at least one item.");
     if (!payments.length) errors.push("Add at least one payment.");
     if (discountValue < 0) errors.push("Discount must be 0.00 or more.");
     if (discountValue > subtotalAmount) errors.push("Discount cannot exceed subtotal.");
-    if (requiresCustomerForPayments(payments.map((payment) => payment.paymentMode)) && !selectedCustomer?.id) {
-      errors.push("Customer is required for bank, cheque, or credit bills.");
+    if (prescriptionEnabled && !selectedPatient?.id) {
+      errors.push("Select a patient before submitting a prescription bill.");
+    }
+    if (prescriptionEnabled && selectedCustomer?.id && selectedPatient?.customerId !== selectedCustomer.id) {
+      errors.push("Selected patient must belong to the selected customer.");
     }
     if (roundMoney(paymentTotal) !== roundMoney(totalAmount)) {
       errors.push("Sum of payment amounts must equal the final bill total.");
@@ -368,6 +632,7 @@ function CustomerBillAddPage() {
     }
 
     const payload: CustomerBillCreateRequest = {
+      customerId: selectedCustomer!.id,
       branchId: selectedBranchId!,
       billDate,
       discountAmount: discountValue,
@@ -376,9 +641,16 @@ function CustomerBillAddPage() {
       payments: payloadPayments,
     };
 
-    if (selectedCustomer?.id) payload.customerId = selectedCustomer.id;
     if (normalizeText(billNumber)) payload.billNumber = normalizeText(billNumber);
     if (normalizeText(notes)) payload.notes = normalizeText(notes);
+    if (prescriptionEnabled) {
+      payload.patientId = selectedPatient!.id;
+      payload.prescription = {
+        prescriptionDate: prescriptionForm.prescriptionDate,
+        values: prescriptionForm.values,
+        notes: normalizeNullableText(prescriptionForm.notes),
+      };
+    }
 
     createMutation.mutate(payload);
   };
@@ -387,7 +659,7 @@ function CustomerBillAddPage() {
     <>
       <div className="grid min-h-[calc(100svh-9rem)] gap-4 xl:grid-cols-[minmax(0,1fr)_480px] xl:items-stretch">
         <div className="min-h-0">
-          <Card className="flex h-full min-h-[calc(100svh-11rem)] flex-col overflow-hidden border-border/70 bg-card/95 xl:max-h-[calc(100svh-9rem)]">
+            <Card className="flex h-full min-h-[calc(100svh-11rem)] flex-col overflow-hidden border-border/70 bg-card/95 xl:max-h-[calc(100svh-9rem)]">
             <CardHeader className="border-b pb-4">
               <div className="space-y-1">
                 <CardTitle className="flex items-center gap-2">
@@ -402,25 +674,32 @@ function CustomerBillAddPage() {
             <CardContent className="min-h-0 flex-1 overflow-hidden p-4">
               <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-[28px] border border-border/70 bg-card/70 shadow-sm">
                 <div className="shrink-0 border-b border-border/70 px-4 py-4">
-                  <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px_220px]">
+                  <div
+                    className={
+                      canSelectBranch
+                        ? "grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px_220px]"
+                        : "grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px]"
+                    }
+                  >
                     <div>
                       <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Customer</label>
-                      <CustomerAsyncSelect value={selectedCustomer} onChange={setSelectedCustomer} placeholder="Optional for cash-only bills" />
+                      <CustomerAsyncSelect value={selectedCustomer} onChange={handleCustomerChange} placeholder="Select customer" />
                     </div>
                     <div>
                       <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Bill Date</label>
                       <Input type="date" value={billDate} onChange={(event) => setBillDate(event.target.value)} />
                     </div>
-                    <div>
-                      <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Branch</label>
-                      <BranchSelect
-                        value={selectedBranchId}
-                        onChange={(branch) => setSelectedBranchId(branch?.id ?? null)}
-                        placeholder="Select branch"
-                        allowClear={!isBranchUser}
-                        disabled={isBranchUser}
-                      />
-                    </div>
+                    {canSelectBranch ? (
+                      <div>
+                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Branch</label>
+                        <BranchSelect
+                          value={selectedBranchId}
+                          onChange={(branch) => setSelectedBranchId(branch?.id ?? null)}
+                          placeholder="Select branch"
+                          allowClear
+                        />
+                      </div>
+                    ) : null}
                   </div>
 
                   <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px]">
@@ -437,8 +716,58 @@ function CustomerBillAddPage() {
                     <Input value={billNumber} onChange={(event) => setBillNumber(event.target.value)} placeholder="Bill No" />
                   </div>
 
-                  <div className="mt-3 rounded-2xl border border-dashed border-border/70 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
-                    Customer becomes required once you add a `BANK`, `CHEQUE`, or `CREDIT` payment line.
+                  <div className="mt-4 rounded-[24px] border border-border/70 bg-muted/20 p-4">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">Prescription</p>
+                        <p className="text-sm text-muted-foreground">
+                          Keep billing in the same flow and attach patient prescription details only when needed.
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant={prescriptionEnabled ? "outline" : "default"}
+                        onClick={handleTogglePrescription}
+                        disabled={!selectedCustomer?.id && !prescriptionEnabled}
+                      >
+                        {prescriptionEnabled ? (
+                          <>
+                            <X className="mr-2 h-4 w-4" />
+                            Remove Prescription
+                          </>
+                        ) : (
+                          <>
+                            <FileText className="mr-2 h-4 w-4" />
+                            Add Prescription
+                          </>
+                        )}
+                      </Button>
+                    </div>
+
+                    {prescriptionEnabled ? (
+                      <div className="mt-4 rounded-[20px] border border-primary/20 bg-background/80 p-4">
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">
+                              {selectedPatient?.name || "Prescription added"}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {selectedPatient
+                                ? [selectedPatient.gender || null, selectedPatient.dob || null].filter(Boolean).join(" | ") || "Patient selected"
+                                : "Select a patient and enter prescription values in the right-side sheet."}
+                            </p>
+                          </div>
+                          <Button type="button" variant="outline" onClick={() => setPrescriptionSheetOpen(true)}>
+                            <FileText className="mr-2 h-4 w-4" />
+                            Edit Prescription
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="mt-3 text-sm text-muted-foreground">
+                        Leave this off for normal retail billing. Add it only when the bill needs patient-linked prescription data.
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -505,9 +834,9 @@ function CustomerBillAddPage() {
                               <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Price</p>
                               <p className="mt-1 font-semibold text-foreground">{formatMoney(variant.sellingPrice)}</p>
                             </div>
-                            <div className="rounded-2xl bg-muted/50 px-3 py-2">
+                            <div className={`rounded-2xl bg-muted/50 px-3 py-2 ${variant.currentQuantity<1 ? "bg-red-200" : null}`}>
                               <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Branch Stock</p>
-                              <p className="mt-1 font-semibold text-foreground">{formatMoney(variant.currentQuantity)}</p>
+                              <p className="mt-1 font-semibold text-foreground">{(variant.currentQuantity)}</p>
                             </div>
                           </div>
                         </button>
@@ -523,28 +852,31 @@ function CustomerBillAddPage() {
         <div className="min-h-0">
           <CustomerBillReceiptPanel
             items={items}
-            payments={payments}
             subtotalAmount={subtotalAmount}
             discountAmount={discountAmount}
             totalAmount={totalAmount}
             paymentTotal={paymentTotal}
             balanceAmount={balanceAmount}
-            notes={notes}
             formError={formError}
             isSubmitting={createMutation.isPending}
-            canSubmit={Boolean(selectedBranchId) && items.length > 0 && payments.length > 0}
+            canSubmit={Boolean(selectedBranchId) && items.length > 0}
+            onClearAll={() => {
+              setItems([]);
+              setPayments([]);
+              setDiscountAmount("0");
+              setNotes("");
+              setFormError("");
+              clearPrescriptionState();
+            }}
             onDiscountChange={setDiscountAmount}
-            onNotesChange={setNotes}
             onRemoveItem={(variantId) => setItems((current) => current.filter((item) => item.variantId !== variantId))}
             onUpdateItem={(variantId, field, value) =>
               setItems((current) => current.map((item) => (item.variantId === variantId ? { ...item, [field]: value } : item)))
             }
-            onRemovePayment={(id) => setPayments((current) => current.filter((payment) => payment.id !== id))}
-            onAddPayment={() => {
+            onOpenPayment={() => {
               setDraftPayment(createEmptyPayment());
               setPaymentDialogOpen(true);
             }}
-            onSubmit={handleSubmit}
           />
         </div>
       </div>
@@ -586,10 +918,54 @@ function CustomerBillAddPage() {
       <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Payment</DialogTitle>
-            <DialogDescription>Split this bill across cash, bank, cheque, and credit lines.</DialogDescription>
+            <DialogTitle>Payments</DialogTitle>
+            <DialogDescription>Add one or more payment methods, review the balance, and complete the bill here.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl border border-border/70 bg-muted/20 px-4 py-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Bill Total</p>
+                <p className="mt-2 font-semibold">{formatMoney(totalAmount)}</p>
+              </div>
+              <div className="rounded-2xl border border-border/70 bg-muted/20 px-4 py-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Already Added</p>
+                <p className="mt-2 font-semibold">{formatMoney(paymentTotal)}</p>
+              </div>
+              <div className="rounded-2xl border border-primary/25 bg-primary/5 px-4 py-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Balance</p>
+                <p className="mt-2 font-semibold">{formatMoney(balanceAmount)}</p>
+              </div>
+            </div>
+
+            {payments.length > 0 ? (
+              <div className="space-y-3 rounded-2xl border border-border/70 bg-muted/10 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="flex items-center gap-2 text-sm font-semibold">
+                    <CreditCard className="h-4 w-4 text-primary" />
+                    Added Payments
+                  </h3>
+                </div>
+                {payments.map((payment) => (
+                  <div key={payment.id} className="flex items-start justify-between gap-3 rounded-2xl border border-border/70 bg-background/70 p-3">
+                    <div className="space-y-1">
+                      <p className="font-medium">
+                        {payment.paymentMode} | {formatMoney(Number(payment.amount || 0))}
+                      </p>
+                      {payment.reference ? <p className="text-sm text-muted-foreground">{payment.reference}</p> : null}
+                      {payment.paymentMode === "CHEQUE" ? (
+                        <p className="text-sm text-muted-foreground">
+                          {payment.chequeNumber || "-"} | {payment.chequeBankName || "-"} | {payment.chequeDate || "-"}
+                        </p>
+                      ) : null}
+                    </div>
+                    <Button variant="ghost" size="icon" onClick={() => setPayments((current) => current.filter((entry) => entry.id !== payment.id))}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Payment Mode</label>
@@ -607,6 +983,17 @@ function CustomerBillAddPage() {
               <div>
                 <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Amount</label>
                 <Input type="number" min="0" step="0.01" value={draftPayment.amount} onChange={(event) => setDraftPayment((current) => ({ ...current, amount: event.target.value }))} />
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl border border-border/70 bg-muted/20 px-4 py-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Current Entry</p>
+                <p className="mt-2 font-semibold">{formatMoney(draftPaymentAmount)}</p>
+              </div>
+              <div className="rounded-2xl border border-border/70 bg-muted/20 px-4 py-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Balance After Add</p>
+                <p className="mt-2 font-semibold">{formatMoney(balanceAfterDraftPayment)}</p>
               </div>
             </div>
 
@@ -648,17 +1035,314 @@ function CustomerBillAddPage() {
               <div className="flex items-center gap-2">
                 <UserRound className="h-4 w-4 text-primary" />
                 {requiresCustomerForPayments([draftPayment.paymentMode])
-                  ? "This payment mode requires a selected customer."
-                  : "Cash-only bills can be submitted without a customer."}
+                  ? "Customer remains required, and this payment mode also depends on customer billing details."
+                  : "Customer is required for every bill. Patient and prescription stay optional unless enabled above."}
               </div>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSavePayment}>Add Payment</Button>
+            <Button variant="outline" onClick={handleSavePayment}>Add Payment</Button>
+            <Button onClick={handleSubmit} disabled={createMutation.isPending || payments.length === 0}>
+              {createMutation.isPending ? "Submitting..." : "Pay"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Sheet open={prescriptionSheetOpen} onOpenChange={setPrescriptionSheetOpen}>
+        <SheetContent side="right" className="w-full overflow-hidden p-0 sm:max-w-[96vw]">
+          <SheetHeader className="border-b px-6 py-5">
+            <SheetTitle>Prescription</SheetTitle>
+            <SheetDescription>
+              Select the patient, set prescription values, and return to the existing bill flow.
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="flex h-[calc(100%-9rem)] min-h-0 flex-col overflow-hidden">
+            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+              <div className="space-y-5">
+                <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Patient</label>
+                    <PatientAsyncSelect
+                      customerId={selectedCustomer?.id ?? null}
+                      value={selectedPatient}
+                      onChange={(patient) => {
+                        setSelectedPatient(patient);
+                        setFormError("");
+                      }}
+                      reloadKey={patientReloadKey}
+                      placeholder="Select patient"
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <Button type="button" variant="outline" onClick={() => setPatientDrawerOpen(true)}>
+                      <UserPlus className="mr-2 h-4 w-4" />
+                      Add Patient
+                    </Button>
+                  </div>
+                </div>
+
+                {selectedPatient ? (
+                  <div className="grid gap-3 rounded-2xl border border-border/70 bg-muted/20 p-4 sm:grid-cols-3">
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Patient</p>
+                      <p className="mt-1 font-medium text-foreground">{selectedPatient.name}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Gender</p>
+                      <p className="mt-1 font-medium text-foreground">{selectedPatient.gender || "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">DOB</p>
+                      <p className="mt-1 font-medium text-foreground">{selectedPatient.dob || "-"}</p>
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="grid gap-4 xl:grid-cols-[260px_minmax(0,1fr)]">
+                  <div className="space-y-4">
+                    <div>
+                      <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Prescription Date</label>
+                      <Input
+                        type="date"
+                        value={prescriptionForm.prescriptionDate}
+                        onChange={(event) =>
+                          setPrescriptionForm((current) => ({
+                            ...current,
+                            prescriptionDate: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Prescription Notes</label>
+                      <Textarea
+                        value={prescriptionForm.notes}
+                        onChange={(event) =>
+                          setPrescriptionForm((current) => ({
+                            ...current,
+                            notes: event.target.value,
+                          }))
+                        }
+                        className="min-h-[180px]"
+                        placeholder="Optional prescription notes"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-5">
+                    <section className="rounded-[20px] border border-border/70 bg-card/80 shadow-sm">
+                      <div className="grid border-b border-border/70 lg:grid-cols-2">
+                        {eyeSides.map((eye, index) => (
+                          <div
+                            key={eye.key}
+                            className={index === 0 ? "border-b border-border/70 p-0 lg:border-b-0 lg:border-r" : "p-0"}
+                          >
+                            <div className="border-b border-border/70 px-6 py-4">
+                              <h3 className="text-2xl font-semibold text-foreground">{eye.label === "Right Eye" ? "Right" : "Left"}</h3>
+                            </div>
+                            <div className="overflow-x-auto">
+                              <table className="min-w-full table-fixed">
+                                <thead>
+                                  <tr className="border-b border-border/70 text-left text-sm text-muted-foreground">
+                                    <th className="w-20 px-6 py-4 font-semibold"></th>
+                                    <th className="px-4 py-4 font-semibold">SPH</th>
+                                    <th className="px-4 py-4 font-semibold">CYL</th>
+                                    <th className="px-4 py-4 font-semibold">AXIS</th>
+                                    <th className="px-4 py-4 font-semibold">VA</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {measurementSections.map((section) => (
+                                    <tr key={section.key} className="border-b border-border/70 last:border-b-0">
+                                      <td className="px-6 py-4 align-middle text-sm font-semibold text-foreground">{section.label}</td>
+                                      {measurementFields.map((field) => (
+                                        <td key={field.key} className="px-4 py-4 align-middle">
+                                          {field.type === "power" ? (
+                                            <SearchableValueSelect
+                                              value={String(prescriptionForm.values[eye.key][section.key][field.key] ?? "")}
+                                              options={field.options}
+                                              onChange={(value) =>
+                                                updatePrescriptionMeasurementField(eye.key, section.key, field.key, value)
+                                              }
+                                              placeholder="0.00"
+                                              searchPlaceholder={`Search ${field.label.toLowerCase()}...`}
+                                              emptyText={`No ${field.label.toLowerCase()} values found`}
+                                              formatOptionLabel={formatPowerValue}
+                                            />
+                                          ) : field.type === "va" ? (
+                                            <Select
+                                              value={String(prescriptionForm.values[eye.key][section.key][field.key] ?? "")}
+                                              onChange={(event) =>
+                                                updatePrescriptionMeasurementField(eye.key, section.key, field.key, event.target.value)
+                                              }
+                                            >
+                                              <option value="">Select</option>
+                                              {VA_OPTIONS.map((option) => (
+                                                <option key={option} value={option}>{option}</option>
+                                              ))}
+                                            </Select>
+                                          ) : (
+                                            <Input
+                                              value={String(prescriptionForm.values[eye.key][section.key][field.key] ?? "")}
+                                              onChange={(event) =>
+                                                updatePrescriptionMeasurementField(eye.key, section.key, field.key, event.target.value)
+                                              }
+                                              placeholder={field.label}
+                                            />
+                                          )}
+                                        </td>
+                                      ))}
+                                    </tr>
+                                  ))}
+                                  <tr className="border-b border-border/70 last:border-b-0">
+                                    <td className="px-6 py-4 align-middle text-sm font-semibold text-foreground">ADD</td>
+                                    <td className="px-4 py-4 align-middle" colSpan={4}>
+                                      <SearchableValueSelect
+                                        value={String(prescriptionForm.values[eye.key].add.value ?? "")}
+                                        options={ADD_OPTIONS}
+                                        onChange={(value) => updatePrescriptionAddValue(eye.key, value)}
+                                        placeholder="0.00"
+                                        searchPlaceholder="Search add..."
+                                        emptyText="No add values found"
+                                        formatOptionLabel={formatPowerValue}
+                                      />
+                                    </td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+
+                    <section className="rounded-[20px] border border-border/70 bg-card/80 shadow-sm">
+                      <div className="border-b border-border/70 px-6 py-4">
+                        <h3 className="text-lg font-semibold uppercase tracking-[0.06em] text-foreground">PD Adjustment</h3>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full table-fixed">
+                          <thead>
+                            <tr className="border-b border-border/70 text-left text-sm text-muted-foreground">
+                              <th className="w-24 px-6 py-4 font-semibold"></th>
+                              <th className="px-4 py-4 font-semibold">Right</th>
+                              <th className="px-4 py-4 font-semibold">Left</th>
+                              <th className="px-4 py-4 font-semibold">Total</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td className="px-6 py-4 text-sm font-semibold text-foreground">PD</td>
+                              <td className="px-4 py-4">
+                                <Input
+                                  value={String(prescriptionForm.values.pdAdjustment.right ?? "")}
+                                  onChange={(event) => updatePrescriptionPdAdjustment("right", event.target.value)}
+                                  placeholder="0.0"
+                                />
+                              </td>
+                              <td className="px-4 py-4">
+                                <Input
+                                  value={String(prescriptionForm.values.pdAdjustment.left ?? "")}
+                                  onChange={(event) => updatePrescriptionPdAdjustment("left", event.target.value)}
+                                  placeholder="0.0"
+                                />
+                              </td>
+                              <td className="px-4 py-4">
+                                <Input
+                                  value={String(prescriptionForm.values.pdAdjustment.total ?? "")}
+                                  onChange={(event) => updatePrescriptionPdAdjustment("total", event.target.value)}
+                                  placeholder="0.0"
+                                />
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </section>
+
+                    <section className="rounded-[20px] border border-border/70 bg-card/80 shadow-sm">
+                      <div className="border-b border-border/70 px-6 py-4">
+                        <h3 className="text-lg font-semibold text-foreground">Other Measurements</h3>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full table-fixed">
+                          <thead>
+                            <tr className="border-b border-border/70 text-left text-sm text-muted-foreground">
+                              <th className="w-24 px-6 py-4 font-semibold"></th>
+                              <th className="px-4 py-4 font-semibold">Right</th>
+                              <th className="px-4 py-4 font-semibold">Left</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr className="border-b border-border/70">
+                              <td className="px-6 py-4 text-sm font-semibold text-foreground">V.A</td>
+                              <td className="px-4 py-4">
+                                <Input
+                                  value={String(prescriptionForm.values.otherMeasurements.va.right ?? "")}
+                                  onChange={(event) => updatePrescriptionOtherMeasurement("va", "right", event.target.value)}
+                                  placeholder="6/6"
+                                />
+                              </td>
+                              <td className="px-4 py-4">
+                                <Input
+                                  value={String(prescriptionForm.values.otherMeasurements.va.left ?? "")}
+                                  onChange={(event) => updatePrescriptionOtherMeasurement("va", "left", event.target.value)}
+                                  placeholder="6/6"
+                                />
+                              </td>
+                            </tr>
+                            <tr>
+                              <td className="px-6 py-4 text-sm font-semibold text-foreground">P.H</td>
+                              <td className="px-4 py-4">
+                                <Input
+                                  value={String(prescriptionForm.values.otherMeasurements.ph.right ?? "")}
+                                  onChange={(event) => updatePrescriptionOtherMeasurement("ph", "right", event.target.value)}
+                                  placeholder=""
+                                />
+                              </td>
+                              <td className="px-4 py-4">
+                                <Input
+                                  value={String(prescriptionForm.values.otherMeasurements.ph.left ?? "")}
+                                  onChange={(event) => updatePrescriptionOtherMeasurement("ph", "left", event.target.value)}
+                                  placeholder=""
+                                />
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </section>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <SheetFooter className="border-t px-6 py-4">
+              <Button variant="outline" onClick={() => setPrescriptionSheetOpen(false)}>Done</Button>
+            </SheetFooter>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <PatientCreateSheet
+        open={patientDrawerOpen}
+        customerId={selectedCustomer?.id ?? null}
+        customerName={selectedCustomer?.name ?? null}
+        form={patientCreateForm}
+        onFormChange={setPatientCreateForm}
+        onClose={() => setPatientDrawerOpen(false)}
+        onCreated={(patient) => {
+          setPatientDrawerOpen(false);
+          setPatientCreateForm(createEmptyPatientCreateForm());
+          setPatientReloadKey((value) => value + 1);
+          setSelectedPatient(patient);
+          setPrescriptionSheetOpen(true);
+          setFormError("");
+        }}
+      />
     </>
   );
 }

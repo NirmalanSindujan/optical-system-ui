@@ -17,7 +17,6 @@ import { useToast } from "@/components/ui/use-toast";
 import BranchSelect from "@/modules/branches/components/BranchSelect";
 import CustomerBillPreviewCard from "@/modules/customer-bills/CustomerBillPreviewCard";
 import {
-  getBranchCollectionSummary,
   getCustomerBillById,
   getCustomerBills,
 } from "@/modules/customer-bills/customer-bill.service";
@@ -30,11 +29,14 @@ function CustomerBillViewPage() {
   const authBranchId = useAuthStore((state) => state.branchId);
   const role = useAuthStore((state) => state.role);
   const isBranchUser = role === ROLES.BRANCH_USER;
+  const canSelectBranch = role === ROLES.SUPER_ADMIN || role === ROLES.ADMIN;
 
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
-  const [selectedBranchId, setSelectedBranchId] = useState<number | null>(authBranchId);
+  const [selectedBranchId, setSelectedBranchId] = useState<number | null>(
+    isBranchUser ? authBranchId : null,
+  );
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
@@ -56,15 +58,17 @@ function CustomerBillViewPage() {
     enabled: selectedId != null,
   });
 
-  const summaryQuery = useQuery({
-    queryKey: ["branch-collection-summary", selectedBranchId],
-    queryFn: () => getBranchCollectionSummary(selectedBranchId as number),
-    enabled: selectedBranchId != null,
-  });
+
 
   const items = billsQuery.data?.items ?? [];
   const total = billsQuery.data?.totalCounts ?? items.length;
   const totalPages = Math.max(1, billsQuery.data?.totalPages ?? 1);
+
+  useEffect(() => {
+    if (isBranchUser) {
+      setSelectedBranchId(authBranchId);
+    }
+  }, [authBranchId, isBranchUser]);
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
@@ -92,14 +96,6 @@ function CustomerBillViewPage() {
     });
   }, [detailQuery.error, detailQuery.isError, toast]);
 
-  useEffect(() => {
-    if (!summaryQuery.isError) return;
-    toast({
-      variant: "destructive",
-      title: "Failed to load branch collection summary",
-      description: getApiErrorMessage(summaryQuery.error),
-    });
-  }, [summaryQuery.error, summaryQuery.isError, toast]);
 
   return (
     <>
@@ -118,7 +114,13 @@ function CustomerBillViewPage() {
         <CardContent className="min-h-0 flex-1 p-4">
           <section className="flex min-h-full flex-col rounded-3xl border border-border/70 bg-card/70 shadow-sm">
             <div className="space-y-4 border-b px-5 py-4">
-              <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_260px]">
+              <div
+                className={
+                  canSelectBranch
+                    ? "grid gap-3 lg:grid-cols-[minmax(0,1fr)_260px]"
+                    : "grid gap-3"
+                }
+              >
                 <div className="relative w-full">
                   <Input
                     value={query}
@@ -128,42 +130,20 @@ function CustomerBillViewPage() {
                   />
                   <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 </div>
-                <BranchSelect
-                  value={selectedBranchId}
-                  onChange={(branch) => {
-                    setPage(0);
-                    setSelectedBranchId(branch?.id ?? null);
-                  }}
-                  placeholder="All branches"
-                  disabled={isBranchUser}
-                  allowClear={!isBranchUser}
-                />
+                {canSelectBranch ? (
+                  <BranchSelect
+                    value={selectedBranchId}
+                    onChange={(branch) => {
+                      setPage(0);
+                      setSelectedBranchId(branch?.id ?? null);
+                    }}
+                    placeholder="All branches"
+                    allowClear
+                  />
+                ) : null}
               </div>
 
-              {summaryQuery.data ? (
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-                  <div className="rounded-2xl border border-primary/25 bg-primary/5 px-4 py-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Total Sales</p>
-                    <p className="mt-2 font-semibold">{formatMoney(summaryQuery.data.totalSales)}</p>
-                  </div>
-                  <div className="rounded-2xl border border-border/70 bg-card px-4 py-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Cash In Hand</p>
-                    <p className="mt-2 font-semibold">{formatMoney(summaryQuery.data.cashInHand)}</p>
-                  </div>
-                  <div className="rounded-2xl border border-border/70 bg-card px-4 py-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Bank Balance</p>
-                    <p className="mt-2 font-semibold">{formatMoney(summaryQuery.data.universalBankBalance)}</p>
-                  </div>
-                  <div className="rounded-2xl border border-border/70 bg-card px-4 py-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Cheque Collections</p>
-                    <p className="mt-2 font-semibold">{formatMoney(summaryQuery.data.chequeCollections)}</p>
-                  </div>
-                  <div className="rounded-2xl border border-border/70 bg-card px-4 py-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Credit Outstanding</p>
-                    <p className="mt-2 font-semibold">{formatMoney(summaryQuery.data.creditOutstanding)}</p>
-                  </div>
-                </div>
-              ) : null}
+              
             </div>
 
             <div className="min-h-0 flex flex-1 flex-col overflow-hidden">

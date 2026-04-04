@@ -14,6 +14,7 @@ import StockUpdateAddPage from "@/modules/stock-updates/StockUpdateAddPage";
 import StockUpdateViewPage from "@/modules/stock-updates/StockUpdateViewPage";
 import BranchList from "@/modules/branches/BranchList";
 import SupplierList from "@/modules/suppliers/SupplierList";
+import InventoryPage from "@/modules/inventory/InventoryPage";
 import { ROLES } from "@/store/auth.store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import UsersPage from "@/modules/users/UsersPage";
@@ -62,6 +63,15 @@ const router = createBrowserRouter([
           {
             path: "suppliers",
             element: <SupplierList />
+          },
+          {
+            element: <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.BRANCH_USER]} />,
+            children: [
+              {
+                path: "inventory",
+                element: <InventoryPage />
+              }
+            ]
           },
           {
             path: "customer-bills",

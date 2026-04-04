@@ -1,5 +1,87 @@
 export type CustomerBillPaymentMode = "CASH" | "BANK" | "CHEQUE" | "CREDIT";
 
+export type CustomerGender = "MALE" | "FEMALE" | "OTHER";
+
+export interface CustomerPatientRecord {
+  id: number;
+  customerId: number;
+  customerName?: string | null;
+  name: string;
+  gender?: CustomerGender | null;
+  dob?: string | null;
+  notes?: string | null;
+}
+
+export interface CustomerPatientListResponse {
+  items: CustomerPatientRecord[];
+  totalCounts: number;
+  page: number;
+  size: number;
+  totalPages: number;
+}
+
+export interface CreateCustomerPatientRequest {
+  name: string;
+  gender?: CustomerGender | null;
+  dob?: string | null;
+  notes?: string | null;
+}
+
+export interface CustomerBillPrescriptionMeasurement {
+  sph?: string | null;
+  cyl?: string | null;
+  axis?: string | null;
+  va?: string | null;
+}
+
+export interface CustomerBillPrescriptionAddValue {
+  value?: string | null;
+}
+
+export interface CustomerBillPrescriptionPdAdjustment {
+  right?: string | null;
+  left?: string | null;
+  total?: string | null;
+}
+
+export interface CustomerBillPrescriptionOtherMeasurementRow {
+  right?: string | null;
+  left?: string | null;
+}
+
+export interface CustomerBillPrescriptionOtherMeasurements {
+  va: CustomerBillPrescriptionOtherMeasurementRow;
+  ph: CustomerBillPrescriptionOtherMeasurementRow;
+}
+
+export interface CustomerBillPrescriptionEyeValues {
+  distance: CustomerBillPrescriptionMeasurement;
+  near: CustomerBillPrescriptionMeasurement;
+  add: CustomerBillPrescriptionAddValue;
+  contactLens: CustomerBillPrescriptionMeasurement;
+}
+
+export interface CustomerBillPrescriptionValues {
+  right: CustomerBillPrescriptionEyeValues;
+  left: CustomerBillPrescriptionEyeValues;
+  pdAdjustment: CustomerBillPrescriptionPdAdjustment;
+  otherMeasurements: CustomerBillPrescriptionOtherMeasurements;
+}
+
+export interface CustomerBillPrescriptionRequest {
+  prescriptionDate: string;
+  values: CustomerBillPrescriptionValues;
+  notes?: string | null;
+}
+
+export interface CustomerBillPrescriptionSummary {
+  id?: number | null;
+  patientId?: number | null;
+  patientName?: string | null;
+  prescriptionDate?: string | null;
+  notes?: string | null;
+}
+
 export interface CustomerBillItemRequest {
   variantId: number;
   quantity: number;
@@ -19,6 +101,7 @@ export interface CustomerBillPaymentRequest {
 
 export interface CustomerBillCreateRequest {
   customerId?: number;
+  patientId?: number;
   branchId: number;
   billNumber?: string;
   billDate: string;
@@ -27,6 +110,7 @@ export interface CustomerBillCreateRequest {
   notes?: string;
   items: CustomerBillItemRequest[];
   payments: CustomerBillPaymentRequest[];
+  prescription?: CustomerBillPrescriptionRequest;
 }
 
 export interface CustomerBillItemResponse {
@@ -69,10 +153,26 @@ export interface CustomerBillSummary {
 }
 
 export interface CustomerBillRecord extends CustomerBillSummary {
+  patientId?: number | null;
+  patientName?: string | null;
   customerPendingAmount?: number | null;
   notes?: string | null;
+  prescription?: CustomerBillPrescriptionSummary | null;
   items: CustomerBillItemResponse[];
   payments: CustomerBillPaymentResponse[];
+}
+
+export interface PrescriptionRecord {
+  id: number;
+  customerId: number;
+  customerName?: string | null;
+  patientId: number;
+  patientName?: string | null;
+  customerBillId: number;
+  billNumber?: string | null;
+  prescriptionDate: string;
+  values: CustomerBillPrescriptionValues;
+  notes?: string | null;
 }
 
 export interface CustomerBillListParams {

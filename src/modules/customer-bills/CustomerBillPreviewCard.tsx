@@ -52,6 +52,13 @@ function CustomerBillPreviewCard({
             </p>
           </div>
           <div className="rounded-2xl border border-border/70 bg-background/70 px-4 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Patient</p>
+            <p className="mt-2 font-semibold">{record.patientName || record.prescription?.patientName || "-"}</p>
+            <p className="text-sm text-muted-foreground">
+              {record.prescription?.id ? `Prescription #${record.prescription.id}` : "No prescription attached"}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-border/70 bg-background/70 px-4 py-3">
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Branch</p>
             <p className="mt-2 font-semibold">{record.branchName || `Branch #${record.branchId}`}</p>
           </div>

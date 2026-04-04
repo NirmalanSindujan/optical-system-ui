@@ -17,7 +17,7 @@ export async function createCustomerBill(
 export async function getCustomerBills(
   params: CustomerBillListParams = {},
 ): Promise<CustomerBillListResponse> {
-  const { data } = await api.get("/customer-bills", );
+  const { data } = await api.get("/customer-bills", { params });
   return data;
 }
 
