@@ -491,6 +491,27 @@ function CustomerBillAddPage() {
     setFormError("");
   };
 
+  const handlePrescriptionSheetOpenChange = (open: boolean) => {
+    if (open) {
+      setPrescriptionSheetOpen(true);
+      return;
+    }
+
+    if (prescriptionEnabled && !selectedPatient?.id) {
+      const message = "Select a patient before adding a prescription.";
+      setFormError(message);
+      toast({
+        variant: "destructive",
+        title: "Patient required",
+        description: message,
+      });
+      setPrescriptionSheetOpen(true);
+      return;
+    }
+
+    setPrescriptionSheetOpen(false);
+  };
+
   const updatePrescriptionMeasurementField = (
     eye: "right" | "left",
     section: "distance" | "near" | "contactLens",
@@ -1050,7 +1071,7 @@ function CustomerBillAddPage() {
         </DialogContent>
       </Dialog>
 
-      <Sheet open={prescriptionSheetOpen} onOpenChange={setPrescriptionSheetOpen}>
+      <Sheet open={prescriptionSheetOpen} onOpenChange={handlePrescriptionSheetOpenChange}>
         <SheetContent side="right" className="w-full overflow-hidden p-0 sm:max-w-[96vw]">
           <SheetHeader className="border-b px-6 py-5">
             <SheetTitle>Prescription</SheetTitle>
@@ -1321,7 +1342,7 @@ function CustomerBillAddPage() {
             </div>
 
             <SheetFooter className="border-t px-6 py-4">
-              <Button variant="outline" onClick={() => setPrescriptionSheetOpen(false)}>Done</Button>
+              <Button variant="outline" onClick={() => handlePrescriptionSheetOpenChange(false)}>Done</Button>
             </SheetFooter>
           </div>
         </SheetContent>

@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import {
   Calendar,
   CircleDollarSign,
@@ -56,6 +57,7 @@ function CustomerList() {
   const PAGE_SIZE = 25;
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
@@ -173,7 +175,7 @@ function CustomerList() {
               <col className="w-[10%]" />
               <col className="w-[14%]" />
               <col className="w-[12%]" />
-              <col className="w-[64px]" />
+              <col className="w-[170px]" />
             </colgroup>
             <TableHeader className="bg-muted/85 supports-[backdrop-filter]:bg-muted/65">
               <TableRow>
@@ -208,7 +210,7 @@ function CustomerList() {
                     Pending Amount
                   </span>
                 </TableHead>
-                <TableHead className="w-[50px]"></TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
           </Table>
@@ -222,7 +224,7 @@ function CustomerList() {
                 <col className="w-[10%]" />
                 <col className="w-[14%]" />
                 <col className="w-[12%]" />
-                <col className="w-[64px]" />
+                <col className="w-[170px]" />
               </colgroup>
               <TableBody>
                 {isLoading || isFetching ? (
@@ -273,26 +275,35 @@ function CustomerList() {
                         </span>
                       </TableCell>
                       <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button className="h-8 w-8" variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setEditingId(item.id);
-                                setDrawerOpen(true);
-                              }}
-                            >
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive" onClick={() => setConfirmDeleteId(item.id)}>
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate(`/app/customers/dashboard?customerId=${item.id}`)}
+                          >
+                            More
+                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button className="h-8 w-8" variant="ghost" size="icon">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setEditingId(item.id);
+                                  setDrawerOpen(true);
+                                }}
+                              >
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem className="text-destructive" onClick={() => setConfirmDeleteId(item.id)}>
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))

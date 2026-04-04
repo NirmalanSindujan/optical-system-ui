@@ -175,6 +175,14 @@ export interface PrescriptionRecord {
   notes?: string | null;
 }
 
+export interface PrescriptionListResponse {
+  items: PrescriptionRecord[];
+  totalCounts: number;
+  page: number;
+  size: number;
+  totalPages: number;
+}
+
 export interface CustomerBillListParams {
   q?: string;
   branchId?: number;

@@ -1,8 +1,9 @@
-import { createBrowserRouter, Navigate } from "react-router-dom";
+import { createBrowserRouter, Navigate, Outlet } from "react-router-dom";
 import ProtectedRoute from "@/components/layout/ProtectedRoute";
 import AppShell from "@/components/layout/AppShell";
 import Login from "@/modules/auth/Login";
 import CustomerList from "@/modules/customers/CustomerList";
+import CustomerDashboardPage from "@/modules/customers/CustomerDashboardPage";
 import AccessoryProductList from "@/modules/products/accessory/AccessoryProductList";
 import FrameProductList from "@/modules/products/frame/FrameProductList";
 import LensProductList from "@/modules/products/lens/LensProductList";
@@ -54,7 +55,17 @@ const router = createBrowserRouter([
           },
           {
             path: "customers",
-            element: <CustomerList />
+            element: <Outlet />,
+            children: [
+              {
+                index: true,
+                element: <CustomerList />
+              },
+              {
+                path: "dashboard",
+                element: <CustomerDashboardPage />
+              }
+            ]
           },
           {
             path: "settings",

@@ -1,4 +1,5 @@
 import api from "@/lib/api";
+import type { PrescriptionListResponse } from "@/modules/customer-bills/customer-bill.types";
 
 export async function getCustomers(params) {
   const { data } = await api.get("/customers", { params });
@@ -7,6 +8,19 @@ export async function getCustomers(params) {
 
 export async function getCustomerById(id) {
   const { data } = await api.get(`/customers/${id}`);
+  return data;
+}
+
+export async function getCustomerSummary(id) {
+  const { data } = await api.get(`/customers/${id}/summary`);
+  return data;
+}
+
+export async function getCustomerPrescriptions(
+  customerId: number,
+  params: { page?: number; size?: number } = {},
+): Promise<PrescriptionListResponse> {
+  const { data } = await api.get(`/customers/${customerId}/prescriptions`, { params });
   return data;
 }
 
