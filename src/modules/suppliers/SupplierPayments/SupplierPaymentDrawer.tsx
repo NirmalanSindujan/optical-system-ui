@@ -35,7 +35,7 @@ type SupplierPaymentDrawerProps = {
   onClose: () => void;
 };
 
-type PaymentMode = "CASH" | "BANK" | "CREDIT";
+type PaymentMode = "CASH" | "BANK" | "CHEQUE";
 type AllocationMode = "by-bills" | "total";
 
 type SupplierBill = {
@@ -109,6 +109,11 @@ function SupplierPaymentDrawer({
   const [paymentDate, setPaymentDate] = useState(getToday);
   const [paymentMode, setPaymentMode] = useState<PaymentMode>("BANK");
   const [paymentAmount, setPaymentAmount] = useState("");
+  const [chequeNumber, setChequeNumber] = useState("");
+  const [chequeDate, setChequeDate] = useState(getToday);
+  const [chequeBankName, setChequeBankName] = useState("");
+  const [chequeBranchName, setChequeBranchName] = useState("");
+  const [chequeAccountHolder, setChequeAccountHolder] = useState("");
   const [reference, setReference] = useState("");
   const [notes, setNotes] = useState("");
   const [allocationInputs, setAllocationInputs] = useState<
@@ -169,6 +174,11 @@ function SupplierPaymentDrawer({
     setPaymentDate(getToday());
     setPaymentMode("BANK");
     setPaymentAmount("");
+    setChequeNumber("");
+    setChequeDate(getToday());
+    setChequeBankName("");
+    setChequeBranchName("");
+    setChequeAccountHolder("");
     setReference("");
     setNotes("");
     setAllocationInputs({});
@@ -197,7 +207,7 @@ function SupplierPaymentDrawer({
         throw new Error("Add at least one bill allocation.");
       }
 
-      if (totalAllocated > amount) {
+      if (allocationMode === "by-bills" && totalAllocated > amount) {
         throw new Error("Total allocation cannot exceed the payment amount.");
       }
 
@@ -210,10 +220,24 @@ function SupplierPaymentDrawer({
         );
       }
 
+      if (paymentMode === "CHEQUE") {
+        if (!chequeNumber.trim()) {
+          throw new Error("Cheque number is required.");
+        }
+        if (!chequeDate.trim()) {
+          throw new Error("Cheque date is required.");
+        }
+      }
+
       return createSupplierPayment(supplierId as number, {
         paymentDate,
         paymentMode,
         amount,
+        chequeNumber: paymentMode === "CHEQUE" ? chequeNumber.trim() : undefined,
+        chequeDate: paymentMode === "CHEQUE" ? chequeDate.trim() : undefined,
+        chequeBankName: paymentMode === "CHEQUE" ? chequeBankName.trim() : undefined,
+        chequeBranchName: paymentMode === "CHEQUE" ? chequeBranchName.trim() || undefined : undefined,
+        chequeAccountHolder: paymentMode === "CHEQUE" ? chequeAccountHolder.trim() || undefined : undefined,
         reference: reference.trim() || undefined,
         notes: notes.trim() || undefined,
         allocations: allocations.map(
@@ -377,7 +401,7 @@ function SupplierPaymentDrawer({
                       >
                         <option value="BANK">BANK</option>
                         <option value="CASH">CASH</option>
-                        {/* <option value="CREDIT">CREDIT</option> */}
+                        <option value="CHEQUE">CHEQUE</option>
                       </Select>
                     </div>
 
@@ -421,6 +445,65 @@ function SupplierPaymentDrawer({
                             placeholder="Payment notes"
                           />
                         </div>
+
+                        {paymentMode === "CHEQUE" ? (
+                          <>
+                            <div>
+                              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                                Cheque Number
+                              </label>
+                              <Input
+                                value={chequeNumber}
+                                onChange={(event) => setChequeNumber(event.target.value)}
+                                placeholder="Cheque number"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                                Cheque Date
+                              </label>
+                              <Input
+                                type="date"
+                                value={chequeDate}
+                                onChange={(event) => setChequeDate(event.target.value)}
+                              />
+                            </div>
+
+                            <div>
+                              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                                Bank Name
+                              </label>
+                              <Input
+                                value={chequeBankName}
+                                onChange={(event) => setChequeBankName(event.target.value)}
+                                placeholder="Bank name"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                                Branch Name
+                              </label>
+                              <Input
+                                value={chequeBranchName}
+                                onChange={(event) => setChequeBranchName(event.target.value)}
+                                placeholder="Branch name"
+                              />
+                            </div>
+
+                            <div className="md:col-span-2">
+                              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                                Account Holder
+                              </label>
+                              <Input
+                                value={chequeAccountHolder}
+                                onChange={(event) => setChequeAccountHolder(event.target.value)}
+                                placeholder="Account holder"
+                              />
+                            </div>
+                          </>
+                        ) : null}
                       </div>
                     </TabsContent>
 
@@ -467,6 +550,65 @@ function SupplierPaymentDrawer({
                             placeholder="Payment notes"
                           />
                         </div>
+
+                        {paymentMode === "CHEQUE" ? (
+                          <>
+                            <div>
+                              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                                Cheque Number
+                              </label>
+                              <Input
+                                value={chequeNumber}
+                                onChange={(event) => setChequeNumber(event.target.value)}
+                                placeholder="Cheque number"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                                Cheque Date
+                              </label>
+                              <Input
+                                type="date"
+                                value={chequeDate}
+                                onChange={(event) => setChequeDate(event.target.value)}
+                              />
+                            </div>
+
+                            <div>
+                              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                                Bank Name
+                              </label>
+                              <Input
+                                value={chequeBankName}
+                                onChange={(event) => setChequeBankName(event.target.value)}
+                                placeholder="Bank name"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                                Branch Name
+                              </label>
+                              <Input
+                                value={chequeBranchName}
+                                onChange={(event) => setChequeBranchName(event.target.value)}
+                                placeholder="Branch name"
+                              />
+                            </div>
+
+                            <div className="md:col-span-2">
+                              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                                Account Holder
+                              </label>
+                              <Input
+                                value={chequeAccountHolder}
+                                onChange={(event) => setChequeAccountHolder(event.target.value)}
+                                placeholder="Account holder"
+                              />
+                            </div>
+                          </>
+                        ) : null}
                       </div>
                     </TabsContent>
                   </div>

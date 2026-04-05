@@ -8,6 +8,7 @@ import {
   Circle,
   CreditCard,
   LayoutDashboard,
+  Landmark,
   Package,
   Settings,
   Square,
@@ -70,6 +71,29 @@ const sidebarItems: SidebarItem[] = [
     label: "Customers",
     to: "/app/customers",
     icon: Users,
+  },
+  {
+    id: "transactions",
+    label: "Transactions",
+    icon: Landmark,
+    children: [
+      {
+        id: "transactions-cheques",
+        label: "Cheques",
+        children: [
+          {
+            id: "transactions-cheques-received",
+            label: "Received Cheques",
+            to: "/app/transactions/cheques/received",
+          },
+          {
+            id: "transactions-cheques-provided",
+            label: "Provided Cheques",
+            to: "/app/transactions/cheques/provided",
+          },
+        ],
+      },
+    ],
   },
   {
     id: "suppliers",
@@ -152,6 +176,18 @@ const sidebarItems: SidebarItem[] = [
 const itemButtonClassName =
   "flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors";
 
+function getSidebarPaddingLeft(depth: number) {
+  if (depth <= 0) return 12;
+  if (depth === 1) return 28;
+  return 36;
+}
+
+function getSidebarChildOffset(depth: number) {
+  if (depth <= 0) return 20;
+  if (depth === 1) return 12;
+  return 8;
+}
+
 function hasAccess(item: SidebarItem, role: Role | null) {
   if (!item.roles?.length) {
     return true;
@@ -223,7 +259,7 @@ function SidebarNode({
   const hasChildren = Boolean(item.children?.length);
   const isActive = isItemActive(item, pathname);
   const isOpen = openItems[item.id] ?? false;
-  const paddingLeft = 12 + depth * 20;
+  const paddingLeft = getSidebarPaddingLeft(depth);
 
   if (!hasChildren && item.to) {
     return (
@@ -280,7 +316,7 @@ function SidebarNode({
         <div className="min-h-0">
           <div
             className="space-y-1 border-l"
-            style={{ marginLeft: paddingLeft + 8, paddingLeft: 8 }}
+            style={{ marginLeft: paddingLeft + getSidebarChildOffset(depth), paddingLeft: 8 }}
           >
             {item.children?.map((child) => (
               <SidebarNode

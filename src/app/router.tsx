@@ -4,6 +4,8 @@ import AppShell from "@/components/layout/AppShell";
 import Login from "@/modules/auth/Login";
 import CustomerList from "@/modules/customers/CustomerList";
 import CustomerDashboardPage from "@/modules/customers/CustomerDashboardPage";
+import CustomerTransactionsChequesPage from "@/modules/customers/CustomerTransactionsChequesPage";
+import DashboardHomePage from "@/modules/dashboard/DashboardHomePage";
 import AccessoryProductList from "@/modules/products/accessory/AccessoryProductList";
 import FrameProductList from "@/modules/products/frame/FrameProductList";
 import LensProductList from "@/modules/products/lens/LensProductList";
@@ -17,21 +19,7 @@ import BranchList from "@/modules/branches/BranchList";
 import SupplierList from "@/modules/suppliers/SupplierList";
 import InventoryPage from "@/modules/inventory/InventoryPage";
 import { ROLES } from "@/store/auth.store";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import UsersPage from "@/modules/users/UsersPage";
-
-function DashboardHome() {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Dashboard</CardTitle>
-      </CardHeader>
-      <CardContent className="text-sm text-muted-foreground">
-        Overview widgets can be placed here (customers, branch health, top branches, alerts).
-      </CardContent>
-    </Card>
-  );
-}
 
 const router = createBrowserRouter([
   {
@@ -51,7 +39,7 @@ const router = createBrowserRouter([
         children: [
           {
             index: true,
-            element: <DashboardHome />
+            element: <DashboardHomePage />
           },
           {
             path: "customers",
@@ -64,6 +52,34 @@ const router = createBrowserRouter([
               {
                 path: "dashboard",
                 element: <CustomerDashboardPage />
+              }
+            ]
+          },
+          {
+            path: "transactions",
+            element: <Outlet />,
+            children: [
+              {
+                index: true,
+                element: <Navigate to="/app/transactions/cheques/received" replace />
+              },
+              {
+                path: "cheques",
+                element: <Outlet />,
+                children: [
+                  {
+                    index: true,
+                    element: <Navigate to="/app/transactions/cheques/received" replace />
+                  },
+                  {
+                    path: "received",
+                    element: <CustomerTransactionsChequesPage variant="received" />
+                  },
+                  {
+                    path: "provided",
+                    element: <CustomerTransactionsChequesPage variant="provided" />
+                  }
+                ]
               }
             ]
           },

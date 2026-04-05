@@ -30,6 +30,7 @@ import type {
 import CustomerAsyncSelect, { type CustomerOption } from "@/modules/customer-bills/components/CustomerAsyncSelect";
 import { getPrescriptionById } from "@/modules/customer-bills/customer-patient.service";
 import { formatMoney } from "@/modules/customer-bills/customer-bill.utils";
+import CustomerPendingBillsSheet from "@/modules/customers/CustomerPendingBillsSheet";
 import {
   getCustomerById,
   getCustomerPrescriptions,
@@ -188,6 +189,7 @@ function CustomerDashboardPage() {
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerOption | null>(null);
+  const [pendingBillsOpen, setPendingBillsOpen] = useState(false);
   const [prescriptionsOpen, setPrescriptionsOpen] = useState(false);
   const [prescriptionPage, setPrescriptionPage] = useState(0);
   const [selectedPrescriptionId, setSelectedPrescriptionId] = useState<number | null>(null);
@@ -283,6 +285,7 @@ function CustomerDashboardPage() {
           value: formatMoney(summary.pendingAmount ?? 0),
           icon: Wallet,
           tone: (summary.pendingAmount ?? 0) > 0 ? ("alert" as const) : ("default" as const),
+          onClick: () => setPendingBillsOpen(true),
         },
         {
           title: "Total Bills",
@@ -356,6 +359,7 @@ function CustomerDashboardPage() {
                 value={selectedCustomer}
                 onChange={(customer) => {
                   setSelectedCustomer(customer);
+                  setPendingBillsOpen(false);
                   setPrescriptionsOpen(false);
                   setPrescriptionDetailOpen(false);
                   setSelectedPrescriptionId(null);
@@ -409,6 +413,13 @@ function CustomerDashboardPage() {
           )}
         </CardContent>
       </Card>
+
+      <CustomerPendingBillsSheet
+        open={pendingBillsOpen}
+        onOpenChange={setPendingBillsOpen}
+        customerId={selectedCustomerId}
+        customerName={customerName}
+      />
 
       <Sheet
         open={prescriptionsOpen}
