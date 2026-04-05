@@ -93,6 +93,23 @@ const sidebarItems: SidebarItem[] = [
           },
         ],
       },
+      {
+        id: "transactions-expense",
+        label: "Expense",
+        roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.BRANCH_USER],
+        children: [
+          {
+            id: "transactions-expense-category",
+            label: "Category",
+            to: "/app/transactions/expense/category",
+          },
+          {
+            id: "transactions-expense-expense",
+            label: "Expense",
+            to: "/app/transactions/expense/expense",
+          },
+        ],
+      },
     ],
   },
   {

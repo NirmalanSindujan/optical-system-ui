@@ -7,6 +7,37 @@ export type BusinessSummaryBranchCash = {
   cashInHand: number;
 };
 
+export type CashLedgerDirection = "INCOME" | "OUTGOING";
+
+export type CashLedgerEntryType =
+  | "CUSTOMER_BILL_PAYMENT"
+  | "EXPENSE"
+  | "SUPPLIER_PAYMENT";
+
+export type CashLedgerEntry = {
+  entryType: CashLedgerEntryType;
+  direction: CashLedgerDirection;
+  transactionId: number;
+  transactionDate: string;
+  createdAt: string;
+  amount: number;
+  reference: string;
+  description: string;
+  partyName: string;
+};
+
+export type CashLedgerResponse = {
+  branchId: number;
+  branchCode: string;
+  branchName: string;
+  fromDate: string | null;
+  toDate: string | null;
+  totalIncome: number;
+  totalOutgoing: number;
+  netCashMovement: number;
+  entries: CashLedgerEntry[];
+};
+
 export type BusinessSummaryResponse = {
   cashInHand: number;
   bankBalance: number;
@@ -28,6 +59,38 @@ export async function getBusinessSummary(): Promise<BusinessSummaryResponse> {
           branchCode: item?.branchCode ?? "",
           branchName: item?.branchName ?? "",
           cashInHand: Number(item?.cashInHand ?? 0),
+        }))
+      : [],
+  };
+}
+
+export async function getCashLedger(params: {
+  branchId: number;
+  fromDate?: string;
+  toDate?: string;
+}): Promise<CashLedgerResponse> {
+  const { data } = await api.get("/finance/cash-ledger", { params });
+
+  return {
+    branchId: Number(data?.branchId ?? params.branchId),
+    branchCode: data?.branchCode ?? "",
+    branchName: data?.branchName ?? "",
+    fromDate: data?.fromDate ?? null,
+    toDate: data?.toDate ?? null,
+    totalIncome: Number(data?.totalIncome ?? 0),
+    totalOutgoing: Number(data?.totalOutgoing ?? 0),
+    netCashMovement: Number(data?.netCashMovement ?? 0),
+    entries: Array.isArray(data?.entries)
+      ? data.entries.map((item: CashLedgerEntry) => ({
+          entryType: item?.entryType ?? "EXPENSE",
+          direction: item?.direction ?? "OUTGOING",
+          transactionId: Number(item?.transactionId ?? 0),
+          transactionDate: item?.transactionDate ?? "",
+          createdAt: item?.createdAt ?? "",
+          amount: Number(item?.amount ?? 0),
+          reference: item?.reference ?? "",
+          description: item?.description ?? "",
+          partyName: item?.partyName ?? "",
         }))
       : [],
   };

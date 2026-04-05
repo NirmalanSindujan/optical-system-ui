@@ -1,19 +1,25 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Banknote,
+  CalendarRange,
   Building2,
   Landmark,
   LayoutDashboard,
+  RefreshCcw,
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/components/ui/use-toast";
+import BranchSelect from "@/modules/branches/components/BranchSelect";
 import { formatMoney } from "@/modules/customer-bills/customer-bill.utils";
-import { getBusinessSummary } from "@/modules/dashboard/dashboard.service";
+import { getBusinessSummary, getCashLedger, type BusinessSummaryBranchCash, type CashLedgerEntry } from "@/modules/dashboard/dashboard.service";
+import { formatExpenseDate, formatExpenseDateTime } from "@/modules/expenses/expense.utils";
 import { ROLES, useAuthStore } from "@/store/auth.store";
 
 function getApiErrorMessage(error: unknown) {
@@ -24,27 +30,66 @@ function getApiErrorMessage(error: unknown) {
   return "Failed to load the business summary.";
 }
 
+function getTodayDateValue() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getMonthStartDateValue() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  return `${year}-${month}-01`;
+}
+
+function getDirectionToneClass(direction: CashLedgerEntry["direction"]) {
+  return direction === "INCOME"
+    ? "bg-emerald-100 text-emerald-800"
+    : "bg-rose-100 text-rose-800";
+}
+
 function SummaryMetricCard({
   title,
   value,
   description,
   icon: Icon,
   tone = "default",
+  onClick,
 }: {
   title: string;
   value: string;
   description: string;
   icon: typeof Banknote;
   tone?: "default" | "alert";
+  onClick?: () => void;
 }) {
+  const isInteractive = Boolean(onClick);
+
   return (
-    <Card className={tone === "alert" ? "border-amber-200 bg-amber-50/40" : "border-border/70 bg-card/90"}>
+    <Card
+      className={
+        tone === "alert"
+          ? "border-amber-200 bg-amber-50/40"
+          : "border-border/70 bg-card/90"
+      }
+    >
       <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-3">
+        <button
+          type="button"
+          onClick={onClick}
+          disabled={!isInteractive}
+          className="flex w-full items-start justify-between gap-3 text-left disabled:cursor-default"
+        >
           <div className="space-y-1">
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{title}</p>
             <p className="text-2xl font-semibold tracking-tight text-foreground">{value}</p>
-            <p className="text-xs text-muted-foreground">{description}</p>
+            <p className="text-xs text-muted-foreground">
+              {description}
+              {isInteractive ? " Click to view cash ledger." : ""}
+            </p>
           </div>
           <div
             className={
@@ -55,7 +100,7 @@ function SummaryMetricCard({
           >
             <Icon className="h-4 w-4" />
           </div>
-        </div>
+        </button>
       </CardContent>
     </Card>
   );
@@ -65,6 +110,10 @@ function DashboardHomePage() {
   const { toast } = useToast();
   const role = useAuthStore((state) => state.role);
   const canViewBusinessSummary = role === ROLES.SUPER_ADMIN || role === ROLES.ADMIN;
+  const [cashLedgerOpen, setCashLedgerOpen] = useState(false);
+  const [selectedCashBranchId, setSelectedCashBranchId] = useState<number | null>(null);
+  const [cashLedgerFromDate, setCashLedgerFromDate] = useState(getMonthStartDateValue());
+  const [cashLedgerToDate, setCashLedgerToDate] = useState(getTodayDateValue());
 
   const businessSummaryQuery = useQuery({
     queryKey: ["dashboard", "business-summary"],
@@ -82,6 +131,47 @@ function DashboardHomePage() {
   }, [businessSummaryQuery.error, businessSummaryQuery.isError, toast]);
 
   const summary = businessSummaryQuery.data;
+  const branchOptions = summary?.branchCashInHand ?? [];
+
+  useEffect(() => {
+    if (selectedCashBranchId || !branchOptions.length) {
+      return;
+    }
+
+    setSelectedCashBranchId(branchOptions[0].branchId);
+  }, [branchOptions, selectedCashBranchId]);
+
+  const selectedBranch = useMemo(
+    () => branchOptions.find((branch) => branch.branchId === selectedCashBranchId) ?? null,
+    [branchOptions, selectedCashBranchId],
+  );
+
+  const cashLedgerQuery = useQuery({
+    queryKey: ["dashboard", "cash-ledger", selectedCashBranchId, cashLedgerFromDate, cashLedgerToDate],
+    queryFn: () =>
+      getCashLedger({
+        branchId: selectedCashBranchId as number,
+        fromDate: cashLedgerFromDate || undefined,
+        toDate: cashLedgerToDate || undefined,
+      }),
+    enabled: cashLedgerOpen && canViewBusinessSummary && Boolean(selectedCashBranchId),
+  });
+
+  useEffect(() => {
+    if (!cashLedgerQuery.isError) return;
+    toast({
+      variant: "destructive",
+      title: "Failed to load cash ledger",
+      description: getApiErrorMessage(cashLedgerQuery.error),
+    });
+  }, [cashLedgerQuery.error, cashLedgerQuery.isError, toast]);
+
+  const openCashLedger = (branch?: BusinessSummaryBranchCash) => {
+    if (branch?.branchId) {
+      setSelectedCashBranchId(branch.branchId);
+    }
+    setCashLedgerOpen(true);
+  };
 
   return (
     <div className="space-y-4">
@@ -142,6 +232,7 @@ function DashboardHomePage() {
                   value={formatMoney(summary.cashInHand)}
                   description="Net business cash position"
                   icon={Banknote}
+                  onClick={() => openCashLedger()}
                 />
                 <SummaryMetricCard
                   title="Bank Balance"
@@ -192,7 +283,11 @@ function DashboardHomePage() {
                           </TableRow>
                         ) : (
                           summary.branchCashInHand.map((branch) => (
-                            <TableRow key={branch.branchId}>
+                            <TableRow
+                              key={branch.branchId}
+                              className="cursor-pointer"
+                              onClick={() => openCashLedger(branch)}
+                            >
                               <TableCell className="font-medium">{branch.branchCode || `#${branch.branchId}`}</TableCell>
                               <TableCell>{branch.branchName || "-"}</TableCell>
                               <TableCell className="text-right">{formatMoney(branch.cashInHand)}</TableCell>
@@ -214,6 +309,157 @@ function DashboardHomePage() {
           )}
         </>
       ) : null}
+
+      <Sheet open={cashLedgerOpen} onOpenChange={setCashLedgerOpen}>
+        <SheetContent side="right" className="w-full overflow-y-auto border-l border-border/70 p-0 sm:max-w-6xl">
+          <SheetHeader className="border-b px-6 py-5">
+            <SheetTitle>Cash Ledger</SheetTitle>
+            <SheetDescription>
+              Branch-level cash income and outgoing ledger for the selected period.
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="space-y-4 px-6 py-5">
+            <div className="grid gap-4 xl:grid-cols-[minmax(220px,1.5fr)_minmax(170px,1fr)_minmax(170px,1fr)_auto]">
+              <BranchSelect
+                value={selectedCashBranchId}
+                onChange={(branch) => setSelectedCashBranchId(branch?.id ?? null)}
+                placeholder="Select branch"
+                allowClear={false}
+              />
+              <Input
+                type="date"
+                value={cashLedgerFromDate}
+                onChange={(event) => setCashLedgerFromDate(event.target.value)}
+              />
+              <Input
+                type="date"
+                value={cashLedgerToDate}
+                onChange={(event) => setCashLedgerToDate(event.target.value)}
+              />
+              <Button
+                variant="outline"
+                onClick={() => cashLedgerQuery.refetch()}
+                disabled={cashLedgerQuery.isFetching || !selectedCashBranchId}
+              >
+                <RefreshCcw className="mr-2 h-4 w-4" />
+                {cashLedgerQuery.isFetching ? "Refreshing..." : "Refresh"}
+              </Button>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-4">
+              <Card className="border-border/70 shadow-sm">
+                <CardContent className="p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                    Branch
+                  </p>
+                  <p className="mt-1 text-lg font-semibold">
+                    {cashLedgerQuery.data?.branchCode || selectedBranch?.branchCode || "-"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {cashLedgerQuery.data?.branchName || selectedBranch?.branchName || "Select a branch"}
+                  </p>
+                </CardContent>
+              </Card>
+              <Card className="border-border/70 shadow-sm">
+                <CardContent className="p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                    Total Income
+                  </p>
+                  <p className="mt-1 text-lg font-semibold text-emerald-700">
+                    {formatMoney(cashLedgerQuery.data?.totalIncome ?? 0)}
+                  </p>
+                </CardContent>
+              </Card>
+              <Card className="border-border/70 shadow-sm">
+                <CardContent className="p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                    Total Outgoing
+                  </p>
+                  <p className="mt-1 text-lg font-semibold text-rose-700">
+                    {formatMoney(cashLedgerQuery.data?.totalOutgoing ?? 0)}
+                  </p>
+                </CardContent>
+              </Card>
+              <Card className="border-border/70 shadow-sm">
+                <CardContent className="p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                    Net Cash Movement
+                  </p>
+                  <p className="mt-1 text-lg font-semibold">
+                    {formatMoney(cashLedgerQuery.data?.netCashMovement ?? 0)}
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card className="border-border/70 shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <CalendarRange className="h-4 w-4 text-primary" />
+                  Cash Ledger Entries
+                </CardTitle>
+                <CardDescription>
+                  {cashLedgerQuery.data?.fromDate || cashLedgerFromDate || "-"} to{" "}
+                  {cashLedgerQuery.data?.toDate || cashLedgerToDate || "-"}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table className="min-w-[1120px] table-fixed">
+                    <TableHeader className="bg-muted/85 supports-[backdrop-filter]:bg-muted/65">
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Created At</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Direction</TableHead>
+                        <TableHead>Party</TableHead>
+                        <TableHead>Reference</TableHead>
+                        <TableHead>Description</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {cashLedgerQuery.isLoading || cashLedgerQuery.isFetching ? (
+                        <TableRow>
+                          <TableCell colSpan={8}>Loading cash ledger...</TableCell>
+                        </TableRow>
+                      ) : !selectedCashBranchId ? (
+                        <TableRow>
+                          <TableCell colSpan={8}>Select a branch to view the cash ledger.</TableCell>
+                        </TableRow>
+                      ) : (cashLedgerQuery.data?.entries?.length ?? 0) === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={8}>No cash ledger entries found for this period.</TableCell>
+                        </TableRow>
+                      ) : (
+                        cashLedgerQuery.data?.entries.map((entry) => (
+                          <TableRow key={`${entry.entryType}-${entry.transactionId}-${entry.createdAt}`}>
+                            <TableCell>{formatExpenseDate(entry.transactionDate)}</TableCell>
+                            <TableCell>{formatExpenseDateTime(entry.createdAt)}</TableCell>
+                            <TableCell>{entry.entryType}</TableCell>
+                            <TableCell>
+                              <span
+                                className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${getDirectionToneClass(entry.direction)}`}
+                              >
+                                {entry.direction}
+                              </span>
+                            </TableCell>
+                            <TableCell>{entry.partyName || "-"}</TableCell>
+                            <TableCell>{entry.reference || "-"}</TableCell>
+                            <TableCell>{entry.description || "-"}</TableCell>
+                            <TableCell className="text-right">{formatMoney(entry.amount)}</TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

@@ -20,6 +20,9 @@ import SupplierList from "@/modules/suppliers/SupplierList";
 import InventoryPage from "@/modules/inventory/InventoryPage";
 import { ROLES } from "@/store/auth.store";
 import UsersPage from "@/modules/users/UsersPage";
+import ExpenseTransactionsLayout from "@/modules/expenses/ExpenseTransactionsLayout";
+import ExpenseCategoryPage from "@/modules/expenses/ExpenseCategoryPage";
+import ExpensePage from "@/modules/expenses/ExpensePage";
 
 const router = createBrowserRouter([
   {
@@ -78,6 +81,29 @@ const router = createBrowserRouter([
                   {
                     path: "provided",
                     element: <CustomerTransactionsChequesPage variant="provided" />
+                  }
+                ]
+              },
+              {
+                element: <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.BRANCH_USER]} />,
+                children: [
+                  {
+                    path: "expense",
+                    element: <ExpenseTransactionsLayout />,
+                    children: [
+                      {
+                        index: true,
+                        element: <Navigate to="/app/transactions/expense/category" replace />
+                      },
+                      {
+                        path: "category",
+                        element: <ExpenseCategoryPage />
+                      },
+                      {
+                        path: "expense",
+                        element: <ExpensePage />
+                      }
+                    ]
                   }
                 ]
               }
