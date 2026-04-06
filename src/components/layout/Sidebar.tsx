@@ -121,9 +121,20 @@ const sidebarItems: SidebarItem[] = [
   {
     id: "inventory",
     label: "Inventory",
-    to: "/app/inventory",
     icon: Boxes,
     roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.BRANCH_USER],
+    children: [
+      {
+        id: "inventory-view",
+        label: "View Inventory",
+        to: "/app/inventory/view",
+      },
+      {
+        id: "inventory-requests",
+        label: "Inventory Request",
+        to: "/app/inventory/requests/received",
+      },
+    ],
   },
   {
     id: "customer-bills",

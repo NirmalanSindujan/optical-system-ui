@@ -18,6 +18,8 @@ import StockUpdateViewPage from "@/modules/stock-updates/StockUpdateViewPage";
 import BranchList from "@/modules/branches/BranchList";
 import SupplierList from "@/modules/suppliers/SupplierList";
 import InventoryPage from "@/modules/inventory/InventoryPage";
+import InventoryLayout from "@/modules/inventory/InventoryLayout";
+import InventoryRequestPage from "@/modules/inventory/InventoryRequestPage";
 import { ROLES } from "@/store/auth.store";
 import UsersPage from "@/modules/users/UsersPage";
 import ExpenseTransactionsLayout from "@/modules/expenses/ExpenseTransactionsLayout";
@@ -122,7 +124,25 @@ const router = createBrowserRouter([
             children: [
               {
                 path: "inventory",
-                element: <InventoryPage />
+                element: <InventoryLayout />,
+                children: [
+                  {
+                    index: true,
+                    element: <Navigate to="/app/inventory/view" replace />
+                  },
+                  {
+                    path: "view",
+                    element: <InventoryPage />
+                  },
+                  {
+                    path: "requests",
+                    element: <Navigate to="/app/inventory/requests/received" replace />
+                  },
+                  {
+                    path: "requests/:requestTab",
+                    element: <InventoryRequestPage />
+                  }
+                ]
               }
             ]
           },
