@@ -25,6 +25,8 @@ import UsersPage from "@/modules/users/UsersPage";
 import ExpenseTransactionsLayout from "@/modules/expenses/ExpenseTransactionsLayout";
 import ExpenseCategoryPage from "@/modules/expenses/ExpenseCategoryPage";
 import ExpensePage from "@/modules/expenses/ExpensePage";
+import SettingsLayout from "@/modules/settings/SettingsLayout";
+import LegacyCustomerPrescriptionMigrationPage from "@/modules/settings/LegacyCustomerPrescriptionMigrationPage";
 
 const router = createBrowserRouter([
   {
@@ -112,10 +114,6 @@ const router = createBrowserRouter([
             ]
           },
           {
-            path: "settings",
-            element: <Navigate to="/app/settings/users" replace />
-          },
-          {
             path: "suppliers",
             element: <SupplierList />
           },
@@ -162,8 +160,31 @@ const router = createBrowserRouter([
             element: <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]} />,
             children: [
               {
-                path: "settings/users",
-                element: <UsersPage />
+                path: "settings",
+                element: <SettingsLayout />,
+                children: [
+                  {
+                    index: true,
+                    element: <Navigate to="/app/settings/users" replace />
+                  },
+                  {
+                    path: "users",
+                    element: <UsersPage />
+                  },
+                  {
+                    element: <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN]} />,
+                    children: [
+                      {
+                        path: "branches",
+                        element: <BranchList />
+                      },
+                      {
+                        path: "legacy-customer-prescriptions",
+                        element: <LegacyCustomerPrescriptionMigrationPage />
+                      }
+                    ]
+                  }
+                ]
               },
               {
                 path: "stock-updates",
@@ -184,7 +205,7 @@ const router = createBrowserRouter([
             children: [
               {
                 path: "branches",
-                element: <BranchList />
+                element: <Navigate to="/app/settings/branches" replace />
               }
             ]
           },
