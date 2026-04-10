@@ -83,13 +83,72 @@ function mapCustomerToOption(customer: any): CustomerOption | null {
   };
 }
 
+function formatPrescriptionDisplayValue(value: unknown): string {
+  if (value == null) return "-";
+  if (typeof value === "string") return value.trim() ? value : "-";
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+
+  if (typeof value === "object") {
+    const decimalLike = value as {
+      signedValue?: unknown;
+      major?: unknown;
+      minor?: unknown;
+    };
+
+    if (decimalLike.signedValue != null && decimalLike.signedValue !== "") {
+      return String(decimalLike.signedValue);
+    }
+
+    if (decimalLike.major != null || decimalLike.minor != null) {
+      const major = decimalLike.major != null ? String(decimalLike.major) : "0";
+      const minor = decimalLike.minor != null ? String(decimalLike.minor) : "0";
+      return `${major}.${minor}`;
+    }
+  }
+
+  return String(value);
+}
+
+function getPrescriptionPdValue(
+  values: CustomerBillPrescriptionValues | undefined,
+  side: "right" | "left",
+) {
+  const modernValue = values?.pdAdjustment?.[side];
+  if (modernValue != null) return formatPrescriptionDisplayValue(modernValue);
+
+  const legacyPd = (values as {
+    pd?: {
+      right1?: unknown;
+      right2?: unknown;
+      left1?: unknown;
+      left2?: unknown;
+    };
+  } | undefined)?.pd;
+
+  const part1 = legacyPd?.[`${side}1`];
+  const part2 = legacyPd?.[`${side}2`];
+
+  if (part1 == null && part2 == null) return "-";
+  return `${part1 ?? ""}${part2 ?? ""}` || "-";
+}
+
+function getPrescriptionPdTotal(values: CustomerBillPrescriptionValues | undefined) {
+  const modernValue = values?.pdAdjustment?.total;
+  if (modernValue != null) return formatPrescriptionDisplayValue(modernValue);
+
+  const right = getPrescriptionPdValue(values, "right");
+  const left = getPrescriptionPdValue(values, "left");
+  if (right === "-" && left === "-") return "-";
+  return `${right} / ${left}`;
+}
+
 function getMeasurementValue(
   values: CustomerBillPrescriptionValues | undefined,
   eye: "right" | "left",
   section: "distance" | "near" | "contactLens",
   field: keyof CustomerBillPrescriptionMeasurement,
 ) {
-  return values?.[eye]?.[section]?.[field] || "-";
+  return formatPrescriptionDisplayValue(values?.[eye]?.[section]?.[field]);
 }
 
 function MetricCard({
@@ -175,7 +234,7 @@ function PrescriptionValueTable({
             <tr>
               <td className="px-5 py-4 text-sm font-semibold text-foreground">ADD</td>
               <td className="px-4 py-4 text-sm" colSpan={4}>
-                {values?.[eye]?.add?.value || "-"}
+                {formatPrescriptionDisplayValue(values?.[eye]?.add?.value)}
               </td>
             </tr>
           </tbody>
@@ -573,15 +632,15 @@ function CustomerDashboardPage() {
                   <div className="grid gap-3 px-5 py-4 sm:grid-cols-3">
                     <div className="rounded-lg border bg-muted/20 px-4 py-3">
                       <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Right</p>
-                      <p className="mt-1 font-medium">{selectedPrescription.values?.pdAdjustment?.right || "-"}</p>
+                      <p className="mt-1 font-medium">{getPrescriptionPdValue(selectedPrescription.values, "right")}</p>
                     </div>
                     <div className="rounded-lg border bg-muted/20 px-4 py-3">
                       <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Left</p>
-                      <p className="mt-1 font-medium">{selectedPrescription.values?.pdAdjustment?.left || "-"}</p>
+                      <p className="mt-1 font-medium">{getPrescriptionPdValue(selectedPrescription.values, "left")}</p>
                     </div>
                     <div className="rounded-lg border bg-muted/20 px-4 py-3">
                       <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Total</p>
-                      <p className="mt-1 font-medium">{selectedPrescription.values?.pdAdjustment?.total || "-"}</p>
+                      <p className="mt-1 font-medium">{getPrescriptionPdTotal(selectedPrescription.values)}</p>
                     </div>
                   </div>
                 </section>
@@ -594,15 +653,15 @@ function CustomerDashboardPage() {
                     <div className="rounded-lg border bg-muted/20 px-4 py-3">
                       <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">V.A</p>
                       <p className="mt-1 font-medium">
-                        Right {selectedPrescription.values?.otherMeasurements?.va?.right || "-"} / Left{" "}
-                        {selectedPrescription.values?.otherMeasurements?.va?.left || "-"}
+                        Right {formatPrescriptionDisplayValue(selectedPrescription.values?.otherMeasurements?.va?.right)} / Left{" "}
+                        {formatPrescriptionDisplayValue(selectedPrescription.values?.otherMeasurements?.va?.left)}
                       </p>
                     </div>
                     <div className="rounded-lg border bg-muted/20 px-4 py-3">
                       <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">P.H</p>
                       <p className="mt-1 font-medium">
-                        Right {selectedPrescription.values?.otherMeasurements?.ph?.right || "-"} / Left{" "}
-                        {selectedPrescription.values?.otherMeasurements?.ph?.left || "-"}
+                        Right {formatPrescriptionDisplayValue(selectedPrescription.values?.otherMeasurements?.ph?.right)} / Left{" "}
+                        {formatPrescriptionDisplayValue(selectedPrescription.values?.otherMeasurements?.ph?.left)}
                       </p>
                     </div>
                   </div>

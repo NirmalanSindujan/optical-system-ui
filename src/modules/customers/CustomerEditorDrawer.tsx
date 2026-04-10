@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Calendar, Mail, MapPin, Phone, StickyNote, UserRound, Users, X } from "lucide-react";
+import { Calendar, CircleDollarSign, Mail, MapPin, Phone, StickyNote, UserRound, Users, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetClose, SheetContent } from "@/components/ui/sheet";
@@ -18,7 +18,8 @@ const schema = z.object({
   address: z.string().optional(),
   gender: z.union([z.enum(["MALE", "FEMALE", "OTHER"]), z.literal("")]).optional(),
   dob: z.string().optional(),
-  notes: z.string().optional()
+  notes: z.string().optional(),
+  pendingAmount: z.string().optional()
 });
 
 function CustomerEditorDrawer({ open, customerId, onClose, onSaved }) {
@@ -34,7 +35,8 @@ function CustomerEditorDrawer({ open, customerId, onClose, onSaved }) {
       address: "",
       gender: "",
       dob: "",
-      notes: ""
+      notes: "",
+      pendingAmount: ""
     }),
     []
   );
@@ -101,7 +103,8 @@ function CustomerEditorDrawer({ open, customerId, onClose, onSaved }) {
       address: customer?.address ?? "",
       gender: customer?.gender ?? "",
       dob: customer?.dob ?? "",
-      notes: customer?.notes ?? ""
+      notes: customer?.notes ?? "",
+      pendingAmount: customer?.pendingAmount != null ? String(customer.pendingAmount) : ""
     });
   }, [customerResponse, isEdit, open, reset]);
 
@@ -115,6 +118,11 @@ function CustomerEditorDrawer({ open, customerId, onClose, onSaved }) {
   }, [customerError, isCustomerError, toast]);
 
   const onSubmit = async (values) => {
+    const normalizedPendingAmount =
+      values.pendingAmount && values.pendingAmount.trim() !== ""
+        ? Number(values.pendingAmount)
+        : null;
+
     const payload = {
       name: values.name,
       phone: values.phone || null,
@@ -122,7 +130,8 @@ function CustomerEditorDrawer({ open, customerId, onClose, onSaved }) {
       address: values.address || null,
       gender: values.gender || null,
       dob: values.dob || null,
-      notes: values.notes || null
+      notes: values.notes || null,
+      pendingAmount: Number.isFinite(normalizedPendingAmount) ? normalizedPendingAmount : null
     };
 
     saveMutation.mutate({ id: customerId, payload });
@@ -186,6 +195,22 @@ function CustomerEditorDrawer({ open, customerId, onClose, onSaved }) {
               </select>
             </div>
             {errors.gender ? <p className="mt-1 text-xs text-destructive">{errors.gender.message}</p> : null}
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium">Pending Amount</label>
+            <div className="relative">
+              <CircleDollarSign className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                {...register("pendingAmount")}
+                placeholder="0.00"
+                className="pl-9"
+              />
+            </div>
+            {errors.pendingAmount ? <p className="mt-1 text-xs text-destructive">{errors.pendingAmount.message}</p> : null}
           </div>
 
           <div>
