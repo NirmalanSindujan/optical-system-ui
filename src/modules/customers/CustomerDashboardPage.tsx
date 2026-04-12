@@ -30,6 +30,7 @@ import type {
 import CustomerAsyncSelect, { type CustomerOption } from "@/modules/customer-bills/components/CustomerAsyncSelect";
 import { getPrescriptionById } from "@/modules/customer-bills/customer-patient.service";
 import { formatMoney } from "@/modules/customer-bills/customer-bill.utils";
+import CustomerPaymentHistorySheet from "@/modules/customers/CustomerPaymentHistorySheet";
 import CustomerPendingBillsSheet from "@/modules/customers/CustomerPendingBillsSheet";
 import {
   getCustomerById,
@@ -249,6 +250,7 @@ function CustomerDashboardPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerOption | null>(null);
   const [pendingBillsOpen, setPendingBillsOpen] = useState(false);
+  const [paymentHistoryOpen, setPaymentHistoryOpen] = useState(false);
   const [prescriptionsOpen, setPrescriptionsOpen] = useState(false);
   const [prescriptionPage, setPrescriptionPage] = useState(0);
   const [selectedPrescriptionId, setSelectedPrescriptionId] = useState<number | null>(null);
@@ -363,13 +365,9 @@ function CustomerDashboardPage() {
           value: formatMoney(summary.totalPaidAmount ?? 0),
           icon: Wallet,
           tone: "default" as const,
+          onClick: () => setPaymentHistoryOpen(true),
         },
-        {
-          title: "Outstanding",
-          value: formatMoney(summary.totalOutstandingAmount ?? 0),
-          icon: CreditCard,
-          tone: (summary.totalOutstandingAmount ?? 0) > 0 ? ("alert" as const) : ("default" as const),
-        },
+       
         {
           title: "Patients",
           value: String(summary.totalPatients ?? 0),
@@ -419,6 +417,7 @@ function CustomerDashboardPage() {
                 onChange={(customer) => {
                   setSelectedCustomer(customer);
                   setPendingBillsOpen(false);
+                  setPaymentHistoryOpen(false);
                   setPrescriptionsOpen(false);
                   setPrescriptionDetailOpen(false);
                   setSelectedPrescriptionId(null);
@@ -456,7 +455,7 @@ function CustomerDashboardPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
                 {metricCards.map((metric) => (
                   <MetricCard
                     key={metric.title}
@@ -476,6 +475,13 @@ function CustomerDashboardPage() {
       <CustomerPendingBillsSheet
         open={pendingBillsOpen}
         onOpenChange={setPendingBillsOpen}
+        customerId={selectedCustomerId}
+        customerName={customerName}
+      />
+
+      <CustomerPaymentHistorySheet
+        open={paymentHistoryOpen}
+        onOpenChange={setPaymentHistoryOpen}
         customerId={selectedCustomerId}
         customerName={customerName}
       />

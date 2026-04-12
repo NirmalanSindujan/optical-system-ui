@@ -18,6 +18,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/components/ui/use-toast";
 import BranchSelect from "@/modules/branches/components/BranchSelect";
 import { formatMoney } from "@/modules/customer-bills/customer-bill.utils";
+import ReceivableDetailsSheet from "@/modules/dashboard/ReceivableDetailsSheet";
 import { getBusinessSummary, getCashLedger, type BusinessSummaryBranchCash, type CashLedgerEntry } from "@/modules/dashboard/dashboard.service";
 import { formatExpenseDate, formatExpenseDateTime } from "@/modules/expenses/expense.utils";
 import { ROLES, useAuthStore } from "@/store/auth.store";
@@ -58,6 +59,7 @@ function SummaryMetricCard({
   icon: Icon,
   tone = "default",
   onClick,
+  actionHint,
 }: {
   title: string;
   value: string;
@@ -65,6 +67,7 @@ function SummaryMetricCard({
   icon: typeof Banknote;
   tone?: "default" | "alert";
   onClick?: () => void;
+  actionHint?: string;
 }) {
   const isInteractive = Boolean(onClick);
 
@@ -88,7 +91,7 @@ function SummaryMetricCard({
             <p className="text-2xl font-semibold tracking-tight text-foreground">{value}</p>
             <p className="text-xs text-muted-foreground">
               {description}
-              {isInteractive ? " Click to view cash ledger." : ""}
+              {isInteractive && actionHint ? ` ${actionHint}` : ""}
             </p>
           </div>
           <div
@@ -111,6 +114,7 @@ function DashboardHomePage() {
   const role = useAuthStore((state) => state.role);
   const canViewBusinessSummary = role === ROLES.SUPER_ADMIN || role === ROLES.ADMIN;
   const [cashLedgerOpen, setCashLedgerOpen] = useState(false);
+  const [receivableSheetOpen, setReceivableSheetOpen] = useState(false);
   const [selectedCashBranchId, setSelectedCashBranchId] = useState<number | null>(null);
   const [cashLedgerFromDate, setCashLedgerFromDate] = useState(getMonthStartDateValue());
   const [cashLedgerToDate, setCashLedgerToDate] = useState(getTodayDateValue());
@@ -233,6 +237,7 @@ function DashboardHomePage() {
                   description="Net business cash position"
                   icon={Banknote}
                   onClick={() => openCashLedger()}
+                  actionHint="Click to view cash ledger."
                 />
                 <SummaryMetricCard
                   title="Bank Balance"
@@ -246,6 +251,8 @@ function DashboardHomePage() {
                   description="Pending from customers"
                   icon={TrendingUp}
                   tone={summary.totalReceivable > 0 ? "alert" : "default"}
+                  onClick={() => setReceivableSheetOpen(true)}
+                  actionHint="Click to view customer-wise receivable details."
                 />
                 <SummaryMetricCard
                   title="Pending Payable"
@@ -460,6 +467,11 @@ function DashboardHomePage() {
           </div>
         </SheetContent>
       </Sheet>
+
+      <ReceivableDetailsSheet
+        open={receivableSheetOpen}
+        onOpenChange={setReceivableSheetOpen}
+      />
     </div>
   );
 }

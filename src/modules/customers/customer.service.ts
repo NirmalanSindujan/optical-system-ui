@@ -2,7 +2,7 @@ import api from "@/lib/api";
 import type { PrescriptionListResponse } from "@/modules/customer-bills/customer-bill.types";
 
 export type CustomerPendingBill = {
-  billId: number;
+  billId: number | null;
   billNumber: string | null;
   billDate: string;
   totalAmount: number;
@@ -21,7 +21,7 @@ export type CustomerPendingBillsResponse = {
 export type CustomerPendingPaymentMode = "CASH" | "BANK" | "CHEQUE";
 
 export type CustomerPendingPaymentAllocationRequest = {
-  billId: number;
+  billId: number | null;
   amount: number;
 };
 
@@ -38,7 +38,7 @@ export type CreateCustomerPendingPaymentRequest = {
 };
 
 export type CustomerPendingPaymentAllocationResponse = {
-  billId: number;
+  billId: number | null;
   billNumber: string | null;
   paidAmount: number;
   remainingPendingAmount: number;
@@ -56,6 +56,52 @@ export type CustomerPendingPaymentResponse = {
 
 export type ChequeStatus = "PENDING" | "CLEARED" | "REJECTED";
 export type ReceivedChequeSettlementMode = "CASH" | "BANK";
+export type CustomerPaymentScope = "BILL" | "OPENING_BALANCE";
+export type CustomerPaymentHistoryMode = "CASH" | "BANK" | "CHEQUE" | "CREDIT";
+
+export type CustomerPaymentHistoryItem = {
+  paymentId: number;
+  customerId: number;
+  customerName: string;
+  billId: number | null;
+  billNumber: string | null;
+  branchId: number | null;
+  branchName: string | null;
+  paymentScope: CustomerPaymentScope;
+  paymentMode: CustomerPaymentHistoryMode;
+  amount: number;
+  reference: string | null;
+  paymentDate: string | null;
+  createdAt: string | null;
+  chequeStatus: ChequeStatus | null;
+  chequeNumber: string | null;
+  chequeDate: string | null;
+  chequeBankName: string | null;
+  chequeBranchName: string | null;
+  chequeAccountHolder: string | null;
+  chequeSettlementMode: ReceivedChequeSettlementMode | null;
+  chequeStatusNotes: string | null;
+};
+
+export type CustomerPaymentHistoryParams = {
+  billId?: number;
+  paymentScope?: CustomerPaymentScope;
+  paymentMode?: CustomerPaymentHistoryMode;
+  chequeStatus?: ChequeStatus;
+  branchId?: number;
+  fromDate?: string;
+  toDate?: string;
+  page?: number;
+  size?: number;
+};
+
+export type CustomerPaymentHistoryResponse = {
+  items: CustomerPaymentHistoryItem[];
+  totalCounts: number;
+  page: number;
+  size: number;
+  totalPages: number;
+};
 
 export type ReceivedChequePayment = {
   paymentId: number;
@@ -116,6 +162,25 @@ export async function getCustomerPrescriptions(
   params: { page?: number; size?: number } = {},
 ): Promise<PrescriptionListResponse> {
   const { data } = await api.get(`/customers/${customerId}/prescriptions`, { params });
+  return data;
+}
+
+export async function getCustomerPaymentHistory(
+  customerId: number,
+  params: CustomerPaymentHistoryParams = {},
+): Promise<CustomerPaymentHistoryResponse> {
+  const { data } = await api.get(`/customers/${customerId}/payment-history`, { params });
+  return {
+    items: Array.isArray(data?.items) ? data.items : [],
+    totalCounts: Number(data?.totalCounts ?? 0),
+    page: Number(data?.page ?? params.page ?? 0),
+    size: Number(data?.size ?? params.size ?? 20),
+    totalPages: Number(data?.totalPages ?? 1),
+  };
+}
+
+export async function deleteCustomerPayment(customerId: number, paymentId: number) {
+  const { data } = await api.delete(`/customers/${customerId}/payments/${paymentId}`);
   return data;
 }
 

@@ -13,22 +13,23 @@ import {
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
-import { formatMoney, getTodayDate, roundMoney } from "@/modules/customer-bills/customer-bill.utils";
-import {
-  createCustomerPendingPayment,
-  type CustomerPendingBill,
-  type CustomerPendingPaymentMode,
-} from "@/modules/customers/customer.service";
+import type { SupplierPendingBill } from "@/modules/suppliers/supplier.service";
+import { createSupplierPayment } from "@/modules/suppliers/supplier.service";
+import { formatMoney } from "@/modules/stock-updates/stock-update-page.utils";
 
-type CustomerPendingBillPaymentDialogProps = {
+type SupplierPendingBillPaymentDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  customerId: number | null;
-  customerName: string;
-  bill: CustomerPendingBill | null;
+  supplierId: number | null;
+  supplierName: string;
+  bill: SupplierPendingBill | null;
 };
 
-const paymentModes: CustomerPendingPaymentMode[] = ["CASH", "BANK", "CHEQUE"];
+type PaymentMode = "CASH" | "BANK" | "CHEQUE";
+
+const paymentModes: PaymentMode[] = ["CASH", "BANK", "CHEQUE"];
+
+const getTodayDate = () => new Date().toISOString().slice(0, 10);
 
 function getApiErrorMessage(error: unknown) {
   if (typeof error === "object" && error !== null && "response" in error) {
@@ -39,18 +40,24 @@ function getApiErrorMessage(error: unknown) {
   return "Unable to record the payment.";
 }
 
-function CustomerPendingBillPaymentDialog({
+function roundMoney(value: number) {
+  return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+}
+
+function SupplierPendingBillPaymentDialog({
   open,
   onOpenChange,
-  customerId,
-  customerName,
+  supplierId,
+  supplierName,
   bill,
-}: CustomerPendingBillPaymentDialogProps) {
+}: SupplierPendingBillPaymentDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [paymentMode, setPaymentMode] = useState<CustomerPendingPaymentMode>("CASH");
+  const [paymentMode, setPaymentMode] = useState<PaymentMode>("CASH");
   const [amount, setAmount] = useState("");
   const [reference, setReference] = useState("");
+  const [notes, setNotes] = useState("");
+  const [paymentDate, setPaymentDate] = useState(getTodayDate);
   const [chequeNumber, setChequeNumber] = useState("");
   const [chequeDate, setChequeDate] = useState(getTodayDate);
   const [chequeBankName, setChequeBankName] = useState("");
@@ -58,18 +65,14 @@ function CustomerPendingBillPaymentDialog({
   const [chequeAccountHolder, setChequeAccountHolder] = useState("");
 
   const pendingAmount = Number(bill?.pendingAmount ?? 0);
-  const isOpeningBalance = bill?.billId === null;
-  const billLabel =
-    bill == null
-      ? "-"
-      : isOpeningBalance || bill.billNumber === "OPENING_BALANCE"
-        ? "Opening Balance"
-        : bill.billNumber || `Bill #${bill.billId}`;
+  const billLabel = bill == null ? "-" : bill.billNumber || `Bill #${bill.purchaseId}`;
 
   const resetForm = () => {
     setPaymentMode("CASH");
     setAmount(bill ? String(roundMoney(Number(bill.pendingAmount ?? 0))) : "");
     setReference("");
+    setNotes("");
+    setPaymentDate(getTodayDate());
     setChequeNumber("");
     setChequeDate(getTodayDate());
     setChequeBankName("");
@@ -86,8 +89,12 @@ function CustomerPendingBillPaymentDialog({
 
   const paymentMutation = useMutation({
     mutationFn: async () => {
-      if (!customerId || !bill) {
-        throw new Error("Customer bill details are not available.");
+      if (!supplierId || !bill) {
+        throw new Error("Supplier bill details are not available.");
+      }
+
+      if (!paymentDate) {
+        throw new Error("Payment date is required.");
       }
 
       if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
@@ -95,11 +102,7 @@ function CustomerPendingBillPaymentDialog({
       }
 
       if (numericAmount > pendingAmount) {
-        throw new Error(
-          isOpeningBalance
-            ? "Allocation exceeds pending amount for opening balance."
-            : `Allocation exceeds pending amount for bill: ${bill.billId}`,
-        );
+        throw new Error(`Allocation exceeds pending amount for bill: ${bill.purchaseId}`);
       }
 
       if (paymentMode === "CHEQUE") {
@@ -108,18 +111,20 @@ function CustomerPendingBillPaymentDialog({
         if (!chequeBankName.trim()) throw new Error("Cheque bank name is required.");
       }
 
-      return createCustomerPendingPayment(customerId, {
+      return createSupplierPayment(supplierId, {
+        paymentDate,
         paymentMode,
         amount: numericAmount,
-        reference: reference.trim() || undefined,
         chequeNumber: paymentMode === "CHEQUE" ? chequeNumber.trim() : undefined,
         chequeDate: paymentMode === "CHEQUE" ? chequeDate.trim() : undefined,
         chequeBankName: paymentMode === "CHEQUE" ? chequeBankName.trim() : undefined,
         chequeBranchName: paymentMode === "CHEQUE" ? chequeBranchName.trim() || undefined : undefined,
         chequeAccountHolder: paymentMode === "CHEQUE" ? chequeAccountHolder.trim() || undefined : undefined,
+        reference: reference.trim() || undefined,
+        notes: notes.trim() || undefined,
         allocations: [
           {
-            billId: bill.billId,
+            stockPurchaseId: bill.purchaseId,
             amount: numericAmount,
           },
         ],
@@ -130,8 +135,11 @@ function CustomerPendingBillPaymentDialog({
         title: "Payment recorded",
         description: `Payment saved for ${billLabel}.`,
       });
-      queryClient.invalidateQueries({ queryKey: ["customer-dashboard"] });
-      queryClient.invalidateQueries({ queryKey: ["customers"] });
+      queryClient.invalidateQueries({ queryKey: ["supplier-pending-bills", supplierId] });
+      queryClient.invalidateQueries({ queryKey: ["supplier-completed-bills", supplierId] });
+      queryClient.invalidateQueries({ queryKey: ["supplier-payment-history", supplierId] });
+      queryClient.invalidateQueries({ queryKey: ["supplier-dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["suppliers"] });
       onOpenChange(false);
     },
     onError: (error) => {
@@ -147,9 +155,9 @@ function CustomerPendingBillPaymentDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{isOpeningBalance ? "Pay Opening Balance" : "Pay Pending Bill"}</DialogTitle>
+          <DialogTitle>Pay Pending Bill</DialogTitle>
           <DialogDescription>
-            Record a payment for {billLabel} under {customerName}.
+            Record a payment for {billLabel} under {supplierName}.
           </DialogDescription>
         </DialogHeader>
 
@@ -157,9 +165,7 @@ function CustomerPendingBillPaymentDialog({
           <div className="space-y-5">
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="rounded-xl border bg-muted/20 px-4 py-3">
-                <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                  {isOpeningBalance ? "Pending Item" : "Bill"}
-                </p>
+                <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Bill</p>
                 <p className="mt-1 font-medium">{billLabel}</p>
               </div>
               <div className="rounded-xl border bg-muted/20 px-4 py-3">
@@ -168,16 +174,23 @@ function CustomerPendingBillPaymentDialog({
               </div>
               <div className="rounded-xl border bg-muted/20 px-4 py-3">
                 <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Date</p>
-                <p className="mt-1 font-medium">{bill.billDate || "-"}</p>
+                <p className="mt-1 font-medium">{bill.purchaseDate || "-"}</p>
               </div>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                  Payment Date
+                </label>
+                <Input type="date" value={paymentDate} onChange={(event) => setPaymentDate(event.target.value)} />
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                   Payment Mode
                 </label>
-                <Select value={paymentMode} onChange={(event) => setPaymentMode(event.target.value as CustomerPendingPaymentMode)}>
+                <Select value={paymentMode} onChange={(event) => setPaymentMode(event.target.value as PaymentMode)}>
                   {paymentModes.map((mode) => (
                     <option key={mode} value={mode}>
                       {mode}
@@ -201,7 +214,7 @@ function CustomerPendingBillPaymentDialog({
                 />
               </div>
 
-              <div className="sm:col-span-2">
+              <div>
                 <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                   Reference
                 </label>
@@ -209,6 +222,17 @@ function CustomerPendingBillPaymentDialog({
                   value={reference}
                   onChange={(event) => setReference(event.target.value)}
                   placeholder="Optional reference"
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                  Notes
+                </label>
+                <Input
+                  value={notes}
+                  onChange={(event) => setNotes(event.target.value)}
+                  placeholder="Optional notes"
                 />
               </div>
             </div>
@@ -293,4 +317,4 @@ function CustomerPendingBillPaymentDialog({
   );
 }
 
-export default CustomerPendingBillPaymentDialog;
+export default SupplierPendingBillPaymentDialog;

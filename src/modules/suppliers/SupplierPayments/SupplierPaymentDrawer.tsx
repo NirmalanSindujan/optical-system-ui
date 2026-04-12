@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Building2,
@@ -33,6 +33,11 @@ type SupplierPaymentDrawerProps = {
   open: boolean;
   supplierId: number | null;
   onClose: () => void;
+  defaultAllocationMode?: AllocationMode;
+  allowedAllocationModes?: AllocationMode[];
+  hideBillAllocationList?: boolean;
+  title?: string;
+  description?: string;
 };
 
 type PaymentMode = "CASH" | "BANK" | "CHEQUE";
@@ -101,11 +106,16 @@ function SupplierPaymentDrawer({
   open,
   supplierId,
   onClose,
+  defaultAllocationMode = "by-bills",
+  allowedAllocationModes = ["by-bills", "total"],
+  hideBillAllocationList = false,
+  title = "Supplier Payments",
+  description = "Allocate a supplier payment across one or more pending bills.",
 }: SupplierPaymentDrawerProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [allocationMode, setAllocationMode] =
-    useState<AllocationMode>("by-bills");
+    useState<AllocationMode>(defaultAllocationMode);
   const [paymentDate, setPaymentDate] = useState(getToday);
   const [paymentMode, setPaymentMode] = useState<PaymentMode>("BANK");
   const [paymentAmount, setPaymentAmount] = useState("");
@@ -170,7 +180,7 @@ function SupplierPaymentDrawer({
   );
 
   const resetForm = () => {
-    setAllocationMode("by-bills");
+    setAllocationMode(defaultAllocationMode);
     setPaymentDate(getToday());
     setPaymentMode("BANK");
     setPaymentAmount("");
@@ -183,6 +193,16 @@ function SupplierPaymentDrawer({
     setNotes("");
     setAllocationInputs({});
   };
+
+  useEffect(() => {
+    if (!open) return;
+    setAllocationMode(defaultAllocationMode);
+  }, [defaultAllocationMode, open]);
+
+  useEffect(() => {
+    if (allowedAllocationModes.includes(allocationMode)) return;
+    setAllocationMode(defaultAllocationMode);
+  }, [allocationMode, allowedAllocationModes, defaultAllocationMode]);
 
   const paymentMutation = useMutation({
     mutationFn: () => {
@@ -257,6 +277,12 @@ function SupplierPaymentDrawer({
       queryClient.invalidateQueries({
         queryKey: ["supplier-pending-bills", supplierId],
       });
+      queryClient.invalidateQueries({
+        queryKey: ["supplier-completed-bills", supplierId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["supplier-dashboard"],
+      });
       queryClient.invalidateQueries({ queryKey: ["suppliers"] });
     },
     onError: (error: any) => {
@@ -291,10 +317,10 @@ function SupplierPaymentDrawer({
               </p>
               <SheetTitle className="flex items-center gap-2 text-lg font-semibold text-foreground">
                 <Building2 className="h-5 w-5 text-primary" />
-                Supplier Payments
+                {title}
               </SheetTitle>
               <SheetDescription className="text-sm text-muted-foreground">
-                Allocate a supplier payment across one or more pending bills.
+                {description}
               </SheetDescription>
             </SheetHeader>
             <SheetClose asChild>
@@ -372,10 +398,16 @@ function SupplierPaymentDrawer({
                   }
                   className="space-y-4"
                 >
-                  <TabsList>
-                    <TabsTrigger value="by-bills">Pay By Bills</TabsTrigger>
-                    <TabsTrigger value="total">Pay Total</TabsTrigger>
-                  </TabsList>
+                  {allowedAllocationModes.length > 1 ? (
+                    <TabsList>
+                      {allowedAllocationModes.includes("by-bills") ? (
+                        <TabsTrigger value="by-bills">Pay By Bills</TabsTrigger>
+                      ) : null}
+                      {allowedAllocationModes.includes("total") ? (
+                        <TabsTrigger value="total">Pay Total</TabsTrigger>
+                      ) : null}
+                    </TabsList>
+                  ) : null}
 
                   <div className="grid gap-4 md:grid-cols-2">
                     <div>
@@ -405,10 +437,7 @@ function SupplierPaymentDrawer({
                       </Select>
                     </div>
 
-                    <TabsContent
-                      value="by-bills"
-                      className="mt-0 md:col-span-2"
-                    >
+                    <TabsContent value="by-bills" className="mt-0 md:col-span-2">
                       <div className="grid gap-4 md:grid-cols-2">
                         <div>
                           <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
@@ -615,110 +644,112 @@ function SupplierPaymentDrawer({
                 </Tabs>
               </section>
 
-              <div className="space-y-4">
-                {supplierBills.map((bill) => {
-                  const pendingAmount = Number(bill.pendingAmount ?? 0);
-                  const autoAllocatedAmount =
-                    distributedAllocations.find(
-                      (item) => item.stockPurchaseId === bill.purchaseId,
-                    )?.amount ?? 0;
+              {!hideBillAllocationList ? (
+                <div className="space-y-4">
+                  {supplierBills.map((bill) => {
+                    const pendingAmount = Number(bill.pendingAmount ?? 0);
+                    const autoAllocatedAmount =
+                      distributedAllocations.find(
+                        (item) => item.stockPurchaseId === bill.purchaseId,
+                      )?.amount ?? 0;
 
-                  return (
-                    <section
-                      key={bill.purchaseId}
-                      className="rounded-3xl border border-border/70 bg-card p-5 shadow-sm"
-                    >
-                      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                        <div className="space-y-3">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Badge variant="secondary">
-                              {bill.billNumber || `Bill #${bill.purchaseId}`}
-                            </Badge>
-                            {hasValue(bill.currencyCode) ? (
-                              <Badge variant="outline">
-                                {bill.currencyCode}
+                    return (
+                      <section
+                        key={bill.purchaseId}
+                        className="rounded-3xl border border-border/70 bg-card p-5 shadow-sm"
+                      >
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                          <div className="space-y-3">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge variant="secondary">
+                                {bill.billNumber || `Bill #${bill.purchaseId}`}
                               </Badge>
+                              {hasValue(bill.currencyCode) ? (
+                                <Badge variant="outline">
+                                  {bill.currencyCode}
+                                </Badge>
+                              ) : null}
+                            </div>
+
+                            <div className="grid gap-3 sm:grid-cols-3">
+                              <div className="rounded-2xl border border-border/70 bg-background/70 px-4 py-3">
+                                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                                  Purchase Date
+                                </p>
+                                <p className="mt-2 flex items-center gap-2 text-sm font-semibold text-foreground">
+                                  <CalendarDays className="h-4 w-4 text-primary" />
+                                  {formatDate(bill.purchaseDate)}
+                                </p>
+                              </div>
+
+                              <div className="rounded-2xl border border-border/70 bg-background/70 px-4 py-3">
+                                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                                  Total Amount
+                                </p>
+                                <p className="mt-2 text-sm font-semibold text-foreground">
+                                  {formatMoney(bill.totalAmount ?? 0)}
+                                </p>
+                              </div>
+
+                              <div className="rounded-2xl border border-border/70 bg-background/70 px-4 py-3">
+                                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                                  Pending Amount
+                                </p>
+                                <p className="mt-2 text-sm font-semibold text-foreground">
+                                  {formatMoney(pendingAmount)}
+                                </p>
+                              </div>
+                            </div>
+
+                            {hasValue(bill.notes) ? (
+                              <div className="rounded-2xl border border-dashed border-border/70 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+                                <div className="mb-1 flex items-center gap-2 text-foreground">
+                                  <FileText className="h-4 w-4 text-primary" />
+                                  Bill Notes
+                                </div>
+                                {bill.notes}
+                              </div>
                             ) : null}
                           </div>
+                        </div>
 
-                          <div className="grid gap-3 sm:grid-cols-3">
-                            <div className="rounded-2xl border border-border/70 bg-background/70 px-4 py-3">
-                              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                                Purchase Date
-                              </p>
-                              <p className="mt-2 flex items-center gap-2 text-sm font-semibold text-foreground">
-                                <CalendarDays className="h-4 w-4 text-primary" />
-                                {formatDate(bill.purchaseDate)}
-                              </p>
-                            </div>
-
-                            <div className="rounded-2xl border border-border/70 bg-background/70 px-4 py-3">
-                              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                                Total Amount
-                              </p>
-                              <p className="mt-2 text-sm font-semibold text-foreground">
-                                {formatMoney(bill.totalAmount ?? 0)}
-                              </p>
-                            </div>
-
-                            <div className="rounded-2xl border border-border/70 bg-background/70 px-4 py-3">
-                              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                                Pending Amount
-                              </p>
-                              <p className="mt-2 text-sm font-semibold text-foreground">
-                                {formatMoney(pendingAmount)}
-                              </p>
-                            </div>
+                        <div className="mt-2 w-full rounded-2xl border border-border/70 bg-muted/20 p-4 lg:max-w-sm">
+                          <div className="mb-3 flex items-center gap-2">
+                            <ReceiptText className="h-4 w-4 text-primary" />
+                            <p className="text-sm font-semibold text-foreground">
+                              {allocationMode === "by-bills"
+                                ? "Allocation Amount"
+                                : "Allocated From Total"}
+                            </p>
                           </div>
-
-                          {hasValue(bill.notes) ? (
-                            <div className="rounded-2xl border border-dashed border-border/70 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
-                              <div className="mb-1 flex items-center gap-2 text-foreground">
-                                <FileText className="h-4 w-4 text-primary" />
-                                Bill Notes
-                              </div>
-                              {bill.notes}
-                            </div>
-                          ) : null}
+                          {allocationMode === "by-bills" ? (
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              max={pendingAmount}
+                              value={allocationInputs[bill.purchaseId] ?? ""}
+                              onChange={(event) =>
+                                setAllocationInputs((current) => ({
+                                  ...current,
+                                  [bill.purchaseId]: event.target.value,
+                                }))
+                              }
+                              placeholder={`Max ${formatMoney(pendingAmount)}`}
+                            />
+                          ) : (
+                            <Input
+                              value={formatMoney(autoAllocatedAmount)}
+                              readOnly
+                              className="bg-muted/40"
+                            />
+                          )}
                         </div>
-                      </div>
-
-                      <div className="w-full rounded-2xl border border-border/70 bg-muted/20 p-4 lg:max-w-sm mt-2 ">
-                        <div className="mb-3 flex items-center gap-2">
-                          <ReceiptText className="h-4 w-4 text-primary" />
-                          <p className="text-sm font-semibold text-foreground">
-                            {allocationMode === "by-bills"
-                              ? "Allocation Amount"
-                              : "Allocated From Total"}
-                          </p>
-                        </div>
-                        {allocationMode === "by-bills" ? (
-                          <Input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            max={pendingAmount}
-                            value={allocationInputs[bill.purchaseId] ?? ""}
-                            onChange={(event) =>
-                              setAllocationInputs((current) => ({
-                                ...current,
-                                [bill.purchaseId]: event.target.value,
-                              }))
-                            }
-                            placeholder={`Max ${formatMoney(pendingAmount)}`}
-                          />
-                        ) : (
-                          <Input
-                            value={formatMoney(autoAllocatedAmount)}
-                            readOnly
-                            className="bg-muted/40"
-                          />
-                        )}
-                      </div>
-                    </section>
-                  );
-                })}
-              </div>
+                      </section>
+                    );
+                  })}
+                </div>
+              ) : null}
 
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={resetForm}>

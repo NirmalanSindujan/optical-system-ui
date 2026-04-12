@@ -205,7 +205,6 @@ export interface BranchCollectionSummary {
   cashInHand: number;
   universalBankBalance: number;
   chequeCollections: number;
-  creditOutstanding: number;
 }
 
 export interface CustomerBillProductOption {

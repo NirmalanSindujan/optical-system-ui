@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import {
   Building2,
   DollarSign,
@@ -80,6 +81,7 @@ function SupplierList() {
   const PAGE_SIZE = 25;
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
@@ -309,20 +311,29 @@ function SupplierList() {
 
                       <TableCell>{item.address || "-"}</TableCell>
                       <TableCell>
-                        <LensRowActionsPopover
-                          canView={Boolean(item.id)}
-                          canEdit={Boolean(item.id)}
-                          canDelete={Boolean(item.id)}
-                          onView={() => {
-                            setViewingId(item.id);
-                            setDetailsOpen(true);
-                          }}
-                          onEdit={() => {
-                            setEditingId(item.id);
-                            setDrawerOpen(true);
-                          }}
-                          onDelete={() => setConfirmDeleteId(item.id)}
-                        />
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate(`/app/suppliers/dashboard?supplierId=${item.id}`)}
+                          >
+                            More
+                          </Button>
+                          <LensRowActionsPopover
+                            canView={Boolean(item.id)}
+                            canEdit={Boolean(item.id)}
+                            canDelete={Boolean(item.id)}
+                            onView={() => {
+                              setViewingId(item.id);
+                              setDetailsOpen(true);
+                            }}
+                            onEdit={() => {
+                              setEditingId(item.id);
+                              setDrawerOpen(true);
+                            }}
+                            onDelete={() => setConfirmDeleteId(item.id)}
+                          />
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))

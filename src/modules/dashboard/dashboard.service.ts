@@ -46,6 +46,23 @@ export type BusinessSummaryResponse = {
   branchCashInHand: BusinessSummaryBranchCash[];
 };
 
+export type CustomerReceivableItem = {
+  customerId: number;
+  customerName: string;
+  phone: string | null;
+  email: string | null;
+  receivableAmount: number;
+};
+
+export type CustomerReceivablesResponse = {
+  totalReceivable: number;
+  items: CustomerReceivableItem[];
+  totalCounts: number;
+  page: number;
+  size: number;
+  totalPages: number;
+};
+
 export async function getBusinessSummary(): Promise<BusinessSummaryResponse> {
   const { data } = await api.get("/finance/business-summary");
   return {
@@ -61,6 +78,30 @@ export async function getBusinessSummary(): Promise<BusinessSummaryResponse> {
           cashInHand: Number(item?.cashInHand ?? 0),
         }))
       : [],
+  };
+}
+
+export async function getCustomerReceivables(params: {
+  q?: string;
+  page?: number;
+  size?: number;
+} = {}): Promise<CustomerReceivablesResponse> {
+  const { data } = await api.get("/finance/customer-receivables", { params });
+  return {
+    totalReceivable: Number(data?.totalReceivable ?? 0),
+    items: Array.isArray(data?.items)
+      ? data.items.map((item: any) => ({
+          customerId: Number(item?.customerId ?? 0),
+          customerName: item?.customerName ?? `Customer #${item?.customerId ?? "-"}`,
+          phone: item?.phone ?? null,
+          email: item?.email ?? null,
+          receivableAmount: Number(item?.receivableAmount ?? 0),
+        }))
+      : [],
+    totalCounts: Number(data?.totalCounts ?? 0),
+    page: Number(data?.page ?? params.page ?? 0),
+    size: Number(data?.size ?? params.size ?? 20),
+    totalPages: Number(data?.totalPages ?? 1),
   };
 }
 

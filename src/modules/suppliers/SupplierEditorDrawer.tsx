@@ -6,6 +6,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Building2,
+  DollarSign,
   Mail,
   MapPin,
   Phone,
@@ -30,6 +31,7 @@ const schema = z.object({
   phone: z.string().optional(),
   email: z.union([z.string().email("Invalid email"), z.literal("")]).optional(),
   address: z.string().optional(),
+  pendingAmount: z.string().optional(),
   notes: z.string().optional()
 });
 
@@ -45,6 +47,7 @@ function SupplierEditorDrawer({ open, supplierId, onClose, onSaved }) {
       phone: "",
       email: "",
       address: "",
+      pendingAmount: "",
       notes: ""
     }),
     []
@@ -111,6 +114,7 @@ function SupplierEditorDrawer({ open, supplierId, onClose, onSaved }) {
       phone: supplier?.phone ?? "",
       email: supplier?.email ?? "",
       address: supplier?.address ?? "",
+      pendingAmount: supplier?.pendingAmount != null ? String(supplier.pendingAmount) : "",
       notes: supplier?.notes ?? ""
     });
   }, [supplierResponse, isEdit, open, reset]);
@@ -125,12 +129,18 @@ function SupplierEditorDrawer({ open, supplierId, onClose, onSaved }) {
   }, [isSupplierError, supplierError, toast]);
 
   const onSubmit = async (values) => {
+    const normalizedPendingAmount =
+      values.pendingAmount && values.pendingAmount.trim() !== ""
+        ? Number(values.pendingAmount)
+        : null;
+
     const payload = {
       name: values.name,
       contactPerson: values.contactPerson || null,
       phone: values.phone || null,
       email: values.email || null,
       address: values.address || null,
+      pendingAmount: Number.isFinite(normalizedPendingAmount) ? normalizedPendingAmount : null,
       notes: values.notes || null
     };
 
@@ -208,6 +218,24 @@ function SupplierEditorDrawer({ open, supplierId, onClose, onSaved }) {
                   <Input {...register("address")} placeholder="Address" className="pl-9" />
                 </div>
                 {errors.address ? <p className="mt-1 text-xs text-destructive">{errors.address.message}</p> : null}
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium">Pending Payment</label>
+                <div className="relative">
+                  <DollarSign className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    {...register("pendingAmount")}
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                    className="pl-9"
+                  />
+                </div>
+                {errors.pendingAmount ? (
+                  <p className="mt-1 text-xs text-destructive">{errors.pendingAmount.message}</p>
+                ) : null}
               </div>
             </div>
           </section>

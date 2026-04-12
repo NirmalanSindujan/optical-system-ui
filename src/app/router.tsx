@@ -17,6 +17,7 @@ import StockUpdateAddPage from "@/modules/stock-updates/StockUpdateAddPage";
 import StockUpdateViewPage from "@/modules/stock-updates/StockUpdateViewPage";
 import BranchList from "@/modules/branches/BranchList";
 import SupplierList from "@/modules/suppliers/SupplierList";
+import SupplierDashboardPage from "@/modules/suppliers/SupplierDashboardPage";
 import InventoryPage from "@/modules/inventory/InventoryPage";
 import InventoryLayout from "@/modules/inventory/InventoryLayout";
 import InventoryRequestPage from "@/modules/inventory/InventoryRequestPage";
@@ -115,7 +116,17 @@ const router = createBrowserRouter([
           },
           {
             path: "suppliers",
-            element: <SupplierList />
+            element: <Outlet />,
+            children: [
+              {
+                index: true,
+                element: <SupplierList />
+              },
+              {
+                path: "dashboard",
+                element: <SupplierDashboardPage />
+              }
+            ]
           },
           {
             element: <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.BRANCH_USER]} />,
