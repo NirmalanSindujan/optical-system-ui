@@ -10,6 +10,7 @@ import {
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,8 @@ import ReceivableDetailsSheet from "@/modules/dashboard/ReceivableDetailsSheet";
 import { getBusinessSummary, getCashLedger, type BusinessSummaryBranchCash, type CashLedgerEntry } from "@/modules/dashboard/dashboard.service";
 import { formatExpenseDate, formatExpenseDateTime } from "@/modules/expenses/expense.utils";
 import { ROLES, useAuthStore } from "@/store/auth.store";
+
+const CASH_LEDGER_PAGE_SIZE = 20;
 
 function getApiErrorMessage(error: unknown) {
   if (typeof error === "object" && error !== null && "response" in error) {
@@ -50,6 +53,54 @@ function getDirectionToneClass(direction: CashLedgerEntry["direction"]) {
   return direction === "INCOME"
     ? "bg-emerald-100 text-emerald-800"
     : "bg-rose-100 text-rose-800";
+}
+
+function getEntryTypeBadgeProps(entryType: CashLedgerEntry["entryType"]) {
+  switch (entryType) {
+    case "CUSTOMER_RECEIPT":
+    case "CUSTOMER_BILL_PAYMENT":
+      return { variant: "secondary" as const, className: "bg-emerald-100 text-emerald-800" };
+    case "SUPPLIER_PAYMENT":
+      return { variant: "secondary" as const, className: "bg-rose-100 text-rose-800" };
+    case "EXPENSE_PAYMENT":
+    case "EXPENSE":
+      return { variant: "secondary" as const, className: "bg-orange-100 text-orange-800" };
+    case "CHEQUE_CLEARANCE":
+      return { variant: "secondary" as const, className: "bg-blue-100 text-blue-800" };
+    case "FUND_TRANSFER":
+      return { variant: "secondary" as const, className: "bg-violet-100 text-violet-800" };
+    case "ADJUSTMENT":
+      return { variant: "outline" as const, className: "border-slate-300 bg-slate-100 text-slate-800" };
+    case "OPENING_BALANCE_LOAD":
+      return { variant: "outline" as const, className: "border-amber-300 bg-amber-50 text-amber-800" };
+    default:
+      return { variant: "outline" as const, className: "border-border bg-muted text-foreground" };
+  }
+}
+
+function formatEntryTypeLabel(entryType: CashLedgerEntry["entryType"]) {
+  switch (entryType) {
+    case "CUSTOMER_RECEIPT":
+      return "Customer Receipt";
+    case "CUSTOMER_BILL_PAYMENT":
+      return "Customer Bill Payment";
+    case "SUPPLIER_PAYMENT":
+      return "Supplier Payment";
+    case "EXPENSE_PAYMENT":
+      return "Expense Payment";
+    case "EXPENSE":
+      return "Expense";
+    case "CHEQUE_CLEARANCE":
+      return "Cheque Clearance";
+    case "FUND_TRANSFER":
+      return "Fund Transfer";
+    case "ADJUSTMENT":
+      return "Adjustment";
+    case "OPENING_BALANCE_LOAD":
+      return "Opening Balance";
+    default:
+      return String(entryType).replace(/_/g, " ");
+  }
 }
 
 function SummaryMetricCard({
@@ -118,6 +169,7 @@ function DashboardHomePage() {
   const [selectedCashBranchId, setSelectedCashBranchId] = useState<number | null>(null);
   const [cashLedgerFromDate, setCashLedgerFromDate] = useState(getMonthStartDateValue());
   const [cashLedgerToDate, setCashLedgerToDate] = useState(getTodayDateValue());
+  const [cashLedgerPage, setCashLedgerPage] = useState(0);
 
   const businessSummaryQuery = useQuery({
     queryKey: ["dashboard", "business-summary"],
@@ -151,12 +203,14 @@ function DashboardHomePage() {
   );
 
   const cashLedgerQuery = useQuery({
-    queryKey: ["dashboard", "cash-ledger", selectedCashBranchId, cashLedgerFromDate, cashLedgerToDate],
+    queryKey: ["dashboard", "cash-ledger", selectedCashBranchId, cashLedgerFromDate, cashLedgerToDate, cashLedgerPage],
     queryFn: () =>
       getCashLedger({
         branchId: selectedCashBranchId as number,
         fromDate: cashLedgerFromDate || undefined,
         toDate: cashLedgerToDate || undefined,
+        page: cashLedgerPage,
+        size: CASH_LEDGER_PAGE_SIZE,
       }),
     enabled: cashLedgerOpen && canViewBusinessSummary && Boolean(selectedCashBranchId),
   });
@@ -174,6 +228,7 @@ function DashboardHomePage() {
     if (branch?.branchId) {
       setSelectedCashBranchId(branch.branchId);
     }
+    setCashLedgerPage(0);
     setCashLedgerOpen(true);
   };
 
@@ -330,19 +385,28 @@ function DashboardHomePage() {
             <div className="grid gap-4 xl:grid-cols-[minmax(220px,1.5fr)_minmax(170px,1fr)_minmax(170px,1fr)_auto]">
               <BranchSelect
                 value={selectedCashBranchId}
-                onChange={(branch) => setSelectedCashBranchId(branch?.id ?? null)}
+                onChange={(branch) => {
+                  setSelectedCashBranchId(branch?.id ?? null);
+                  setCashLedgerPage(0);
+                }}
                 placeholder="Select branch"
                 allowClear={false}
               />
               <Input
                 type="date"
                 value={cashLedgerFromDate}
-                onChange={(event) => setCashLedgerFromDate(event.target.value)}
+                onChange={(event) => {
+                  setCashLedgerFromDate(event.target.value);
+                  setCashLedgerPage(0);
+                }}
               />
               <Input
                 type="date"
                 value={cashLedgerToDate}
-                onChange={(event) => setCashLedgerToDate(event.target.value)}
+                onChange={(event) => {
+                  setCashLedgerToDate(event.target.value);
+                  setCashLedgerPage(0);
+                }}
               />
               <Button
                 variant="outline"
@@ -354,7 +418,7 @@ function DashboardHomePage() {
               </Button>
             </div>
 
-            <div className="grid gap-3 md:grid-cols-4">
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
               <Card className="border-border/70 shadow-sm">
                 <CardContent className="p-4">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
@@ -395,6 +459,16 @@ function DashboardHomePage() {
                   </p>
                   <p className="mt-1 text-lg font-semibold">
                     {formatMoney(cashLedgerQuery.data?.netCashMovement ?? 0)}
+                  </p>
+                </CardContent>
+              </Card>
+              <Card className="border-border/70 shadow-sm">
+                <CardContent className="p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                    Ledger Entries
+                  </p>
+                  <p className="mt-1 text-lg font-semibold">
+                    {cashLedgerQuery.data?.totalCounts ?? 0}
                   </p>
                 </CardContent>
               </Card>
@@ -440,27 +514,61 @@ function DashboardHomePage() {
                           <TableCell colSpan={8}>No cash ledger entries found for this period.</TableCell>
                         </TableRow>
                       ) : (
-                        cashLedgerQuery.data?.entries.map((entry) => (
-                          <TableRow key={`${entry.entryType}-${entry.transactionId}-${entry.createdAt}`}>
-                            <TableCell>{formatExpenseDate(entry.transactionDate)}</TableCell>
-                            <TableCell>{formatExpenseDateTime(entry.createdAt)}</TableCell>
-                            <TableCell>{entry.entryType}</TableCell>
-                            <TableCell>
-                              <span
-                                className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${getDirectionToneClass(entry.direction)}`}
-                              >
-                                {entry.direction}
-                              </span>
-                            </TableCell>
-                            <TableCell>{entry.partyName || "-"}</TableCell>
-                            <TableCell>{entry.reference || "-"}</TableCell>
-                            <TableCell>{entry.description || "-"}</TableCell>
-                            <TableCell className="text-right">{formatMoney(entry.amount)}</TableCell>
-                          </TableRow>
-                        ))
+                        cashLedgerQuery.data?.entries.map((entry) => {
+                          const typeBadge = getEntryTypeBadgeProps(entry.entryType);
+
+                          return (
+                            <TableRow key={`${entry.entryType}-${entry.transactionId}-${entry.createdAt}`}>
+                              <TableCell>{formatExpenseDate(entry.transactionDate)}</TableCell>
+                              <TableCell>{formatExpenseDateTime(entry.createdAt)}</TableCell>
+                              <TableCell>
+                                <Badge variant={typeBadge.variant} className={typeBadge.className}>
+                                  {formatEntryTypeLabel(entry.entryType)}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <span
+                                  className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${getDirectionToneClass(entry.direction)}`}
+                                >
+                                  {entry.direction}
+                                </span>
+                              </TableCell>
+                              <TableCell>{entry.partyName || "-"}</TableCell>
+                              <TableCell>{entry.reference || "-"}</TableCell>
+                              <TableCell>{entry.description || "-"}</TableCell>
+                              <TableCell className="text-right">{formatMoney(entry.amount)}</TableCell>
+                            </TableRow>
+                          );
+                        })
                       )}
                     </TableBody>
                   </Table>
+                </div>
+                <div className="mt-4 flex items-center justify-between gap-3 border-t pt-4">
+                  <p className="text-sm text-muted-foreground">
+                    Page {(cashLedgerQuery.data?.page ?? cashLedgerPage) + 1} of {Math.max(1, cashLedgerQuery.data?.totalPages ?? 1)}
+                    {" "}({cashLedgerQuery.data?.totalCounts ?? 0} total)
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      disabled={cashLedgerPage <= 0 || cashLedgerQuery.isLoading || cashLedgerQuery.isFetching}
+                      onClick={() => setCashLedgerPage((current) => current - 1)}
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      variant="outline"
+                      disabled={
+                        cashLedgerPage >= Math.max(1, cashLedgerQuery.data?.totalPages ?? 1) - 1
+                        || cashLedgerQuery.isLoading
+                        || cashLedgerQuery.isFetching
+                      }
+                      onClick={() => setCashLedgerPage((current) => current + 1)}
+                    >
+                      Next
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>

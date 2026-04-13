@@ -49,6 +49,8 @@ function SupplierBillsSheet({
   const [paymentDrawerOpen, setPaymentDrawerOpen] = useState(false);
   const [fullPaymentDrawerOpen, setFullPaymentDrawerOpen] = useState(false);
   const [paymentHistoryOpen, setPaymentHistoryOpen] = useState(false);
+  const [historyBillId, setHistoryBillId] = useState<number | undefined>(undefined);
+  const [historyBillLabel, setHistoryBillLabel] = useState<string>("");
 
   const pendingBillsQuery = useQuery({
     queryKey: ["supplier-pending-bills", supplierId],
@@ -80,6 +82,8 @@ function SupplierBillsSheet({
             setPaymentDrawerOpen(false);
             setFullPaymentDrawerOpen(false);
             setPaymentHistoryOpen(false);
+            setHistoryBillId(undefined);
+            setHistoryBillLabel("");
           }
         }}
       >
@@ -166,7 +170,11 @@ function SupplierBillsSheet({
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => setPaymentHistoryOpen(true)}
+                                    onClick={() => {
+                                      setHistoryBillId(bill.purchaseId);
+                                      setHistoryBillLabel(bill.billNumber || `Bill #${bill.purchaseId}`);
+                                      setPaymentHistoryOpen(true);
+                                    }}
                                   >
                                     History
                                   </Button>
@@ -265,9 +273,17 @@ function SupplierBillsSheet({
 
       <SupplierPaymentHistorySheet
         open={paymentHistoryOpen}
-        onOpenChange={setPaymentHistoryOpen}
+        onOpenChange={(nextOpen) => {
+          setPaymentHistoryOpen(nextOpen);
+          if (!nextOpen) {
+            setHistoryBillId(undefined);
+            setHistoryBillLabel("");
+          }
+        }}
         supplierId={supplierId}
         supplierName={pendingData?.supplierName || supplierName}
+        billId={historyBillId}
+        billLabel={historyBillLabel}
       />
     </>
   );

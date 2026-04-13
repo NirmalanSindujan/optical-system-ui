@@ -15,6 +15,7 @@ import {
   Square,
   Sun,
   Users,
+  Wallet,
   Wrench,
   type LucideIcon,
 } from "lucide-react";
@@ -196,6 +197,13 @@ const sidebarItems: SidebarItem[] = [
         label: "Users",
         to: "/app/settings/users",
         icon: BadgeCent,
+        roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN],
+      },
+      {
+        id: "settings-opening-balances",
+        label: "Opening Balances",
+        to: "/app/settings/opening-balances",
+        icon: Wallet,
         roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN],
       },
       {

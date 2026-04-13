@@ -1,4 +1,4 @@
-import { Building2, BadgeCent, Database } from "lucide-react";
+import { Building2, BadgeCent, Database, Wallet } from "lucide-react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -41,6 +41,13 @@ const settingsTabs: SettingsTab[] = [
     match: "/app/settings/legacy-customer-prescriptions",
     roles: [ROLES.SUPER_ADMIN],
   },
+  {
+    label: "Opening Balances",
+    to: "/app/settings/opening-balances",
+    icon: Wallet,
+    match: "/app/settings/opening-balances",
+    roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN],
+  },
 ];
 
 function SettingsLayout() {
@@ -58,7 +65,7 @@ function SettingsLayout() {
           </p>
           <CardTitle className="text-base">Administration Workspace</CardTitle>
           <CardDescription>
-            Manage application users, branch access, and super-admin maintenance actions.
+            Manage application users, branch access, finance configuration, and super-admin maintenance actions.
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-0">

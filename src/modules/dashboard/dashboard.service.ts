@@ -10,9 +10,15 @@ export type BusinessSummaryBranchCash = {
 export type CashLedgerDirection = "INCOME" | "OUTGOING";
 
 export type CashLedgerEntryType =
+  | "CUSTOMER_RECEIPT"
+  | "SUPPLIER_PAYMENT"
+  | "EXPENSE_PAYMENT"
+  | "CHEQUE_CLEARANCE"
+  | "FUND_TRANSFER"
+  | "ADJUSTMENT"
+  | "OPENING_BALANCE_LOAD"
   | "CUSTOMER_BILL_PAYMENT"
-  | "EXPENSE"
-  | "SUPPLIER_PAYMENT";
+  | "EXPENSE";
 
 export type CashLedgerEntry = {
   entryType: CashLedgerEntryType;
@@ -35,6 +41,10 @@ export type CashLedgerResponse = {
   totalIncome: number;
   totalOutgoing: number;
   netCashMovement: number;
+  totalCounts: number;
+  page: number;
+  size: number;
+  totalPages: number;
   entries: CashLedgerEntry[];
 };
 
@@ -109,8 +119,15 @@ export async function getCashLedger(params: {
   branchId: number;
   fromDate?: string;
   toDate?: string;
+  page?: number;
+  size?: number;
 }): Promise<CashLedgerResponse> {
   const { data } = await api.get("/finance/cash-ledger", { params });
+  const rawEntries = Array.isArray(data?.entries)
+    ? data.entries
+    : Array.isArray(data?.items)
+      ? data.items
+      : [];
 
   return {
     branchId: Number(data?.branchId ?? params.branchId),
@@ -121,18 +138,20 @@ export async function getCashLedger(params: {
     totalIncome: Number(data?.totalIncome ?? 0),
     totalOutgoing: Number(data?.totalOutgoing ?? 0),
     netCashMovement: Number(data?.netCashMovement ?? 0),
-    entries: Array.isArray(data?.entries)
-      ? data.entries.map((item: CashLedgerEntry) => ({
-          entryType: item?.entryType ?? "EXPENSE",
-          direction: item?.direction ?? "OUTGOING",
-          transactionId: Number(item?.transactionId ?? 0),
-          transactionDate: item?.transactionDate ?? "",
-          createdAt: item?.createdAt ?? "",
-          amount: Number(item?.amount ?? 0),
-          reference: item?.reference ?? "",
-          description: item?.description ?? "",
-          partyName: item?.partyName ?? "",
-        }))
-      : [],
+    totalCounts: Number(data?.totalCounts ?? data?.totalElements ?? rawEntries.length),
+    page: Number(data?.page ?? params.page ?? 0),
+    size: Number(data?.size ?? params.size ?? rawEntries.length ?? 0),
+    totalPages: Math.max(1, Number(data?.totalPages ?? 1)),
+    entries: rawEntries.map((item: CashLedgerEntry) => ({
+      entryType: item?.entryType ?? "EXPENSE",
+      direction: item?.direction ?? "OUTGOING",
+      transactionId: Number(item?.transactionId ?? 0),
+      transactionDate: item?.transactionDate ?? "",
+      createdAt: item?.createdAt ?? "",
+      amount: Number(item?.amount ?? 0),
+      reference: item?.reference ?? "",
+      description: item?.description ?? "",
+      partyName: item?.partyName ?? "",
+    })),
   };
 }

@@ -28,6 +28,7 @@ import ExpenseCategoryPage from "@/modules/expenses/ExpenseCategoryPage";
 import ExpensePage from "@/modules/expenses/ExpensePage";
 import SettingsLayout from "@/modules/settings/SettingsLayout";
 import LegacyCustomerPrescriptionMigrationPage from "@/modules/settings/LegacyCustomerPrescriptionMigrationPage";
+import OpeningBalancesPage from "@/modules/settings/OpeningBalancesPage";
 
 const router = createBrowserRouter([
   {
@@ -181,6 +182,10 @@ const router = createBrowserRouter([
                   {
                     path: "users",
                     element: <UsersPage />
+                  },
+                  {
+                    path: "opening-balances",
+                    element: <OpeningBalancesPage />
                   },
                   {
                     element: <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN]} />,

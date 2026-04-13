@@ -91,6 +91,8 @@ type SupplierPaymentHistorySheetProps = {
   onOpenChange: (open: boolean) => void;
   supplierId: number | null;
   supplierName: string;
+  billId?: number;
+  billLabel?: string;
 };
 
 function SupplierPaymentHistorySheet({
@@ -98,6 +100,8 @@ function SupplierPaymentHistorySheet({
   onOpenChange,
   supplierId,
   supplierName,
+  billId,
+  billLabel,
 }: SupplierPaymentHistorySheetProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -112,6 +116,7 @@ function SupplierPaymentHistorySheet({
     queryKey: [
       "supplier-payment-history",
       supplierId,
+      billId ?? "ALL",
       paymentMode,
       chequeStatus,
       fromDate,
@@ -120,6 +125,7 @@ function SupplierPaymentHistorySheet({
     ],
     queryFn: () =>
       getSupplierPaymentHistory(supplierId as number, {
+        billId,
         paymentMode: paymentMode === "ALL" ? undefined : paymentMode,
         chequeStatus: chequeStatus === "ALL" ? undefined : chequeStatus,
         fromDate: fromDate || undefined,
@@ -130,6 +136,10 @@ function SupplierPaymentHistorySheet({
     enabled: open && supplierId != null,
     placeholderData: (previousData) => previousData,
   });
+
+  useEffect(() => {
+    setPage(0);
+  }, [billId, open]);
 
   const deleteMutation = useMutation({
     mutationFn: (ledgerId: number) => deleteSupplierPayment(supplierId as number, ledgerId),
@@ -191,7 +201,11 @@ function SupplierPaymentHistorySheet({
           <SheetHeader className="border-b px-6 py-5">
             <SheetTitle>Supplier Payment History</SheetTitle>
             <SheetDescription>
-              Payment history for {supplierName}.
+              {billId == null
+                ? `Payment history for ${supplierName}.`
+                : billId === 0
+                  ? `Payment history for ${supplierName} with opening-balance allocations.`
+                  : `Payment history for ${supplierName} related to ${billLabel || `bill #${billId}`}.`}
             </SheetDescription>
           </SheetHeader>
 

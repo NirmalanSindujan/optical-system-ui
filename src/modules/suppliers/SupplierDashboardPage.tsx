@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/components/ui/use-toast";
 import SupplierAsyncSelect, { type SupplierOption } from "@/modules/products/components/SupplierAsyncSelect";
 import SupplierBillsSheet from "@/modules/suppliers/SupplierBillsSheet";
+import SupplierPaymentHistorySheet from "@/modules/suppliers/SupplierPaymentHistorySheet";
 import { getSupplierById, getSupplierSummary, type SupplierSummary } from "@/modules/suppliers/supplier.service";
 import { formatMoney } from "@/modules/stock-updates/stock-update-page.utils";
 
@@ -74,6 +75,7 @@ function SupplierDashboardPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedSupplier, setSelectedSupplier] = useState<SupplierOption | null>(null);
   const [billsSheetOpen, setBillsSheetOpen] = useState(false);
+  const [paymentHistoryOpen, setPaymentHistoryOpen] = useState(false);
 
   const selectedSupplierId = useMemo(() => {
     const rawValue = searchParams.get("supplierId");
@@ -149,6 +151,7 @@ function SupplierDashboardPage() {
           value: formatMoney(summary.totalPaidAmount ?? 0),
           icon: Wallet,
           tone: "default" as const,
+          onClick: () => setPaymentHistoryOpen(true),
         },
       ]
     : [];
@@ -179,6 +182,7 @@ function SupplierDashboardPage() {
                 onChange={(supplier) => {
                   setSelectedSupplier(supplier);
                   setBillsSheetOpen(false);
+                  setPaymentHistoryOpen(false);
                   setSearchParams((currentParams) => {
                     const nextParams = new URLSearchParams(currentParams);
                     if (supplier?.id) {
@@ -230,6 +234,13 @@ function SupplierDashboardPage() {
         supplierId={selectedSupplierId}
         supplierName={supplierName}
         onOpenChange={setBillsSheetOpen}
+      />
+
+      <SupplierPaymentHistorySheet
+        open={paymentHistoryOpen}
+        supplierId={selectedSupplierId}
+        supplierName={supplierName}
+        onOpenChange={setPaymentHistoryOpen}
       />
     </>
   );

@@ -87,6 +87,7 @@ export type SupplierPaymentHistoryItem = {
 };
 
 export type SupplierPaymentHistoryParams = {
+  billId?: number;
   paymentMode?: SupplierPaymentHistoryMode;
   chequeStatus?: ChequeStatus;
   fromDate?: string;
