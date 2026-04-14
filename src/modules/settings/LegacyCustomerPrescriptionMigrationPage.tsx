@@ -23,6 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import {
   getLegacyCustomerPrescriptionMigrationJobStatus,
+  resetDb,
   startLegacyCustomerPrescriptionMigrationJob,
 } from "@/modules/settings/legacyMigration.service";
 import {
@@ -133,6 +134,23 @@ function LegacyCustomerPrescriptionMigrationPage() {
       }
 
       return false;
+    },
+  });
+
+  const resetDbMutation = useMutation({
+    mutationFn: resetDb,
+    onSuccess: (data) => {
+      toast({
+        title: "Database reset completed",
+        description: data.message,
+      });
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Database reset failed",
+        description: getErrorMessage(error),
+      });
     },
   });
 
@@ -393,6 +411,18 @@ function LegacyCustomerPrescriptionMigrationPage() {
             />
           </CardContent>
         </Card>
+      </div>
+
+
+      <div>
+        <Button
+          variant="destructive"
+          onClick={() => resetDbMutation.mutate()}
+          disabled={resetDbMutation.isPending}
+        >
+          {resetDbMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+          Reset DB
+        </Button>
       </div>
     </div>
   );

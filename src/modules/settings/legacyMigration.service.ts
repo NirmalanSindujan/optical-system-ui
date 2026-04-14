@@ -2,6 +2,7 @@ import api from "@/lib/api";
 import type {
   LegacyCustomerPrescriptionMigrationJobStartResponse,
   LegacyCustomerPrescriptionMigrationJobStatusResponse,
+  ResetDbResponse,
 } from "@/modules/settings/legacyMigration.types";
 
 export async function startLegacyCustomerPrescriptionMigrationJob(
@@ -26,4 +27,13 @@ export async function getLegacyCustomerPrescriptionMigrationJobStatus(
   );
 
   return data;
+}
+
+
+export async function resetDb() : Promise<ResetDbResponse>{
+ const { data } = await api.post<ResetDbResponse>(
+    "/admin/database/reset",
+  );
+
+  return data
 }

@@ -11,16 +11,25 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useToast } from "@/components/ui/use-toast";
 import { formatMoney } from "@/modules/customer-bills/customer-bill.utils";
 import { getCustomerReceivables } from "@/modules/dashboard/dashboard.service";
+import { useNavigate } from "react-router-dom";
 
 const PAGE_SIZE = 20;
 
 function getApiErrorMessage(error: unknown) {
   if (typeof error === "object" && error !== null && "response" in error) {
-    const response = (error as { response?: { data?: { message?: string } } }).response;
+    const response = (error as { response?: { data?: { message?: string } } })
+      .response;
     if (response?.data?.message) return response.data.message;
   }
   return "Failed to load receivable details.";
@@ -31,15 +40,21 @@ type ReceivableDetailsSheetProps = {
   onOpenChange: (open: boolean) => void;
 };
 
-function ReceivableDetailsSheet({ open, onOpenChange }: ReceivableDetailsSheetProps) {
+function ReceivableDetailsSheet({
+  open,
+  onOpenChange,
+}: ReceivableDetailsSheetProps) {
   const { toast } = useToast();
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
+    const navigate = useNavigate();
+  
 
   const receivablesQuery = useQuery({
     queryKey: ["dashboard", "customer-receivables", search, page],
-    queryFn: () => getCustomerReceivables({ q: search || undefined, page, size: PAGE_SIZE }),
+    queryFn: () =>
+      getCustomerReceivables({ q: search || undefined, page, size: PAGE_SIZE }),
     enabled: open,
     placeholderData: (previousData) => previousData,
   });
@@ -79,7 +94,10 @@ function ReceivableDetailsSheet({ open, onOpenChange }: ReceivableDetailsSheetPr
         }
       }}
     >
-      <SheetContent side="right" className="w-full overflow-y-auto border-l border-border/70 p-0 sm:max-w-5xl">
+      <SheetContent
+        side="right"
+        className="w-full overflow-y-auto border-l border-border/70 p-0 sm:max-w-5xl"
+      >
         <SheetHeader className="border-b px-6 py-5">
           <SheetTitle>Receivable Details</SheetTitle>
           <SheetDescription>
@@ -92,8 +110,12 @@ function ReceivableDetailsSheet({ open, onOpenChange }: ReceivableDetailsSheetPr
             <Card className="border-border/70 bg-card/95">
               <CardContent className="flex items-center justify-between p-4">
                 <div className="space-y-1">
-                  <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Customers With Due</p>
-                  <p className="text-xl font-semibold tracking-tight">{totalCounts}</p>
+                  <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                    Customers With Due
+                  </p>
+                  <p className="text-xl font-semibold tracking-tight">
+                    {totalCounts}
+                  </p>
                 </div>
                 <div className="rounded-lg bg-primary/10 p-2 text-primary">
                   <Users className="h-4 w-4" />
@@ -104,8 +126,12 @@ function ReceivableDetailsSheet({ open, onOpenChange }: ReceivableDetailsSheetPr
             <Card className="border-border/70 bg-card/95">
               <CardContent className="flex items-center justify-between p-4">
                 <div className="space-y-1">
-                  <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Total Receivable</p>
-                  <p className="text-xl font-semibold tracking-tight">{formatMoney(totalReceivableAmount)}</p>
+                  <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                    Total Receivable
+                  </p>
+                  <p className="text-xl font-semibold tracking-tight">
+                    {formatMoney(totalReceivableAmount)}
+                  </p>
                 </div>
                 <div className="rounded-lg bg-amber-100 p-2 text-amber-700">
                   <CircleDollarSign className="h-4 w-4" />
@@ -142,26 +168,50 @@ function ReceivableDetailsSheet({ open, onOpenChange }: ReceivableDetailsSheetPr
                     <TableHead>Customer</TableHead>
                     <TableHead>Phone</TableHead>
                     <TableHead>Email</TableHead>
-                    <TableHead className="text-right">Receivable Amount</TableHead>
+                    <TableHead className="text-right">
+                      Receivable Amount
+                    </TableHead>
+                    <TableHead></TableHead>
+
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {receivablesQuery.isLoading || receivablesQuery.isFetching ? (
                     <TableRow>
-                      <TableCell colSpan={4}>Loading receivable details...</TableCell>
+                      <TableCell colSpan={4}>
+                        Loading receivable details...
+                      </TableCell>
                     </TableRow>
                   ) : items.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4}>No receivable customers found.</TableCell>
+                      <TableCell colSpan={4}>
+                        No receivable customers found.
+                      </TableCell>
                     </TableRow>
                   ) : (
                     items.map((item) => (
                       <TableRow key={item.customerId}>
-                        <TableCell className="font-medium">{item.customerName}</TableCell>
+                        <TableCell className="font-medium">
+                          {item.customerName}
+                        </TableCell>
                         <TableCell>{item.phone || "-"}</TableCell>
                         <TableCell>{item.email || "-"}</TableCell>
                         <TableCell className="text-right font-semibold text-amber-700">
                           {formatMoney(item.receivableAmount)}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="outline"
+                            className="p-1 h-6"
+                            size="sm"
+                            onClick={() =>
+                              navigate(
+                                `/app/customers/dashboard?customerId=${item.customerId}`,
+                              )
+                            }
+                          >
+                            Open
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))
@@ -178,14 +228,22 @@ function ReceivableDetailsSheet({ open, onOpenChange }: ReceivableDetailsSheetPr
             <div className="flex gap-2">
               <Button
                 variant="outline"
-                disabled={page <= 0 || receivablesQuery.isLoading || receivablesQuery.isFetching}
+                disabled={
+                  page <= 0 ||
+                  receivablesQuery.isLoading ||
+                  receivablesQuery.isFetching
+                }
                 onClick={() => setPage((current) => current - 1)}
               >
                 Previous
               </Button>
               <Button
                 variant="outline"
-                disabled={page >= totalPages - 1 || receivablesQuery.isLoading || receivablesQuery.isFetching}
+                disabled={
+                  page >= totalPages - 1 ||
+                  receivablesQuery.isLoading ||
+                  receivablesQuery.isFetching
+                }
                 onClick={() => setPage((current) => current + 1)}
               >
                 Next

@@ -48,6 +48,37 @@ export type CashLedgerResponse = {
   entries: CashLedgerEntry[];
 };
 
+export type BankLedgerDirection = "INCOME" | "OUTGOING";
+
+export type BankLedgerEntry = {
+  entryType: string;
+  transactionStatus: string;
+  direction: BankLedgerDirection;
+  transactionId: number;
+  transactionDate: string;
+  createdAt: string;
+  amount: number;
+  reference: string;
+  description: string;
+  partyName: string;
+};
+
+export type BankLedgerResponse = {
+  bankAccountId: number;
+  bankCode: string;
+  bankName: string;
+  fromDate: string | null;
+  toDate: string | null;
+  totalIncome: number;
+  totalOutgoing: number;
+  netMovement: number;
+  totalCounts: number;
+  page: number;
+  size: number;
+  totalPages: number;
+  entries: BankLedgerEntry[];
+};
+
 export type BusinessSummaryResponse = {
   cashInHand: number;
   bankBalance: number;
@@ -144,6 +175,47 @@ export async function getCashLedger(params: {
     totalPages: Math.max(1, Number(data?.totalPages ?? 1)),
     entries: rawEntries.map((item: CashLedgerEntry) => ({
       entryType: item?.entryType ?? "EXPENSE",
+      direction: item?.direction ?? "OUTGOING",
+      transactionId: Number(item?.transactionId ?? 0),
+      transactionDate: item?.transactionDate ?? "",
+      createdAt: item?.createdAt ?? "",
+      amount: Number(item?.amount ?? 0),
+      reference: item?.reference ?? "",
+      description: item?.description ?? "",
+      partyName: item?.partyName ?? "",
+    })),
+  };
+}
+
+export async function getBankLedger(params: {
+  fromDate?: string;
+  toDate?: string;
+  page?: number;
+  size?: number;
+} = {}): Promise<BankLedgerResponse> {
+  const { data } = await api.get("/finance/bank-ledger", { params });
+  const rawEntries = Array.isArray(data?.entries)
+    ? data.entries
+    : Array.isArray(data?.items)
+      ? data.items
+      : [];
+
+  return {
+    bankAccountId: Number(data?.bankAccountId ?? 0),
+    bankCode: data?.bankCode ?? "",
+    bankName: data?.bankName ?? "",
+    fromDate: data?.fromDate ?? null,
+    toDate: data?.toDate ?? null,
+    totalIncome: Number(data?.totalIncome ?? 0),
+    totalOutgoing: Number(data?.totalOutgoing ?? 0),
+    netMovement: Number(data?.netMovement ?? 0),
+    totalCounts: Number(data?.totalCounts ?? data?.totalElements ?? rawEntries.length),
+    page: Number(data?.page ?? params.page ?? 0),
+    size: Number(data?.size ?? params.size ?? rawEntries.length ?? 0),
+    totalPages: Math.max(1, Number(data?.totalPages ?? 1)),
+    entries: rawEntries.map((item: BankLedgerEntry) => ({
+      entryType: item?.entryType ?? "UNKNOWN",
+      transactionStatus: item?.transactionStatus ?? "-",
       direction: item?.direction ?? "OUTGOING",
       transactionId: Number(item?.transactionId ?? 0),
       transactionDate: item?.transactionDate ?? "",

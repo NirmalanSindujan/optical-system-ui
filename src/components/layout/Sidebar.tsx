@@ -222,13 +222,13 @@ const itemButtonClassName =
 
 function getSidebarPaddingLeft(depth: number) {
   if (depth <= 0) return 12;
-  if (depth === 1) return 28;
-  return 36;
+  if (depth === 1) return 8;
+  return 8;
 }
 
 function getSidebarChildOffset(depth: number) {
-  if (depth <= 0) return 20;
-  if (depth === 1) return 12;
+  if (depth <= 0) return 8;
+  if (depth === 1) return 8;
   return 8;
 }
 
@@ -360,7 +360,7 @@ function SidebarNode({
         <div className="min-h-0">
           <div
             className="space-y-1 border-l"
-            style={{ marginLeft: paddingLeft + getSidebarChildOffset(depth), paddingLeft: 8 }}
+            style={{ marginLeft: paddingLeft , paddingLeft: 8 }}
           >
             {item.children?.map((child) => (
               <SidebarNode

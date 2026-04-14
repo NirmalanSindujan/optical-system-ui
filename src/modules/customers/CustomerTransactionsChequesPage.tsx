@@ -321,9 +321,7 @@ function ChequeStatusDialog({
             </div>
           ) : null}
 
-          <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
-            `PENDING` and `CLEARED` remain financially applied. `REJECTED` reverses the financial effect.
-          </div>
+        
         </div>
 
         <DialogFooter>
@@ -794,10 +792,7 @@ function CustomerTransactionsChequesPage({
                   </Card>
                 ) : null}
 
-                <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
-                  <CalendarDays className="mr-2 inline h-4 w-4 align-text-bottom" />
-                  `PENDING` and `CLEARED` are financially applied. `REJECTED` reverses the applied amount.
-                </div>
+               
               </>
             ) : null}
           </div>

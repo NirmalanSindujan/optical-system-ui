@@ -37,3 +37,14 @@ export type LegacyCustomerPrescriptionMigrationJobStatusResponse = {
   message: string | null;
   progress: LegacyCustomerPrescriptionMigrationProgress | null;
 };
+
+export type ResetDbResponse = {
+
+  "message": string,
+  "truncatedTableCount": number,
+  "detachedUserCount": number,
+  "truncatedTables": string[]
+
+}
+
+

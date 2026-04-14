@@ -9,7 +9,10 @@ import DashboardHomePage from "@/modules/dashboard/DashboardHomePage";
 import AccessoryProductList from "@/modules/products/accessory/AccessoryProductList";
 import FrameProductList from "@/modules/products/frame/FrameProductList";
 import LensProductList from "@/modules/products/lens/LensProductList";
-import { DEFAULT_LENS_SUBTYPE, LENS_SUBTYPE_ROUTE_SEGMENTS } from "@/modules/products/product.constants";
+import {
+  DEFAULT_LENS_SUBTYPE,
+  LENS_SUBTYPE_ROUTE_SEGMENTS,
+} from "@/modules/products/product.constants";
 import SunglassesProductList from "@/modules/products/sunglasses/SunglassesProductList";
 import CustomerBillAddPage from "@/modules/customer-bills/CustomerBillAddPage";
 import CustomerBillViewPage from "@/modules/customer-bills/CustomerBillViewPage";
@@ -33,11 +36,11 @@ import OpeningBalancesPage from "@/modules/settings/OpeningBalancesPage";
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <Navigate to="/app" replace />
+    element: <Navigate to="/app" replace />,
   },
   {
     path: "/login",
-    element: <Login />
+    element: <Login />,
   },
   {
     element: <ProtectedRoute />,
@@ -48,7 +51,7 @@ const router = createBrowserRouter([
         children: [
           {
             index: true,
-            element: <DashboardHomePage />
+            element: <DashboardHomePage />,
           },
           {
             path: "customers",
@@ -56,13 +59,13 @@ const router = createBrowserRouter([
             children: [
               {
                 index: true,
-                element: <CustomerList />
+                element: <CustomerList />,
               },
               {
                 path: "dashboard",
-                element: <CustomerDashboardPage />
-              }
-            ]
+                element: <CustomerDashboardPage />,
+              },
+            ],
           },
           {
             path: "transactions",
@@ -70,7 +73,9 @@ const router = createBrowserRouter([
             children: [
               {
                 index: true,
-                element: <Navigate to="/app/transactions/cheques/received" replace />
+                element: (
+                  <Navigate to="/app/transactions/cheques/received" replace />
+                ),
               },
               {
                 path: "cheques",
@@ -78,42 +83,64 @@ const router = createBrowserRouter([
                 children: [
                   {
                     index: true,
-                    element: <Navigate to="/app/transactions/cheques/received" replace />
+                    element: (
+                      <Navigate
+                        to="/app/transactions/cheques/received"
+                        replace
+                      />
+                    ),
                   },
                   {
                     path: "received",
-                    element: <CustomerTransactionsChequesPage variant="received" />
+                    element: (
+                      <CustomerTransactionsChequesPage variant="received" />
+                    ),
                   },
                   {
                     path: "provided",
-                    element: <CustomerTransactionsChequesPage variant="provided" />
-                  }
-                ]
+                    element: (
+                      <CustomerTransactionsChequesPage variant="provided" />
+                    ),
+                  },
+                ],
               },
               {
-                element: <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.BRANCH_USER]} />,
+                element: (
+                  <ProtectedRoute
+                    allowedRoles={[
+                      ROLES.SUPER_ADMIN,
+                      ROLES.ADMIN,
+                      ROLES.BRANCH_USER,
+                    ]}
+                  />
+                ),
                 children: [
                   {
                     path: "expense",
-                    element: <ExpenseTransactionsLayout />,
+                    element: <Outlet />,
                     children: [
                       {
                         index: true,
-                        element: <Navigate to="/app/transactions/expense/category" replace />
+                        element: (
+                          <Navigate
+                            to="/app/transactions/expense/category"
+                            replace
+                          />
+                        ),
                       },
                       {
                         path: "category",
-                        element: <ExpenseCategoryPage />
+                        element: <ExpenseCategoryPage />,
                       },
                       {
                         path: "expense",
-                        element: <ExpensePage />
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
+                        element: <ExpensePage />,
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
           },
           {
             path: "suppliers",
@@ -121,152 +148,178 @@ const router = createBrowserRouter([
             children: [
               {
                 index: true,
-                element: <SupplierList />
+                element: <SupplierList />,
               },
               {
                 path: "dashboard",
-                element: <SupplierDashboardPage />
-              }
-            ]
+                element: <SupplierDashboardPage />,
+              },
+            ],
           },
           {
-            element: <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.BRANCH_USER]} />,
+            element: (
+              <ProtectedRoute
+                allowedRoles={[
+                  ROLES.SUPER_ADMIN,
+                  ROLES.ADMIN,
+                  ROLES.BRANCH_USER,
+                ]}
+              />
+            ),
             children: [
               {
                 path: "inventory",
-                element: <InventoryLayout />,
+                element: <Outlet />,
                 children: [
                   {
                     index: true,
-                    element: <Navigate to="/app/inventory/view" replace />
+                    element: <Navigate to="/app/inventory/view" replace />,
                   },
                   {
                     path: "view",
-                    element: <InventoryPage />
+                    element: <InventoryPage />,
                   },
                   {
                     path: "requests",
-                    element: <Navigate to="/app/inventory/requests/received" replace />
+                    element: (
+                      <Navigate to="/app/inventory/requests/received" replace />
+                    ),
                   },
                   {
                     path: "requests/:requestTab",
-                    element: <InventoryRequestPage />
-                  }
-                ]
-              }
-            ]
+                    element: <InventoryRequestPage />,
+                  },
+                ],
+              },
+            ],
           },
           {
             path: "customer-bills",
-            element: <Navigate to="/app/customer-bills/view" replace />
+            element: <Navigate to="/app/customer-bills/view" replace />,
           },
           {
             path: "customer-bills/add",
-            element: <CustomerBillAddPage />
+            element: <CustomerBillAddPage />,
           },
           {
             path: "customer-bills/view",
-            element: <CustomerBillViewPage />
+            element: <CustomerBillViewPage />,
           },
           {
-            element: <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]} />,
+            element: (
+              <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]} />
+            ),
             children: [
               {
                 path: "settings",
-                element: <SettingsLayout />,
+                element: <Outlet />,
                 children: [
                   {
                     index: true,
-                    element: <Navigate to="/app/settings/users" replace />
+                    element: <Navigate to="/app/settings/users" replace />,
                   },
                   {
                     path: "users",
-                    element: <UsersPage />
+                    element: <UsersPage />,
                   },
+
                   {
-                    path: "opening-balances",
-                    element: <OpeningBalancesPage />
-                  },
-                  {
-                    element: <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN]} />,
+                    element: (
+                      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN]} />
+                    ),
                     children: [
                       {
                         path: "branches",
-                        element: <BranchList />
+                        element: <BranchList />,
                       },
                       {
                         path: "legacy-customer-prescriptions",
-                        element: <LegacyCustomerPrescriptionMigrationPage />
-                      }
-                    ]
-                  }
-                ]
+                        element: <LegacyCustomerPrescriptionMigrationPage />,
+                      },
+                      {
+                        path: "opening-balances",
+                        element: <OpeningBalancesPage />,
+                      },
+                    ],
+                  },
+                ],
               },
               {
                 path: "stock-updates",
-                element: <Navigate to="/app/stock-updates/view" replace />
+                element: <Navigate to="/app/stock-updates/view" replace />,
               },
               {
                 path: "stock-updates/add",
-                element: <StockUpdateAddPage />
+                element: <StockUpdateAddPage />,
               },
               {
                 path: "stock-updates/view",
-                element: <StockUpdateViewPage />
-              }
-            ]
+                element: <StockUpdateViewPage />,
+              },
+            ],
           },
           {
             element: <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN]} />,
             children: [
               {
                 path: "branches",
-                element: <Navigate to="/app/settings/branches" replace />
-              }
-            ]
+                element: <Navigate to="/app/settings/branches" replace />,
+              },
+            ],
           },
           {
-            element: <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]} />,
+            element: (
+              <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]} />
+            ),
             children: [
               {
                 path: "products",
-                element: <Navigate to={`/app/products/lens/${LENS_SUBTYPE_ROUTE_SEGMENTS[DEFAULT_LENS_SUBTYPE]}`} replace />
+                element: (
+                  <Navigate
+                    to={`/app/products/lens/${LENS_SUBTYPE_ROUTE_SEGMENTS[DEFAULT_LENS_SUBTYPE]}`}
+                    replace
+                  />
+                ),
               },
               {
                 path: "products/lens",
-                element: <Navigate to={`/app/products/lens/${LENS_SUBTYPE_ROUTE_SEGMENTS[DEFAULT_LENS_SUBTYPE]}`} replace />
+                element: (
+                  <Navigate
+                    to={`/app/products/lens/${LENS_SUBTYPE_ROUTE_SEGMENTS[DEFAULT_LENS_SUBTYPE]}`}
+                    replace
+                  />
+                ),
               },
               {
                 path: "products/lens/:lensSubtype",
-                element: <LensProductList />
+                element: <LensProductList />,
               },
               {
                 path: "products/frame",
-                element: <FrameProductList />
+                element: <FrameProductList />,
               },
               {
                 path: "products/sunglasses",
-                element: <SunglassesProductList />
+                element: <SunglassesProductList />,
               },
               {
                 path: "products/accessory",
-                element: <AccessoryProductList />
+                element: <AccessoryProductList />,
               },
               {
                 path: "products/stockupdates",
-                element: <Navigate to="/app/stock-updates/view" replace />
+                element: <Navigate to="/app/stock-updates/view" replace />,
               },
-              
-            ]
-          }
-        ]
-      }
-    ]
+            ],
+          },
+        ],
+      },
+    ],
   },
   {
     path: "*",
-    element: <Navigate to="/app" replace />
-  }
+    element: <Navigate to="/app" replace />,
+  },
 ]);
 
 export default router;
