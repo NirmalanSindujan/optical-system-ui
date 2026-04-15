@@ -26,6 +26,10 @@ export async function getCustomerBillById(id: number): Promise<CustomerBillRecor
   return data;
 }
 
+export async function deleteCustomerBill(id: number): Promise<void> {
+  await api.delete(`/customer-bills/${id}`);
+}
+
 export async function getBranchCollectionSummary(
   branchId: number,
 ): Promise<BranchCollectionSummary> {

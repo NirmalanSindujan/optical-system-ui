@@ -55,3 +55,7 @@ export async function getStockPurchaseById(id: number): Promise<StockPurchaseRec
   const { data } = await api.get(`/stock-purchases/${id}`);
   return data;
 }
+
+export async function deleteStockPurchase(id: number): Promise<void> {
+  await api.delete(`/stock-purchases/${id}`);
+}

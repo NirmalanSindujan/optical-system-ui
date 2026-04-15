@@ -198,6 +198,30 @@ export interface CustomerBillListResponse {
   totalPages: number;
 }
 
+export interface CustomerBillDeleteRestrictionReason {
+  code?: string | null;
+  message?: string | null;
+}
+
+export interface CustomerBillDeleteRestrictionDetails {
+  billId?: number;
+  billNumber?: string | null;
+  currentBalanceAmount?: number | null;
+  originalCreditAmount?: number | null;
+  reasons?: CustomerBillDeleteRestrictionReason[] | null;
+  allowedWhen?: string[] | null;
+}
+
+export interface CustomerBillDeleteRestrictedError {
+  timestamp?: string;
+  status?: number;
+  error?: string;
+  message?: string;
+  code?: string;
+  path?: string;
+  details?: CustomerBillDeleteRestrictionDetails | null;
+}
+
 export interface BranchCollectionSummary {
   branchId: number;
   branchName?: string | null;

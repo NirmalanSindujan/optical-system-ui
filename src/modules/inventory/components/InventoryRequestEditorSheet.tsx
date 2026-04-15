@@ -31,7 +31,7 @@ import {
   getInventoryRequestErrorMessage,
 } from "@/modules/inventory/inventory-request.utils";
 import { getInventoriesByBranch } from "@/modules/inventory/inventory.service";
-import { useAuthStore } from "@/store/auth.store";
+import { ROLES, useAuthStore } from "@/store/auth.store";
 
 const schema = z
   .object({
@@ -83,6 +83,7 @@ function InventoryRequestEditorSheet({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const authBranchId = useAuthStore((state) => state.branchId);
+  const role = useAuthStore((state)=> state.role)
   const [inventoryQuery, setInventoryQuery] = useState("");
 
   const defaultValues = useMemo<FormValues>(
@@ -236,7 +237,7 @@ function InventoryRequestEditorSheet({
         if (!nextOpen) onClose();
       }}
     >
-      <SheetContent side="right" hideClose className="w-full overflow-y-auto p-0 sm:max-w-4xl">
+      <SheetContent side="right" hideClose className="w-full overflow-y-auto p-0 sm:max-w-5xl">
         <div className="flex items-center justify-between border-b px-6 py-5">
           <SheetHeader className="space-y-1">
             <SheetTitle className="flex items-center gap-2">
@@ -267,7 +268,7 @@ function InventoryRequestEditorSheet({
                   })
                 }
                 allowClear={false}
-                disabled={authBranchId != null}
+                disabled={role === ROLES.BRANCH_USER && authBranchId != null}
                 placeholder="Select requesting branch"
               />
               {errors.requestingBranchId ? (

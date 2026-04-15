@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Boxes, Eye, Search } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Boxes, Eye, Search, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,6 +10,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
   Sheet,
@@ -28,6 +36,7 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/components/ui/use-toast";
 import {
+  deleteStockPurchase,
   getStockPurchaseById,
   getStockPurchases,
 } from "@/modules/stock-updates/stock-purchase.service";
@@ -35,16 +44,20 @@ import StockPurchasePreviewCard from "@/modules/stock-updates/StockPurchasePrevi
 import StockUpdatePagination from "@/modules/stock-updates/StockUpdatePagination";
 import {
   formatMoney,
+  getApiErrorMessage,
   PAGE_SIZE,
 } from "@/modules/stock-updates/stock-update-page.utils";
+import type { StockPurchaseRecord } from "@/modules/stock-updates/stock-purchase.types";
 
 function StockUpdateViewPage() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<StockPurchaseRecord | null>(null);
 
   const {
     data: stockPurchaseResponse,
@@ -68,6 +81,30 @@ function StockUpdateViewPage() {
     queryKey: ["stock-purchase", selectedId],
     queryFn: () => getStockPurchaseById(selectedId as number),
     enabled: selectedId != null,
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteStockPurchase,
+    onSuccess: (_, deletedId) => {
+      toast({
+        title: "Stock purchase deleted",
+        description: "The selected stock purchase was deleted successfully.",
+      });
+      setDeleteTarget(null);
+      if (selectedId === deletedId) {
+        setSelectedId(null);
+        setDetailOpen(false);
+      }
+      queryClient.invalidateQueries({ queryKey: ["stock-purchases"] });
+      queryClient.removeQueries({ queryKey: ["stock-purchase", deletedId] });
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Delete failed",
+        description: getApiErrorMessage(error),
+      });
+    },
   });
 
   const items = stockPurchaseResponse?.items ?? [];
@@ -171,7 +208,7 @@ function StockUpdateViewPage() {
                     <TableHead>Date</TableHead>
                     <TableHead>Payment</TableHead>
                     <TableHead>Total</TableHead>
-                    <TableHead></TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
               </Table>
@@ -229,18 +266,28 @@ function StockUpdateViewPage() {
                             <Badge variant="outline">{item.paymentMode}</Badge>
                           </TableCell>
                           <TableCell>{formatMoney(item.totalAmount)}</TableCell>
-                          <TableCell>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedId(item.id);
-                                setDetailOpen(true);
-                              }}
-                            >
-                              <Eye className="mr-2 h-4 w-4" />
-                              View
-                            </Button>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedId(item.id);
+                                  setDetailOpen(true);
+                                }}
+                              >
+                                <Eye className="mr-2 h-4 w-4" />
+                                View
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => setDeleteTarget(item)}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))
@@ -282,6 +329,45 @@ function StockUpdateViewPage() {
           </div>
         </SheetContent>
       </Sheet>
+
+      <Dialog
+        open={deleteTarget != null}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Stock Purchase</DialogTitle>
+            <DialogDescription>
+              This action permanently deletes the selected stock purchase and its inventory impact.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-lg border bg-muted/30 p-4 text-sm">
+            <p><span className="font-medium">Bill:</span> {deleteTarget?.billNumber || (deleteTarget?.id ? `#${deleteTarget.id}` : "-")}</p>
+            <p><span className="font-medium">Supplier:</span> {deleteTarget?.supplierName || "-"}</p>
+            <p><span className="font-medium">Date:</span> {deleteTarget?.purchaseDate || "-"}</p>
+            <p><span className="font-medium">Total:</span> {formatMoney(deleteTarget?.totalAmount ?? 0)}</p>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteTarget(null)}
+              disabled={deleteMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={deleteMutation.isPending || deleteTarget == null}
+              onClick={() => {
+                if (!deleteTarget) return;
+                deleteMutation.mutate(deleteTarget.id);
+              }}
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Delete Purchase"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

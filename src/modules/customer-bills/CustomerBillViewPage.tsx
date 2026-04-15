@@ -1,9 +1,17 @@
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Eye, ReceiptText, Search } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Eye, ReceiptText, Search, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
   Sheet,
@@ -17,15 +25,23 @@ import { useToast } from "@/components/ui/use-toast";
 import BranchSelect from "@/modules/branches/components/BranchSelect";
 import CustomerBillPreviewCard from "@/modules/customer-bills/CustomerBillPreviewCard";
 import {
+  deleteCustomerBill,
   getCustomerBillById,
   getCustomerBills,
 } from "@/modules/customer-bills/customer-bill.service";
-import { CUSTOMER_BILL_PAGE_SIZE, formatMoney, getApiErrorMessage } from "@/modules/customer-bills/customer-bill.utils";
+import {
+  CUSTOMER_BILL_PAGE_SIZE,
+  formatMoney,
+  getApiErrorMessage,
+  getCustomerBillDeleteErrorMessage,
+} from "@/modules/customer-bills/customer-bill.utils";
 import StockUpdatePagination from "@/modules/stock-updates/StockUpdatePagination";
 import { ROLES, useAuthStore } from "@/store/auth.store";
+import type { CustomerBillSummary } from "@/modules/customer-bills/customer-bill.types";
 
 function CustomerBillViewPage() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const authBranchId = useAuthStore((state) => state.branchId);
   const role = useAuthStore((state) => state.role);
   const isBranchUser = role === ROLES.BRANCH_USER;
@@ -39,6 +55,7 @@ function CustomerBillViewPage() {
   );
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<CustomerBillSummary | null>(null);
 
   const billsQuery = useQuery({
     queryKey: ["customer-bills", { search, page, selectedBranchId }],
@@ -58,7 +75,29 @@ function CustomerBillViewPage() {
     enabled: selectedId != null,
   });
 
-
+  const deleteMutation = useMutation({
+    mutationFn: deleteCustomerBill,
+    onSuccess: (_, deletedId) => {
+      toast({
+        title: "Customer bill deleted",
+        description: "The selected customer bill was deleted successfully.",
+      });
+      setDeleteTarget(null);
+      if (selectedId === deletedId) {
+        setSelectedId(null);
+        setDetailOpen(false);
+      }
+      queryClient.invalidateQueries({ queryKey: ["customer-bills"] });
+      queryClient.removeQueries({ queryKey: ["customer-bill", deletedId] });
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Delete failed",
+        description: getCustomerBillDeleteErrorMessage(error),
+      });
+    },
+  });
 
   const items = billsQuery.data?.items ?? [];
   const total = billsQuery.data?.totalCounts ?? items.length;
@@ -167,7 +206,7 @@ function CustomerBillViewPage() {
                     <TableHead>Total</TableHead>
                     <TableHead>Paid</TableHead>
                     <TableHead>Balance</TableHead>
-                    <TableHead></TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
               </Table>
@@ -212,14 +251,24 @@ function CustomerBillViewPage() {
                               {formatMoney(item.balanceAmount)}
                             </Badge>
                           </TableCell>
-                          <TableCell>
-                            <Button variant="ghost" size="sm" onClick={() => {
-                              setSelectedId(item.id);
-                              setDetailOpen(true);
-                            }}>
-                              <Eye className="mr-2 h-4 w-4" />
-                              View
-                            </Button>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button variant="ghost" size="sm" onClick={() => {
+                                setSelectedId(item.id);
+                                setDetailOpen(true);
+                              }}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                View
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => setDeleteTarget(item)}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))
@@ -254,6 +303,42 @@ function CustomerBillViewPage() {
           </div>
         </SheetContent>
       </Sheet>
+
+      <Dialog open={deleteTarget != null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Customer Bill</DialogTitle>
+            <DialogDescription>
+              This action permanently deletes the selected customer bill. Continue only if this bill was created by mistake.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-lg border bg-muted/30 p-4 text-sm">
+            <p><span className="font-medium">Bill:</span> {deleteTarget?.billNumber || (deleteTarget?.id ? `#${deleteTarget.id}` : "-")}</p>
+            <p><span className="font-medium">Customer:</span> {deleteTarget?.customerName || "Cash customer"}</p>
+            <p><span className="font-medium">Total:</span> {formatMoney(deleteTarget?.totalAmount ?? 0)}</p>
+            <p><span className="font-medium">Balance:</span> {formatMoney(deleteTarget?.balanceAmount ?? 0)}</p>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteTarget(null)}
+              disabled={deleteMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={deleteMutation.isPending || deleteTarget == null}
+              onClick={() => {
+                if (!deleteTarget) return;
+                deleteMutation.mutate(deleteTarget.id);
+              }}
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Delete Bill"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

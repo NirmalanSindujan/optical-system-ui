@@ -463,7 +463,7 @@ function ProgressiveDetailsDrawer({
                 </div>
                 <div className="grid gap-3 sm:grid-cols-3">
                   <DetailCard label="SPH" value={formatPower(product?.sph)} />
-                  <DetailCard label="CYL" value={formatPower(product?.cyl)} />
+                  {product.cyl !== null && <DetailCard label="CYL" value={formatPower(product?.cyl)} /> }
                   <DetailCard
                     label="Add Power"
                     value={formatPower(product?.addPower)}

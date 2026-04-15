@@ -41,6 +41,7 @@ import SupplierDetailsDrawer from "@/modules/suppliers/SupplierDetailsDrawer";
 import SupplierEditorDrawer from "@/modules/suppliers/SupplierEditorDrawer";
 import { formatMoney } from "../stock-updates/stock-update-page.utils";
 import SupplierPaymentDrawer from "./SupplierPayments/SupplierPaymentDrawer";
+import { ROLES, useAuthStore } from "@/store/auth.store";
 
 function SupplierPagination({
   page,
@@ -91,7 +92,8 @@ function SupplierList() {
   const [editingId, setEditingId] = useState(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [viewingId, setViewingId] = useState(null);
-  const [isPaymentOpen, setIsPaymentOpen] = useState(false)
+  const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+  const role = useAuthStore((state) => state.role);
 
   const {
     data: supplierResponse,
@@ -246,22 +248,15 @@ function SupplierList() {
                   </span>
                 </TableHead>
                 <TableHead>Address</TableHead>
-                <TableHead className="w-[5%]">Actions</TableHead>
+                {role !== ROLES.BRANCH_USER && (
+                  <TableHead className="w-[5%]">Actions</TableHead>
+                )}
               </TableRow>
             </TableHeader>
           </Table>
 
           <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden border-t">
             <Table className="min-w-[960px] table-fixed">
-              <colgroup>
-                <col className="w-[20%]" />
-                <col className="w-[15%]" />
-                <col className="w-[16%]" />
-                <col className="w-[20%]" />
-                <col className="w-[12%]" />
-                <col className="w-[20%]" />
-                <col className="w-[5%]" />
-              </colgroup>
               <TableBody>
                 {isLoading || isFetching ? (
                   <TableRow>
@@ -302,39 +297,54 @@ function SupplierList() {
                       <TableCell>
                         <span className="inline-flex items-center justify-end gap-2">
                           <DollarSign className="h-4 w-4 text-muted-foreground" />
-                          <Button variant="ghost" onClick={()=>{
-                             setViewingId(item.id);
-                             setIsPaymentOpen(true)
-                          }}>{formatMoney(item.pendingAmount) || "-"} </Button>
+                          {role !== ROLES.BRANCH_USER ? (
+                            <Button
+                              variant="ghost"
+                              onClick={() => {
+                                setViewingId(item.id);
+                                setIsPaymentOpen(true);
+                              }}
+                            >
+                              {formatMoney(item.pendingAmount) || "-"}{" "}
+                            </Button>
+                          ) : (
+                            formatMoney(item.pendingAmount)
+                          )}
                         </span>
                       </TableCell>
 
                       <TableCell>{item.address || "-"}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => navigate(`/app/suppliers/dashboard?supplierId=${item.id}`)}
-                          >
-                            More
-                          </Button>
-                          <LensRowActionsPopover
-                            canView={Boolean(item.id)}
-                            canEdit={Boolean(item.id)}
-                            canDelete={Boolean(item.id)}
-                            onView={() => {
-                              setViewingId(item.id);
-                              setDetailsOpen(true);
-                            }}
-                            onEdit={() => {
-                              setEditingId(item.id);
-                              setDrawerOpen(true);
-                            }}
-                            onDelete={() => setConfirmDeleteId(item.id)}
-                          />
-                        </div>
-                      </TableCell>
+                      {role !== ROLES.BRANCH_USER && (
+                        <TableCell>
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                navigate(
+                                  `/app/suppliers/dashboard?supplierId=${item.id}`,
+                                )
+                              }
+                            >
+                              More
+                            </Button>
+                            <LensRowActionsPopover
+                              canView={Boolean(item.id)}
+                              canEdit={Boolean(item.id)}
+                              canDelete={Boolean(item.id)}
+                              onView={() => {
+                                setViewingId(item.id);
+                                setDetailsOpen(true);
+                              }}
+                              onEdit={() => {
+                                setEditingId(item.id);
+                                setDrawerOpen(true);
+                              }}
+                              onDelete={() => setConfirmDeleteId(item.id)}
+                            />
+                          </div>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))
                 )}

@@ -311,3 +311,5 @@ export async function deleteSupplier(id: number) {
   const { data } = await api.delete(`/suppliers/${id}`);
   return data;
 }
+
+

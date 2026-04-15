@@ -1,5 +1,6 @@
 import { LENS_SUB_TYPES, PRODUCT_VARIANT_TYPES } from "@/modules/products/product.constants";
 import type {
+  CustomerBillDeleteRestrictedError,
   CustomerBillPaymentMode,
   CustomerBillProductOption,
 } from "@/modules/customer-bills/customer-bill.types";
@@ -97,6 +98,29 @@ export const getApiErrorMessage = (error: any) =>
   error?.response?.data?.message ??
   error?.message ??
   "Customer billing request failed.";
+
+export const getCustomerBillDeleteErrorMessage = (error: any) => {
+  const responseData = error?.response?.data as CustomerBillDeleteRestrictedError | undefined;
+  const baseMessage =
+    responseData?.message ??
+    error?.message ??
+    "Customer bill could not be deleted.";
+
+  if (responseData?.status !== 409) {
+    return baseMessage;
+  }
+
+  const reasonMessages =
+    responseData.details?.reasons
+      ?.map((reason) => reason?.message?.trim())
+      .filter((value): value is string => Boolean(value)) ?? [];
+
+  if (reasonMessages.length === 0) {
+    return baseMessage;
+  }
+
+  return `${baseMessage} ${reasonMessages.join(" ")}`;
+};
 
 export const requiresCustomerForPayments = (
   paymentModes: CustomerBillPaymentMode[],
