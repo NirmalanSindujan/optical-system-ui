@@ -49,6 +49,8 @@ const productNavItems: SidebarItem[] = PRODUCT_NAV_ITEMS.map((item) => ({
   label: item.label,
   to: item.variantType === PRODUCT_VARIANT_TYPES.LENS ? undefined : item.to,
   icon: productIcons[item.variantType] ?? Package,
+  roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN],
+
   children:
     item.variantType === PRODUCT_VARIANT_TYPES.LENS
       ? LENS_SUBTYPE_NAV_ITEMS.map((lensItem) => ({
@@ -56,6 +58,7 @@ const productNavItems: SidebarItem[] = PRODUCT_NAV_ITEMS.map((item) => ({
           label: lensItem.label,
           to: lensItem.to,
           exact: true,
+          roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN],
         }))
       : undefined,
 }));
@@ -66,6 +69,7 @@ const sidebarItems: SidebarItem[] = [
     label: "Dashboard",
     to: "/app",
     exact: true,
+    roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN],
     icon: LayoutDashboard,
   },
   {
@@ -78,37 +82,43 @@ const sidebarItems: SidebarItem[] = [
     id: "transactions",
     label: "Transactions",
     icon: Landmark,
+    roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN],
     children: [
       {
         id: "transactions-cheques",
         label: "Cheques",
+        roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN],
         children: [
           {
             id: "transactions-cheques-received",
             label: "Received Cheques",
             to: "/app/transactions/cheques/received",
+            roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN],
           },
           {
             id: "transactions-cheques-provided",
             label: "Provided Cheques",
             to: "/app/transactions/cheques/provided",
+            roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN],
           },
         ],
       },
       {
         id: "transactions-expense",
         label: "Expense",
-        roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.BRANCH_USER],
+        roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN],
         children: [
           {
             id: "transactions-expense-category",
             label: "Category",
             to: "/app/transactions/expense/category",
+            roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN],
           },
           {
             id: "transactions-expense-expense",
             label: "Expense",
             to: "/app/transactions/expense/expense",
+            roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.BRANCH_USER],
           },
         ],
       },
@@ -165,11 +175,13 @@ const sidebarItems: SidebarItem[] = [
         id: "stock-view",
         label: "View Stocks",
         to: "/app/stock-updates/view",
+        roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN],
       },
       {
         id: "stock-add",
         label: "Add Stocks",
         to: "/app/stock-updates/add",
+        roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN],
       },
     ],
   },
@@ -184,6 +196,7 @@ const sidebarItems: SidebarItem[] = [
     id: "settings",
     label: "Settings",
     icon: Settings,
+    roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN],
     children: [
       {
         id: "settings-branches",
@@ -240,7 +253,10 @@ function hasAccess(item: SidebarItem, role: Role | null) {
   return role ? item.roles.includes(role) : false;
 }
 
-function filterSidebarItems(items: SidebarItem[], role: Role | null): SidebarItem[] {
+function filterSidebarItems(
+  items: SidebarItem[],
+  role: Role | null,
+): SidebarItem[] {
   return items.reduce<SidebarItem[]>((acc, item) => {
     const filteredChildren = item.children
       ? filterSidebarItems(item.children, role)
@@ -270,14 +286,20 @@ function isItemActive(item: SidebarItem, pathname: string): boolean {
   return item.children?.some((child) => isItemActive(child, pathname)) ?? false;
 }
 
-function collectActiveParentIds(items: SidebarItem[], pathname: string, parentIds: string[] = []) {
+function collectActiveParentIds(
+  items: SidebarItem[],
+  pathname: string,
+  parentIds: string[] = [],
+) {
   return items.reduce<string[]>((acc, item) => {
     const nextParentIds = [...parentIds, item.id];
     const isActive = isItemActive(item, pathname);
 
     if (item.children?.length && isActive) {
       acc.push(...parentIds, item.id);
-      acc.push(...collectActiveParentIds(item.children, pathname, nextParentIds));
+      acc.push(
+        ...collectActiveParentIds(item.children, pathname, nextParentIds),
+      );
     }
 
     return acc;
@@ -360,7 +382,7 @@ function SidebarNode({
         <div className="min-h-0">
           <div
             className="space-y-1 border-l"
-            style={{ marginLeft: paddingLeft , paddingLeft: 8 }}
+            style={{ marginLeft: paddingLeft, paddingLeft: 8 }}
           >
             {item.children?.map((child) => (
               <SidebarNode
@@ -384,10 +406,16 @@ function Sidebar() {
   const location = useLocation();
   const [openItems, setOpenItems] = useState<Record<string, boolean>>({});
 
-  const visibleItems = useMemo(() => filterSidebarItems(sidebarItems, role), [role]);
+  const visibleItems = useMemo(
+    () => filterSidebarItems(sidebarItems, role),
+    [role],
+  );
 
   useEffect(() => {
-    const activeParentIds = collectActiveParentIds(visibleItems, location.pathname);
+    const activeParentIds = collectActiveParentIds(
+      visibleItems,
+      location.pathname,
+    );
 
     if (!activeParentIds.length) {
       return;

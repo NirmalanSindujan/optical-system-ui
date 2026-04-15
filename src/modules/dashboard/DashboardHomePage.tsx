@@ -625,10 +625,10 @@ function DashboardHomePage() {
                     <TableHeader className="bg-muted/85 supports-[backdrop-filter]:bg-muted/65">
                       <TableRow>
                         <TableHead>Date</TableHead>
-                        <TableHead>Created At</TableHead>
+                       
                         <TableHead>Type</TableHead>
                         <TableHead>Direction</TableHead>
-                        <TableHead>Party</TableHead>
+                        <TableHead>Branch</TableHead>
                         <TableHead>Reference</TableHead>
                         <TableHead>Description</TableHead>
                         <TableHead className="text-right">Amount</TableHead>
@@ -667,9 +667,7 @@ function DashboardHomePage() {
                               <TableCell>
                                 {formatExpenseDate(entry.transactionDate)}
                               </TableCell>
-                              <TableCell>
-                                {formatExpenseDateTime(entry.createdAt)}
-                              </TableCell>
+                            
                               <TableCell>
                                 <Badge
                                   variant={typeBadge.variant}
