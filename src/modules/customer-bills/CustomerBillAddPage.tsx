@@ -34,7 +34,9 @@ import { createCustomerBill } from "@/modules/customer-bills/customer-bill.servi
 import type {
   CustomerBillCreateRequest,
   CustomerBillPaymentMode,
+  CustomerBillPaymentRequest,
   CustomerBillProductOption,
+  CustomerBillRecord,
   CustomerBillPrescriptionMeasurement,
   CustomerBillPrescriptionValues,
   CustomerPatientRecord,
@@ -206,6 +208,315 @@ const normalizeNullableText = (value: string) => {
   return normalized ? normalized : null;
 };
 
+const formatPrintDate = (value?: string | null) => {
+  if (!value) return "-";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleDateString();
+};
+
+const escapePrintHtml = (value: string) =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+const buildPrintableBillHtml = ({
+  record,
+  customerName,
+  billDate,
+}: {
+  record: CustomerBillRecord;
+  customerName: string;
+  billDate: string;
+}) => {
+  const itemsRows = record.items
+    .map(
+      (item, index) => `
+        <tr>
+          <td>${index + 1}</td>
+          <td>${escapePrintHtml(item.productName || "-")}</td>
+          <td class="num">${escapePrintHtml(String(item.quantity))}</td>
+          <td class="num">${escapePrintHtml(formatMoney(Number(item.unitPrice ?? 0)))}</td>
+          <td class="num">${escapePrintHtml(formatMoney(Number(item.lineTotal ?? 0)))}</td>
+        </tr>`,
+    )
+    .join("");
+
+  const paymentsRows = record.payments
+    .filter((payment) => Number(payment.amount ?? 0) > 0)
+    .map(
+      (payment) => `
+        <tr>
+          <td>${escapePrintHtml(payment.paymentMode)}</td>
+          <td class="num">${escapePrintHtml(formatMoney(Number(payment.amount ?? 0)))}</td>
+        </tr>`,
+    )
+    .join("");
+
+  return `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>${escapePrintHtml(record.billNumber || `Bill #${record.id}`)}</title>
+    <style>
+      :root {
+        color-scheme: light;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 24px;
+        font-family: "Segoe UI", Arial, sans-serif;
+        color: #111827;
+        background: #ffffff;
+      }
+      .bill {
+        max-width: 760px;
+        margin: 0 auto;
+      }
+      .header {
+        display: flex;
+        justify-content: space-between;
+        gap: 24px;
+        border-bottom: 1px solid #d1d5db;
+        padding-bottom: 16px;
+        margin-bottom: 18px;
+      }
+      .title {
+        font-size: 24px;
+        font-weight: 700;
+        margin: 0 0 4px;
+      }
+      .muted {
+        color: #4b5563;
+        font-size: 12px;
+      }
+      .meta {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px 16px;
+        margin-bottom: 18px;
+      }
+      .meta-item {
+        border: 1px solid #e5e7eb;
+        padding: 10px 12px;
+      }
+      .label {
+        display: block;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #6b7280;
+        margin-bottom: 4px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        border-bottom: 1px solid #e5e7eb;
+        padding: 10px 8px;
+        text-align: left;
+        font-size: 13px;
+        vertical-align: top;
+      }
+      th {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #6b7280;
+      }
+      .num {
+        text-align: right;
+        white-space: nowrap;
+      }
+      .summary {
+        width: 280px;
+        margin-left: auto;
+        margin-top: 18px;
+      }
+      .summary td {
+        padding: 8px 0;
+        border-bottom: 0;
+      }
+      .summary .grand td {
+        border-top: 1px solid #d1d5db;
+        padding-top: 12px;
+        font-weight: 700;
+      }
+      .section-title {
+        margin: 22px 0 10px;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #6b7280;
+      }
+      .notes {
+        margin-top: 18px;
+        border-top: 1px solid #e5e7eb;
+        padding-top: 14px;
+        font-size: 13px;
+      }
+      @media print {
+        body {
+          padding: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="bill">
+      <section class="header">
+        <div>
+          <h1 class="title">Customer Bill</h1>
+          <div class="muted">${escapePrintHtml(record.branchName || "Branch")}</div>
+        </div>
+        <div>
+          <div><strong>${escapePrintHtml(record.billNumber || `Bill #${record.id}`)}</strong></div>
+          <div class="muted">${escapePrintHtml(formatPrintDate(record.billDate || billDate))}</div>
+        </div>
+      </section>
+
+      <section class="meta">
+        <div class="meta-item">
+          <span class="label">Customer</span>
+          <strong>${escapePrintHtml(record.customerName || customerName || "-")}</strong>
+        </div>
+        <div class="meta-item">
+          <span class="label">Patient</span>
+          <strong>${escapePrintHtml(record.patientName || "-")}</strong>
+        </div>
+      </section>
+
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 48px;">#</th>
+            <th>Item</th>
+            <th class="num" style="width: 90px;">Qty</th>
+            <th class="num" style="width: 120px;">Price</th>
+            <th class="num" style="width: 120px;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemsRows || '<tr><td colspan="5">No items</td></tr>'}
+        </tbody>
+      </table>
+
+      ${
+        paymentsRows
+          ? `<h2 class="section-title">Payments</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Mode</th>
+            <th class="num" style="width: 160px;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${paymentsRows}
+        </tbody>
+      </table>`
+          : ""
+      }
+
+      <table class="summary">
+        <tbody>
+          <tr>
+            <td>Subtotal</td>
+            <td class="num">${escapePrintHtml(formatMoney(Number(record.subtotalAmount ?? 0)))}</td>
+          </tr>
+          <tr>
+            <td>Discount</td>
+            <td class="num">${escapePrintHtml(formatMoney(Number(record.discountAmount ?? 0)))}</td>
+          </tr>
+          <tr>
+            <td>Paid</td>
+            <td class="num">${escapePrintHtml(formatMoney(Number(record.paidAmount ?? 0)))}</td>
+          </tr>
+          <tr>
+            <td>Credit</td>
+            <td class="num">${escapePrintHtml(formatMoney(Number(record.balanceAmount ?? 0)))}</td>
+          </tr>
+          <tr class="grand">
+            <td>Total</td>
+            <td class="num">${escapePrintHtml(formatMoney(Number(record.totalAmount ?? 0)))}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      ${
+        record.notes
+          ? `<section class="notes">
+        <span class="label">Notes</span>
+        <div>${escapePrintHtml(record.notes)}</div>
+      </section>`
+          : ""
+      }
+    </main>
+  </body>
+</html>`;
+};
+
+const printCustomerBill = ({
+  record,
+  customerName,
+  billDate,
+}: {
+  record: CustomerBillRecord;
+  customerName: string;
+  billDate: string;
+}) => {
+  if (typeof window === "undefined") return;
+  const html = buildPrintableBillHtml({ record, customerName, billDate });
+  const iframe = window.document.createElement("iframe");
+  iframe.style.position = "fixed";
+  iframe.style.right = "0";
+  iframe.style.bottom = "0";
+  iframe.style.width = "0";
+  iframe.style.height = "0";
+  iframe.style.border = "0";
+  iframe.setAttribute("aria-hidden", "true");
+
+  const cleanup = () => {
+    window.setTimeout(() => {
+      if (iframe.parentNode) {
+        iframe.parentNode.removeChild(iframe);
+      }
+    }, 200);
+  };
+
+  iframe.onload = () => {
+    const printFrame = iframe.contentWindow;
+    if (!printFrame) {
+      cleanup();
+      return;
+    }
+
+    printFrame.focus();
+    printFrame.print();
+    cleanup();
+  };
+
+  window.document.body.appendChild(iframe);
+
+  const frameDocument = iframe.contentDocument;
+  if (!frameDocument) {
+    cleanup();
+    return;
+  }
+
+  frameDocument.open();
+  frameDocument.write(html);
+  frameDocument.close();
+};
+
 function CustomerBillAddPage() {
   const { toast } = useToast();
   const authBranchId = useAuthStore((state) => state.branchId);
@@ -238,6 +549,10 @@ function CustomerBillAddPage() {
   const [patientCreateForm, setPatientCreateForm] = useState<PatientCreateForm>(createEmptyPatientCreateForm);
   const [patientReloadKey, setPatientReloadKey] = useState(0);
   const [prescriptionSheetOpen, setPrescriptionSheetOpen] = useState(false);
+  const [printDialogOpen, setPrintDialogOpen] = useState(false);
+  const [savedBillRecord, setSavedBillRecord] = useState<CustomerBillRecord | null>(null);
+  const [savedBillCustomerName, setSavedBillCustomerName] = useState("");
+  const [savedBillDate, setSavedBillDate] = useState("");
   const [prescriptionForm, setPrescriptionForm] = useState({
     prescriptionDate: getTodayDate(),
     values: createEmptyPrescriptionValues(),
@@ -339,6 +654,11 @@ function CustomerBillAddPage() {
   const createMutation = useMutation({
     mutationFn: createCustomerBill,
     onSuccess: (response) => {
+      setSavedBillRecord(response);
+      setSavedBillCustomerName(selectedCustomer?.name ?? response.customerName ?? "");
+      setSavedBillDate(billDate);
+      setPrintDialogOpen(true);
+      setPaymentDialogOpen(false);
       toast({
         title: "Bill saved",
         description: response.billNumber
@@ -594,7 +914,6 @@ function CustomerBillAddPage() {
     if (!selectedBranchId) errors.push("Branch is required.");
     if (!/^\d{4}-\d{2}-\d{2}$/.test(billDate)) errors.push("Bill date must be in YYYY-MM-DD format.");
     if (!items.length) errors.push("Add at least one item.");
-    if (!payments.length) errors.push("Add at least one payment.");
     if (discountValue < 0) errors.push("Discount must be 0.00 or more.");
     if (discountValue > subtotalAmount) errors.push("Discount cannot exceed subtotal.");
     if (prescriptionEnabled && !selectedPatient?.id) {
@@ -603,8 +922,8 @@ function CustomerBillAddPage() {
     if (prescriptionEnabled && selectedCustomer?.id && selectedPatient?.customerId !== selectedCustomer.id) {
       errors.push("Selected patient must belong to the selected customer.");
     }
-    if (roundMoney(paymentTotal) !== roundMoney(totalAmount)) {
-      errors.push("Sum of payment amounts must equal the final bill total.");
+    if (paymentTotal > totalAmount) {
+      errors.push("Total payment amount cannot exceed the final bill total.");
     }
 
     const payloadItems = items.map((item, index) => {
@@ -623,7 +942,7 @@ function CustomerBillAddPage() {
       };
     });
 
-    const payloadPayments = payments.map((payment, index) => {
+    const payloadPayments: CustomerBillPaymentRequest[] = payments.map((payment, index) => {
       const amount = parseOptionalNumber(payment.amount);
       if (amount == null || Number.isNaN(amount) || amount <= 0) {
         errors.push(`Payment ${index + 1}: amount must be greater than 0.`);
@@ -644,6 +963,15 @@ function CustomerBillAddPage() {
         reference: normalizeText(payment.reference) || undefined,
       };
     });
+
+    const autoCreditAmount = roundMoney(Math.max(0, totalAmount - paymentTotal));
+    if (autoCreditAmount > 0) {
+      payloadPayments.push({
+        paymentMode: "CREDIT",
+        amount: autoCreditAmount,
+        reference: "Auto credit balance",
+      });
+    }
 
     if (errors.length > 0) {
       const message = errors[0];
@@ -953,7 +1281,7 @@ function CustomerBillAddPage() {
                 <p className="mt-2 font-semibold">{formatMoney(paymentTotal)}</p>
               </div>
               <div className="rounded-2xl border border-primary/25 bg-primary/5 px-4 py-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Balance</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Credit</p>
                 <p className="mt-2 font-semibold">{formatMoney(balanceAmount)}</p>
               </div>
             </div>
@@ -1043,14 +1371,14 @@ function CustomerBillAddPage() {
               </div>
             ) : null}
 
-            <div>
-              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Reference</label>
-              <Input
-                value={draftPayment.reference}
-                onChange={(event) => setDraftPayment((current) => ({ ...current, reference: event.target.value }))}
-                placeholder={draftPayment.paymentMode === "CREDIT" ? "Balance due" : "Optional reference"}
-              />
-            </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Reference</label>
+                <Input
+                  value={draftPayment.reference}
+                  onChange={(event) => setDraftPayment((current) => ({ ...current, reference: event.target.value }))}
+                  placeholder="Optional reference"
+                />
+              </div>
 
             <div className="rounded-2xl border border-dashed border-border/70 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
@@ -1064,8 +1392,58 @@ function CustomerBillAddPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>Cancel</Button>
             <Button variant="outline" onClick={handleSavePayment}>Add Payment</Button>
-            <Button onClick={handleSubmit} disabled={createMutation.isPending || payments.length === 0}>
-              {createMutation.isPending ? "Submitting..." : "Pay"}
+            <Button onClick={handleSubmit} disabled={createMutation.isPending}>
+              {createMutation.isPending ? "Submitting..." : "Save Bill"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={printDialogOpen}
+        onOpenChange={(open) => {
+          setPrintDialogOpen(open);
+          if (!open) {
+            setSavedBillRecord(null);
+            setSavedBillCustomerName("");
+            setSavedBillDate("");
+            resetForm();
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Print bill</DialogTitle>
+            <DialogDescription>
+              The bill was saved successfully. Print a minimal customer bill now or close this dialog.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="rounded-2xl border border-border/70 bg-muted/20 p-4">
+            <p className="text-sm font-medium text-foreground">
+              {savedBillRecord?.billNumber || (savedBillRecord?.id ? `Bill #${savedBillRecord.id}` : "Customer bill")}
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {savedBillRecord?.customerName || savedBillCustomerName || "Customer"} | {formatPrintDate(savedBillRecord?.billDate || savedBillDate)}
+            </p>
+            <p className="mt-3 text-sm text-muted-foreground">
+              Total: {formatMoney(Number(savedBillRecord?.totalAmount ?? 0))} | Paid: {formatMoney(Number(savedBillRecord?.paidAmount ?? 0))} | Credit: {formatMoney(Number(savedBillRecord?.balanceAmount ?? 0))}
+            </p>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPrintDialogOpen(false)}>Close</Button>
+            <Button
+              onClick={() => {
+                if (!savedBillRecord) return;
+                printCustomerBill({
+                  record: savedBillRecord,
+                  customerName: savedBillCustomerName,
+                  billDate: savedBillDate,
+                });
+              }}
+            >
+              Print Bill
             </Button>
           </DialogFooter>
         </DialogContent>

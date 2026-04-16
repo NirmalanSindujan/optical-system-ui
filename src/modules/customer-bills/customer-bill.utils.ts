@@ -27,11 +27,6 @@ export const customerBillPaymentModeOptions: Array<{
     label: "Cheque",
     description: "Store cheque details and collection amount.",
   },
-  {
-    value: "CREDIT",
-    label: "Credit",
-    description: "Keep the amount as customer outstanding.",
-  },
 ];
 
 export const customerBillProductCategoryOptions = [
