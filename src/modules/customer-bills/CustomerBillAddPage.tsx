@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { CreditCard, FileText, PackagePlus, Search, Trash2, UserPlus, UserRound, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -26,7 +26,10 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import BranchSelect from "@/modules/branches/components/BranchSelect";
+import { getBranches } from "@/modules/branches/branch.service";
+import CustomerBillPreviewCard from "@/modules/customer-bills/CustomerBillPreviewCard";
 import CustomerBillReceiptPanel from "@/modules/customer-bills/CustomerBillReceiptPanel";
+import { printCustomerBill } from "@/modules/customer-bills/customer-bill-print";
 import PatientAsyncSelect from "@/modules/customer-bills/components/PatientAsyncSelect";
 import PatientCreateSheet, { type PatientCreateForm } from "@/modules/customer-bills/components/PatientCreateSheet";
 import CustomerAsyncSelect, { type CustomerOption } from "@/modules/customer-bills/components/CustomerAsyncSelect";
@@ -89,6 +92,7 @@ const normalizeVariantOption = (
     variantId,
     name,
     sku: typeof item.sku === "string" ? item.sku.trim() : "",
+    barcode: typeof item.barcode === "string" ? item.barcode.trim() : "",
     sellingPrice: normalizeNumber(item.sellingPrice),
     currentQuantity: normalizeNumber(item.currentQuantity ?? item.quantity),
     variantType: typeof item.variantType === "string" ? item.variantType : undefined,
@@ -208,314 +212,7 @@ const normalizeNullableText = (value: string) => {
   return normalized ? normalized : null;
 };
 
-const formatPrintDate = (value?: string | null) => {
-  if (!value) return "-";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleDateString();
-};
-
-const escapePrintHtml = (value: string) =>
-  value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-
-const buildPrintableBillHtml = ({
-  record,
-  customerName,
-  billDate,
-}: {
-  record: CustomerBillRecord;
-  customerName: string;
-  billDate: string;
-}) => {
-  const itemsRows = record.items
-    .map(
-      (item, index) => `
-        <tr>
-          <td>${index + 1}</td>
-          <td>${escapePrintHtml(item.productName || "-")}</td>
-          <td class="num">${escapePrintHtml(String(item.quantity))}</td>
-          <td class="num">${escapePrintHtml(formatMoney(Number(item.unitPrice ?? 0)))}</td>
-          <td class="num">${escapePrintHtml(formatMoney(Number(item.lineTotal ?? 0)))}</td>
-        </tr>`,
-    )
-    .join("");
-
-  const paymentsRows = record.payments
-    .filter((payment) => Number(payment.amount ?? 0) > 0)
-    .map(
-      (payment) => `
-        <tr>
-          <td>${escapePrintHtml(payment.paymentMode)}</td>
-          <td class="num">${escapePrintHtml(formatMoney(Number(payment.amount ?? 0)))}</td>
-        </tr>`,
-    )
-    .join("");
-
-  return `<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>${escapePrintHtml(record.billNumber || `Bill #${record.id}`)}</title>
-    <style>
-      :root {
-        color-scheme: light;
-      }
-      * {
-        box-sizing: border-box;
-      }
-      body {
-        margin: 0;
-        padding: 24px;
-        font-family: "Segoe UI", Arial, sans-serif;
-        color: #111827;
-        background: #ffffff;
-      }
-      .bill {
-        max-width: 760px;
-        margin: 0 auto;
-      }
-      .header {
-        display: flex;
-        justify-content: space-between;
-        gap: 24px;
-        border-bottom: 1px solid #d1d5db;
-        padding-bottom: 16px;
-        margin-bottom: 18px;
-      }
-      .title {
-        font-size: 24px;
-        font-weight: 700;
-        margin: 0 0 4px;
-      }
-      .muted {
-        color: #4b5563;
-        font-size: 12px;
-      }
-      .meta {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 8px 16px;
-        margin-bottom: 18px;
-      }
-      .meta-item {
-        border: 1px solid #e5e7eb;
-        padding: 10px 12px;
-      }
-      .label {
-        display: block;
-        font-size: 11px;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: #6b7280;
-        margin-bottom: 4px;
-      }
-      table {
-        width: 100%;
-        border-collapse: collapse;
-      }
-      th,
-      td {
-        border-bottom: 1px solid #e5e7eb;
-        padding: 10px 8px;
-        text-align: left;
-        font-size: 13px;
-        vertical-align: top;
-      }
-      th {
-        font-size: 11px;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: #6b7280;
-      }
-      .num {
-        text-align: right;
-        white-space: nowrap;
-      }
-      .summary {
-        width: 280px;
-        margin-left: auto;
-        margin-top: 18px;
-      }
-      .summary td {
-        padding: 8px 0;
-        border-bottom: 0;
-      }
-      .summary .grand td {
-        border-top: 1px solid #d1d5db;
-        padding-top: 12px;
-        font-weight: 700;
-      }
-      .section-title {
-        margin: 22px 0 10px;
-        font-size: 12px;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: #6b7280;
-      }
-      .notes {
-        margin-top: 18px;
-        border-top: 1px solid #e5e7eb;
-        padding-top: 14px;
-        font-size: 13px;
-      }
-      @media print {
-        body {
-          padding: 0;
-        }
-      }
-    </style>
-  </head>
-  <body>
-    <main class="bill">
-      <section class="header">
-        <div>
-          <h1 class="title">Customer Bill</h1>
-          <div class="muted">${escapePrintHtml(record.branchName || "Branch")}</div>
-        </div>
-        <div>
-          <div><strong>${escapePrintHtml(record.billNumber || `Bill #${record.id}`)}</strong></div>
-          <div class="muted">${escapePrintHtml(formatPrintDate(record.billDate || billDate))}</div>
-        </div>
-      </section>
-
-      <section class="meta">
-        <div class="meta-item">
-          <span class="label">Customer</span>
-          <strong>${escapePrintHtml(record.customerName || customerName || "-")}</strong>
-        </div>
-        <div class="meta-item">
-          <span class="label">Patient</span>
-          <strong>${escapePrintHtml(record.patientName || "-")}</strong>
-        </div>
-      </section>
-
-      <table>
-        <thead>
-          <tr>
-            <th style="width: 48px;">#</th>
-            <th>Item</th>
-            <th class="num" style="width: 90px;">Qty</th>
-            <th class="num" style="width: 120px;">Price</th>
-            <th class="num" style="width: 120px;">Amount</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${itemsRows || '<tr><td colspan="5">No items</td></tr>'}
-        </tbody>
-      </table>
-
-      ${
-        paymentsRows
-          ? `<h2 class="section-title">Payments</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Mode</th>
-            <th class="num" style="width: 160px;">Amount</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${paymentsRows}
-        </tbody>
-      </table>`
-          : ""
-      }
-
-      <table class="summary">
-        <tbody>
-          <tr>
-            <td>Subtotal</td>
-            <td class="num">${escapePrintHtml(formatMoney(Number(record.subtotalAmount ?? 0)))}</td>
-          </tr>
-          <tr>
-            <td>Discount</td>
-            <td class="num">${escapePrintHtml(formatMoney(Number(record.discountAmount ?? 0)))}</td>
-          </tr>
-          <tr>
-            <td>Paid</td>
-            <td class="num">${escapePrintHtml(formatMoney(Number(record.paidAmount ?? 0)))}</td>
-          </tr>
-          <tr>
-            <td>Credit</td>
-            <td class="num">${escapePrintHtml(formatMoney(Number(record.balanceAmount ?? 0)))}</td>
-          </tr>
-          <tr class="grand">
-            <td>Total</td>
-            <td class="num">${escapePrintHtml(formatMoney(Number(record.totalAmount ?? 0)))}</td>
-          </tr>
-        </tbody>
-      </table>
-
-      ${
-        record.notes
-          ? `<section class="notes">
-        <span class="label">Notes</span>
-        <div>${escapePrintHtml(record.notes)}</div>
-      </section>`
-          : ""
-      }
-    </main>
-  </body>
-</html>`;
-};
-
-const printCustomerBill = ({
-  record,
-  customerName,
-  billDate,
-}: {
-  record: CustomerBillRecord;
-  customerName: string;
-  billDate: string;
-}) => {
-  if (typeof window === "undefined") return;
-  const html = buildPrintableBillHtml({ record, customerName, billDate });
-  const iframe = window.document.createElement("iframe");
-  iframe.style.position = "fixed";
-  iframe.style.right = "0";
-  iframe.style.bottom = "0";
-  iframe.style.width = "0";
-  iframe.style.height = "0";
-  iframe.style.border = "0";
-  iframe.setAttribute("aria-hidden", "true");
-
-  const cleanup = () => {
-    window.setTimeout(() => {
-      if (iframe.parentNode) {
-        iframe.parentNode.removeChild(iframe);
-      }
-    }, 200);
-  };
-
-  iframe.onload = () => {
-    const printFrame = iframe.contentWindow;
-    if (!printFrame) {
-      cleanup();
-      return;
-    }
-
-    printFrame.focus();
-    printFrame.print();
-    cleanup();
-  };
-
-  window.document.body.appendChild(iframe);
-
-  const frameDocument = iframe.contentDocument;
-  if (!frameDocument) {
-    cleanup();
-    return;
-  }
-
-  frameDocument.open();
-  frameDocument.write(html);
-  frameDocument.close();
-};
+const normalizeScanValue = (value: string) => value.replace(/\s+/g, "").toLowerCase();
 
 function CustomerBillAddPage() {
   const { toast } = useToast();
@@ -553,12 +250,26 @@ function CustomerBillAddPage() {
   const [savedBillRecord, setSavedBillRecord] = useState<CustomerBillRecord | null>(null);
   const [savedBillCustomerName, setSavedBillCustomerName] = useState("");
   const [savedBillDate, setSavedBillDate] = useState("");
+  const [autoOpenedSearch, setAutoOpenedSearch] = useState("");
+  const addItemConfirmButtonRef = useRef<HTMLButtonElement | null>(null);
+  const itemSearchInputRef = useRef<HTMLInputElement | null>(null);
   const [prescriptionForm, setPrescriptionForm] = useState({
     prescriptionDate: getTodayDate(),
     values: createEmptyPrescriptionValues(),
     notes: "",
   });
   const deferredItemSearch = useDeferredValue(itemSearch.trim().toLowerCase());
+
+  const branchesQuery = useQuery({
+    queryKey: ["branches"],
+    queryFn: getBranches,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const mainBranchId = useMemo(
+    () => branchesQuery.data?.find((branch) => branch.isMain)?.id ?? null,
+    [branchesQuery.data],
+  );
 
   const productQuery = useQuery({
     queryKey: ["customer-bill-products", selectedBranchId, activeCategory, deferredItemSearch],
@@ -607,9 +318,49 @@ function CustomerBillAddPage() {
     }
   }, [authBranchId, isBranchUser]);
 
+  useEffect(() => {
+    if (!canSelectBranch || isBranchUser || selectedBranchId != null || mainBranchId == null) {
+      return;
+    }
+
+    setSelectedBranchId(mainBranchId);
+  }, [canSelectBranch, isBranchUser, mainBranchId, selectedBranchId]);
+
+  useEffect(() => {
+    if (!deferredItemSearch) {
+      setAutoOpenedSearch("");
+    }
+  }, [deferredItemSearch]);
+
+  useEffect(() => {
+    if (
+      !selectedBranchId ||
+      addItemDialogOpen ||
+      paymentDialogOpen ||
+      printDialogOpen ||
+      prescriptionSheetOpen ||
+      patientDrawerOpen
+    ) {
+      return;
+    }
+
+    const focusHandle = window.setTimeout(() => {
+      itemSearchInputRef.current?.focus();
+    }, 0);
+
+    return () => window.clearTimeout(focusHandle);
+  }, [
+    addItemDialogOpen,
+    patientDrawerOpen,
+    paymentDialogOpen,
+    prescriptionSheetOpen,
+    printDialogOpen,
+    selectedBranchId,
+  ]);
+
   const resetForm = () => {
     setSelectedCustomer(null);
-    setSelectedBranchId(authBranchId);
+    setSelectedBranchId(isBranchUser ? authBranchId : mainBranchId);
     setBillDate(getTodayDate());
     setBillNumber("");
     setItemSearch("");
@@ -682,12 +433,60 @@ function CustomerBillAddPage() {
     if(variant.currentQuantity < 1){
       return
     }
+    setItemSearch("");
     setSelectedVariant(variant);
     setAddQuantityInput("1");
     setAddPriceInput(String(roundMoney(variant.sellingPrice).toFixed(2)));
     setAddItemDialogOpen(true);
     setFormError("");
   };
+
+  useEffect(() => {
+    if (!addItemDialogOpen || !selectedVariant) {
+      return;
+    }
+
+    const focusHandle = window.setTimeout(() => {
+      addItemConfirmButtonRef.current?.focus();
+    }, 0);
+
+    return () => window.clearTimeout(focusHandle);
+  }, [addItemDialogOpen, selectedVariant]);
+
+  useEffect(() => {
+    if (!deferredItemSearch || productQuery.isFetching || addItemDialogOpen || selectedVariant) {
+      return;
+    }
+
+    if (autoOpenedSearch === deferredItemSearch) {
+      return;
+    }
+
+    const normalizedSearchValue = normalizeScanValue(deferredItemSearch);
+    if (!normalizedSearchValue) {
+      return;
+    }
+
+    const exactBarcodeMatches = branchProducts.filter((variant) => {
+      const barcodeValue =
+        typeof variant.barcode === "string" ? normalizeScanValue(variant.barcode) : "";
+      return barcodeValue.length > 0 && barcodeValue === normalizedSearchValue;
+    });
+
+    if (exactBarcodeMatches.length !== 1) {
+      return;
+    }
+
+    setAutoOpenedSearch(deferredItemSearch);
+    handleAddVariant(exactBarcodeMatches[0]);
+  }, [
+    addItemDialogOpen,
+    autoOpenedSearch,
+    branchProducts,
+    deferredItemSearch,
+    productQuery.isFetching,
+    selectedVariant,
+  ]);
 
   const handleConfirmAddVariant = () => {
     if (!selectedVariant) return;
@@ -1055,6 +854,7 @@ function CustomerBillAddPage() {
                     <div className="relative">
                       <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
+                        ref={itemSearchInputRef}
                         value={itemSearch}
                         onChange={(event) => setItemSearch(event.target.value)}
                         className="pl-9"
@@ -1259,7 +1059,7 @@ function CustomerBillAddPage() {
           ) : null}
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddItemDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleConfirmAddVariant} disabled={!selectedVariant}>Add to Bill</Button>
+            <Button ref={addItemConfirmButtonRef} onClick={handleConfirmAddVariant} disabled={!selectedVariant}>Add to Bill</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1411,24 +1211,30 @@ function CustomerBillAddPage() {
           }
         }}
       >
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-h-[92svh] overflow-hidden sm:max-w-5xl">
           <DialogHeader>
             <DialogTitle>Print bill</DialogTitle>
             <DialogDescription>
-              The bill was saved successfully. Print a minimal customer bill now or close this dialog.
+              The bill was saved successfully. Review the invoice layout, then print it or close this dialog.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="rounded-2xl border border-border/70 bg-muted/20 p-4">
-            <p className="text-sm font-medium text-foreground">
-              {savedBillRecord?.billNumber || (savedBillRecord?.id ? `Bill #${savedBillRecord.id}` : "Customer bill")}
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {savedBillRecord?.customerName || savedBillCustomerName || "Customer"} | {formatPrintDate(savedBillRecord?.billDate || savedBillDate)}
-            </p>
-            <p className="mt-3 text-sm text-muted-foreground">
-              Total: {formatMoney(Number(savedBillRecord?.totalAmount ?? 0))} | Paid: {formatMoney(Number(savedBillRecord?.paidAmount ?? 0))} | Credit: {formatMoney(Number(savedBillRecord?.balanceAmount ?? 0))}
-            </p>
+          <div className="max-h-[68svh] overflow-y-auto pr-1">
+            <CustomerBillPreviewCard
+              record={savedBillRecord}
+              customerName={savedBillCustomerName}
+              billDate={savedBillDate}
+              onPrint={
+                savedBillRecord
+                  ? () =>
+                      printCustomerBill({
+                        record: savedBillRecord,
+                        customerName: savedBillCustomerName,
+                        billDate: savedBillDate,
+                      })
+                  : undefined
+              }
+            />
           </div>
 
           <DialogFooter>

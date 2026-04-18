@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/components/ui/use-toast";
 import AccessoryEditorDrawer from "@/modules/products/accessory/AccessoryEditorDrawer";
+import ProductBarcodeCell from "@/modules/products/components/ProductBarcodeCell";
 import ProductDeleteDialog from "@/modules/products/components/ProductDeleteDialog";
 import ProductPagination from "@/modules/products/components/ProductPagination";
 import ProductDetailsDrawer from "@/modules/products/ProductDetailsDrawer";
@@ -137,7 +138,7 @@ function AccessoryProductList() {
             <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search by model or company"
+              placeholder="Search by model, company, or barcode"
               className="pl-9"
             />
             <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -149,15 +150,16 @@ function AccessoryProductList() {
         </div>
 
         <div className="min-h-0 flex flex-1 flex-col overflow-x-auto rounded-lg border bg-card/60">
-          <Table className="min-w-[1180px] table-fixed">
+          <Table className="min-w-[1360px] table-fixed">
             <colgroup>
-              <col className="w-[18%]" />
-              <col className="w-[18%]" />
-              <col className="w-[12%]" />
-              <col className="w-[18%]" />
-              <col className="w-[12%]" />
-              <col className="w-[12%]" />
+              <col className="w-[16%]" />
+              <col className="w-[15%]" />
               <col className="w-[10%]" />
+              <col className="w-[16%]" />
+              <col className="w-[11%]" />
+              <col className="w-[11%]" />
+              <col className="w-[8%]" />
+              <col className="w-[17%]" />
               <col className="w-[64px]" />
             </colgroup>
             <TableHeader className="bg-muted/85 supports-[backdrop-filter]:bg-muted/65">
@@ -169,31 +171,33 @@ function AccessoryProductList() {
                 <TableHead>Purchase</TableHead>
                 <TableHead>Selling</TableHead>
                 <TableHead>Qty</TableHead>
+                <TableHead>Barcode</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
           </Table>
 
           <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden border-t">
-            <Table className="min-w-[1180px] table-fixed">
+            <Table className="min-w-[1360px] table-fixed">
               <colgroup>
-                <col className="w-[18%]" />
-                <col className="w-[18%]" />
-                <col className="w-[12%]" />
-                <col className="w-[18%]" />
-                <col className="w-[12%]" />
-                <col className="w-[12%]" />
+                <col className="w-[16%]" />
+                <col className="w-[15%]" />
                 <col className="w-[10%]" />
+                <col className="w-[16%]" />
+                <col className="w-[11%]" />
+                <col className="w-[11%]" />
+                <col className="w-[8%]" />
+                <col className="w-[17%]" />
                 <col className="w-[64px]" />
               </colgroup>
               <TableBody>
                 {isLoading || isFetching ? (
                   <TableRow>
-                    <TableCell colSpan={8}>Loading accessories...</TableCell>
+                    <TableCell colSpan={9}>Loading accessories...</TableCell>
                   </TableRow>
                 ) : items.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8}>No accessories found.</TableCell>
+                    <TableCell colSpan={9}>No accessories found.</TableCell>
                   </TableRow>
                 ) : (
                   items.map((item, index) => {
@@ -236,6 +240,13 @@ function AccessoryProductList() {
                         </TableCell>
                         <TableCell>
                           {item?.quantity != null ? item.quantity : "-"}
+                        </TableCell>
+                        <TableCell>
+                          <ProductBarcodeCell
+                            barcode={item?.barcode}
+                            productName={item?.name}
+                            companyName={item?.brandName}
+                          />
                         </TableCell>
                         <TableCell>
                           <LensRowActionsPopover

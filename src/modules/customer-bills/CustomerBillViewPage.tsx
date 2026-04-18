@@ -24,6 +24,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/components/ui/use-toast";
 import BranchSelect from "@/modules/branches/components/BranchSelect";
 import CustomerBillPreviewCard from "@/modules/customer-bills/CustomerBillPreviewCard";
+import { printCustomerBill } from "@/modules/customer-bills/customer-bill-print";
 import {
   deleteCustomerBill,
   getCustomerBillById,
@@ -261,6 +262,17 @@ function CustomerBillViewPage() {
                                 View
                               </Button>
                               <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedId(item.id);
+                                  setDetailOpen(true);
+                                }}
+                              >
+                                <ReceiptText className="mr-2 h-4 w-4" />
+                                Invoice
+                              </Button>
+                              <Button
                                 variant="destructive"
                                 size="sm"
                                 onClick={() => setDeleteTarget(item)}
@@ -293,13 +305,26 @@ function CustomerBillViewPage() {
       </Card>
 
       <Sheet open={detailOpen} onOpenChange={setDetailOpen}>
-        <SheetContent side="right" className="w-full p-0 sm:max-w-2xl">
+        <SheetContent side="right" className="w-full p-0 sm:max-w-[96vw]">
           <SheetHeader className="border-b px-6 py-5">
-            <SheetTitle>Bill Details</SheetTitle>
-            <SheetDescription>Full bill details with item lines and payment breakdown.</SheetDescription>
+            <SheetTitle>Bill Invoice</SheetTitle>
+            <SheetDescription>Invoice layout with item lines, settlement summary, and payment breakdown.</SheetDescription>
           </SheetHeader>
           <div className="h-[calc(100%-5rem)] overflow-y-auto p-6">
-            <CustomerBillPreviewCard record={detailQuery.data} isLoading={selectedId != null && detailQuery.isFetching} />
+            <CustomerBillPreviewCard
+              record={detailQuery.data}
+              isLoading={selectedId != null && detailQuery.isFetching}
+              onPrint={
+                detailQuery.data
+                  ? () =>
+                      printCustomerBill({
+                        record: detailQuery.data,
+                        customerName: detailQuery.data.customerName ?? undefined,
+                        billDate: detailQuery.data.billDate,
+                      })
+                  : undefined
+              }
+            />
           </div>
         </SheetContent>
       </Sheet>

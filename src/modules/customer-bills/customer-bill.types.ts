@@ -236,6 +236,7 @@ export interface CustomerBillProductOption {
   variantId: number;
   name: string;
   sku: string;
+  barcode?: string | null;
   sellingPrice: number;
   currentQuantity: number;
   variantType?: string;

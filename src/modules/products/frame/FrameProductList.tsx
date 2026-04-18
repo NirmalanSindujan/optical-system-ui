@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/components/ui/use-toast";
 import ProductDeleteDialog from "@/modules/products/components/ProductDeleteDialog";
+import ProductBarcodeCell from "@/modules/products/components/ProductBarcodeCell";
 import ProductPagination from "@/modules/products/components/ProductPagination";
 import {
   getListErrorMessage,
@@ -138,7 +139,7 @@ function FrameProductList() {
             <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search by name, code, type"
+              placeholder="Search by name, code, type, or barcode"
               className="pl-9"
             />
             <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -150,16 +151,17 @@ function FrameProductList() {
         </div>
 
         <div className="min-h-0 flex flex-1 flex-col overflow-x-auto rounded-lg border bg-card/60">
-          <Table className="min-w-[1180px] table-fixed">
+          <Table className="min-w-[1380px] table-fixed">
             <colgroup>
-              <col className="w-[18%]" />
+              <col className="w-[16%]" />
+              <col className="w-[10%]" />
               <col className="w-[12%]" />
-              <col className="w-[14%]" />
-              <col className="w-[10%]" />
-              <col className="w-[10%]" />
               <col className="w-[9%]" />
-              <col className="w-[13%]" />
-              <col className="w-[13%]" />
+              <col className="w-[8%]" />
+              <col className="w-[8%]" />
+              <col className="w-[11%]" />
+              <col className="w-[11%]" />
+              <col className="w-[15%]" />
               <col className="w-[64px]" />
             </colgroup>
             <TableHeader className="bg-muted/85 supports-[backdrop-filter]:bg-muted/65">
@@ -172,32 +174,34 @@ function FrameProductList() {
                 <TableHead>Quantity</TableHead>
                 <TableHead>Purchase Price</TableHead>
                 <TableHead>Sales Price</TableHead>
+                <TableHead>Barcode</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
           </Table>
 
           <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden border-t">
-            <Table className="min-w-[1180px] table-fixed">
+            <Table className="min-w-[1380px] table-fixed">
               <colgroup>
-                <col className="w-[18%]" />
+                <col className="w-[16%]" />
+                <col className="w-[10%]" />
                 <col className="w-[12%]" />
-                <col className="w-[14%]" />
-                <col className="w-[10%]" />
-                <col className="w-[10%]" />
                 <col className="w-[9%]" />
-                <col className="w-[13%]" />
-                <col className="w-[13%]" />
+                <col className="w-[8%]" />
+                <col className="w-[8%]" />
+                <col className="w-[11%]" />
+                <col className="w-[11%]" />
+                <col className="w-[15%]" />
                 <col className="w-[64px]" />
               </colgroup>
               <TableBody>
                 {isLoading || isFetching ? (
                   <TableRow>
-                    <TableCell colSpan={9}>Loading products...</TableCell>
+                    <TableCell colSpan={10}>Loading products...</TableCell>
                   </TableRow>
                 ) : items.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9}>No products found.</TableCell>
+                    <TableCell colSpan={10}>No products found.</TableCell>
                   </TableRow>
                 ) : (
                   items.map((item, index) => {
@@ -224,6 +228,13 @@ function FrameProductList() {
                             <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
                             {item?.sellingPrice != null ? Number(item.sellingPrice).toFixed(2) : "-"}
                           </span>
+                        </TableCell>
+                        <TableCell>
+                          <ProductBarcodeCell
+                            barcode={item?.barcode}
+                            productName={item?.name}
+                            companyName={item?.frameCode}
+                          />
                         </TableCell>
                         <TableCell>
                           <LensRowActionsPopover

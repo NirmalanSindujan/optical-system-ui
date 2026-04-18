@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/components/ui/use-toast";
 import ProductDeleteDialog from "@/modules/products/components/ProductDeleteDialog";
+import ProductBarcodeCell from "@/modules/products/components/ProductBarcodeCell";
 import ProductPagination from "@/modules/products/components/ProductPagination";
 import {
   getListErrorMessage,
@@ -107,7 +108,7 @@ function SunglassesProductList() {
             <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search by model or company"
+              placeholder="Search by model, company, or barcode"
               className="pl-9"
             />
             <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -119,12 +120,13 @@ function SunglassesProductList() {
         </div>
 
         <div className="min-h-0 flex flex-1 flex-col overflow-x-auto rounded-lg border bg-card/60">
-          <Table className="min-w-[900px] table-fixed">
+          <Table className="min-w-[1120px] table-fixed">
             <colgroup>
-              <col className="w-[24%]" />
-              <col className="w-[24%]" />
-              <col className="w-[12%]" />
-              <col className="w-[16%]" />
+              <col className="w-[21%]" />
+              <col className="w-[21%]" />
+              <col className="w-[10%]" />
+              <col className="w-[13%]" />
+              <col className="w-[13%]" />
               <col className="w-[16%]" />
               <col className="w-[64px]" />
             </colgroup>
@@ -135,29 +137,31 @@ function SunglassesProductList() {
                 <TableHead>Quantity</TableHead>
                 <TableHead>Purchase Price</TableHead>
                 <TableHead>Sales Price</TableHead>
+                <TableHead>Barcode</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
           </Table>
 
           <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden border-t">
-            <Table className="min-w-[900px] table-fixed">
+            <Table className="min-w-[1120px] table-fixed">
               <colgroup>
-                <col className="w-[24%]" />
-                <col className="w-[24%]" />
-                <col className="w-[12%]" />
-                <col className="w-[16%]" />
+                <col className="w-[21%]" />
+                <col className="w-[21%]" />
+                <col className="w-[10%]" />
+                <col className="w-[13%]" />
+                <col className="w-[13%]" />
                 <col className="w-[16%]" />
                 <col className="w-[64px]" />
               </colgroup>
               <TableBody>
                 {isLoading || isFetching ? (
                   <TableRow>
-                    <TableCell colSpan={6}>Loading products...</TableCell>
+                    <TableCell colSpan={7}>Loading products...</TableCell>
                   </TableRow>
                 ) : items.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6}>No products found.</TableCell>
+                    <TableCell colSpan={7}>No products found.</TableCell>
                   </TableRow>
                 ) : (
                   items.map((item, index) => {
@@ -190,6 +194,13 @@ function SunglassesProductList() {
                                 ? Number(item.sellingPrice).toFixed(2)
                                 : "-"}
                           </span>
+                        </TableCell>
+                        <TableCell>
+                          <ProductBarcodeCell
+                            barcode={item?.barcode}
+                            productName={item?.modelName ?? item?.name ?? item?.productName}
+                            companyName={item?.company ?? item?.companyName ?? item?.brandName}
+                          />
                         </TableCell>
                         <TableCell>
                           <LensRowActionsPopover
