@@ -1,8 +1,16 @@
 import { useEffect, useRef } from "react";
 import JsBarcode from "jsbarcode";
-import { Printer } from "lucide-react";
+import { ChevronDown, Printer } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useToast } from "@/components/ui/use-toast";
+import { printBarcodeStickerRaw, testXprinterConnection } from "@/lib/qz-tray";
 
 interface ProductBarcodeCellProps {
   barcode?: string | null;
@@ -36,12 +44,12 @@ const renderBarcodeSvg = (svg: SVGSVGElement, barcode: string) => {
     format: getBarcodeFormat(barcode),
     displayValue: true,
     font: "monospace",
-    fontSize: 14,
+    fontSize: 9,
     margin: 0,
-    marginTop: 12,
+    marginTop: 4,
     marginBottom: 0,
-    height: 64,
-    width: 1.8,
+    height: 24,
+    width: 0.8,
     background: "#ffffff",
     lineColor: "#111827",
   });
@@ -53,40 +61,20 @@ const createBarcodeMarkup = (barcode: string) => {
   return new XMLSerializer().serializeToString(svg);
 };
 
-const printBarcodeLabel = ({
+const buildStandardLabelHtml = ({
   barcode,
   productName,
   companyName,
+  labelTitle,
 }: {
   barcode: string;
   productName?: string | null;
   companyName?: string | null;
+  labelTitle: string;
 }) => {
-  if (typeof window === "undefined") return;
-
-  const frame = document.createElement("iframe");
-  frame.setAttribute("aria-hidden", "true");
-  frame.style.position = "fixed";
-  frame.style.right = "0";
-  frame.style.bottom = "0";
-  frame.style.width = "0";
-  frame.style.height = "0";
-  frame.style.border = "0";
-
-  document.body.appendChild(frame);
-
-  const frameWindow = frame.contentWindow;
-  if (!frameWindow) {
-    document.body.removeChild(frame);
-    return;
-  }
-
-  const titleParts = [productName, companyName].filter(Boolean).join(" - ");
-  const labelTitle = titleParts.length > 0 ? titleParts : "Product Barcode";
   const barcodeMarkup = createBarcodeMarkup(barcode);
 
-  frameWindow.document.open();
-  frameWindow.document.write(`
+  return `
     <!DOCTYPE html>
     <html>
       <head>
@@ -186,7 +174,43 @@ const printBarcodeLabel = ({
         </div>
       </body>
     </html>
-  `);
+  `;
+};
+
+const printBarcodeLabel = ({
+  barcode,
+  productName,
+  companyName,
+}: {
+  barcode: string;
+  productName?: string | null;
+  companyName?: string | null;
+}) => {
+  if (typeof window === "undefined") return;
+
+  const frame = document.createElement("iframe");
+  frame.setAttribute("aria-hidden", "true");
+  frame.style.position = "fixed";
+  frame.style.right = "0";
+  frame.style.bottom = "0";
+  frame.style.width = "0";
+  frame.style.height = "0";
+  frame.style.border = "0";
+
+  document.body.appendChild(frame);
+
+  const frameWindow = frame.contentWindow;
+  if (!frameWindow) {
+    document.body.removeChild(frame);
+    return;
+  }
+
+  const titleParts = [productName, companyName].filter(Boolean).join(" - ");
+  const labelTitle = titleParts.length > 0 ? titleParts : "Product Barcode";
+  const printHtml = buildStandardLabelHtml({ barcode, productName, companyName, labelTitle });
+
+  frameWindow.document.open();
+  frameWindow.document.write(printHtml);
   frameWindow.document.close();
 
   const cleanup = () => {
@@ -211,8 +235,11 @@ function ProductBarcodeCell({
   productName,
   companyName,
 }: ProductBarcodeCellProps) {
+  const { toast } = useToast();
   const normalizedBarcode = normalizeBarcode(barcode);
   const barcodeRef = useRef<SVGSVGElement | null>(null);
+  const stickerPrintInFlightRef = useRef(false);
+  const testConnectionInFlightRef = useRef(false);
 
   useEffect(() => {
     if (!normalizedBarcode || !barcodeRef.current) return;
@@ -222,6 +249,60 @@ function ProductBarcodeCell({
   if (!normalizedBarcode) {
     return <span className="text-muted-foreground">-</span>;
   }
+
+  const handleStickerPrint = async () => {
+    if (stickerPrintInFlightRef.current) return;
+    stickerPrintInFlightRef.current = true;
+
+    try {
+      const printerName = await printBarcodeStickerRaw({
+        barcode: normalizedBarcode,
+      });
+      toast({
+        title: "Sticker sent to printer",
+        description: `Barcode sent to ${printerName}.`,
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unable to print sticker. Check QZ Tray and the Xprinter connection.";
+
+      toast({
+        variant: "destructive",
+        title: "Sticker print failed",
+        description: message,
+      });
+    } finally {
+      stickerPrintInFlightRef.current = false;
+    }
+  };
+
+  const handleTestConnection = async () => {
+    if (testConnectionInFlightRef.current) return;
+    testConnectionInFlightRef.current = true;
+
+    try {
+      const result = await testXprinterConnection();
+      toast({
+        title: "Xprinter connection ready",
+        description: `Matched ${result.matchedPrinter}. QZ Tray can see: ${result.printers.join(", ")}`,
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unable to connect to QZ Tray or find the Xprinter.";
+
+      toast({
+        variant: "destructive",
+        title: "Xprinter connection failed",
+        description: message,
+      });
+    } finally {
+      testConnectionInFlightRef.current = false;
+    }
+  };
 
   return (
     <div className="flex items-center justify-between gap-2">
@@ -233,22 +314,39 @@ function ProductBarcodeCell({
           aria-label={`Barcode ${normalizedBarcode}`}
         />
       </Badge>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8 shrink-0"
-        aria-label={`Print barcode ${normalizedBarcode}`}
-        onClick={() =>
-          printBarcodeLabel({
-            barcode: normalizedBarcode,
-            productName,
-            companyName,
-          })
-        }
-      >
-        <Printer className="h-4 w-4" />
-      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-8 shrink-0 gap-1 px-2"
+            aria-label={`Print options for barcode ${normalizedBarcode}`}
+          >
+            <Printer className="h-4 w-4" />
+            <ChevronDown className="h-3.5 w-3.5" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem
+            onSelect={() =>
+              printBarcodeLabel({
+                barcode: normalizedBarcode,
+                productName,
+                companyName,
+              })
+            }
+          >
+            Print label
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => void handleStickerPrint()}>
+            Print sticker via Xprinter
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => void handleTestConnection()}>
+            Test Xprinter connection
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
