@@ -52,7 +52,9 @@ const buildPrintableBillHtml = ({
             <div class="payment-row">
               <div>
                 <div class="payment-mode">${escapePrintHtml(
-                  payment.paymentMode === "CHEQUE" ? "Cheque Payment" : payment.paymentMode,
+                  payment.paymentMode === "CHEQUE"
+                    ? "Cheque Payment"
+                    : payment.paymentMode,
                 )}</div>
                 ${
                   payment.paymentMode !== "CHEQUE" && payment.reference
@@ -69,430 +71,335 @@ const buildPrintableBillHtml = ({
 
   return `<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>${escapePrintHtml(record.billNumber || `Bill #${record.id}`)}</title>
-    <style>
-      @page {
-        size: A5 portrait;
-        margin: 8mm;
-      }
-      :root {
-        color-scheme: light;
-        --brand: #0f766e;
-        --brand-soft: #ecfeff;
-        --brand-border: #99f6e4;
-        --text: #0f172a;
-        --muted: #475569;
-        --line: #dbe4ea;
-        --panel: #f8fafc;
-      }
-      * {
-        box-sizing: border-box;
-      }
-      body {
-        margin: 0;
-        padding: 10mm;
-        background: #eef6f5;
-        color: var(--text);
-        font-family: "Segoe UI", Arial, sans-serif;
-      }
-      .page {
-        width: 100%;
-        max-width: 128mm;
-        margin: 0 auto;
-        background: #ffffff;
-        border: 1px solid var(--line);
-        border-radius: 14px;
-        overflow: hidden;
-      }
-      .header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: 10px;
-        padding: 10px 12px;
-        background: linear-gradient(135deg, var(--brand-soft), #ffffff 58%);
-        border-bottom: 1px solid var(--line);
-      }
-      .header-left {
-        min-width: 0;
-        flex: 1;
-      }
-      .header-top {
-        display: block;
-      }
-      .brand {
-        display: flex;
-        align-items: center;
-        gap: 14px;
-      }
-      .brand-mark {
-        width: 28px;
-        height: 28px;
-        border-radius: 10px;
-        background: var(--brand);
-        color: #ffffff;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        font-size: 9px;
-      }
-      .eyebrow {
-        font-size: 7px;
-        text-transform: uppercase;
-        letter-spacing: 0.12em;
-        color: var(--brand);
-        font-weight: 700;
-      }
-      .title {
-        margin: 2px 0 0;
-        font-size: 18px;
-        line-height: 1;
-      }
-      .invoice-meta {
-        min-width: 0;
-        width: 33mm;
-        padding: 8px 9px;
-        border: 1px solid var(--line);
-        border-radius: 10px;
-        background: rgba(255,255,255,0.92);
-      }
-      .header-details {
-        display: grid;
-        grid-template-columns: 33mm minmax(0, 1fr);
-        gap: 8px;
-        align-items: stretch;
-        width: 100%;
-        margin-top: 8px;
-      }
-      .header-info {
-        min-width: 0;
-        padding: 8px 9px;
-        border: 1px solid var(--line);
-        border-radius: 10px;
-        background: rgba(255,255,255,0.92);
-      }
-      .meta-label {
-        font-size: 8px;
-        text-transform: uppercase;
-        letter-spacing: 0.12em;
-        color: var(--muted);
-        font-weight: 700;
-      }
-      .meta-value {
-        margin-top: 3px;
-        font-size: 12px;
-        font-weight: 700;
-        line-height: 1.2;
-        overflow-wrap: anywhere;
-      }
-      .meta-spacer {
-        margin-top: 6px;
-      }
-      .body {
-        padding: 10px 12px 12px;
-      }
-      .meta-grid {
-        display: grid;
-        grid-template-columns: 28mm;
-        gap: 6px;
-        justify-content: end;
-      }
-      .card {
-        border: 1px solid var(--line);
-        border-radius: 10px;
-        padding: 8px 10px;
-        background: var(--panel);
-      }
-      .card.center {
-        text-align: center;
-      }
-      .section-title {
-        font-size: 8px;
-        text-transform: uppercase;
-        letter-spacing: 0.12em;
-        color: var(--brand);
-        font-weight: 700;
-      }
-      .muted {
-        color: var(--muted);
-      }
-      .bill-to {
-        margin-top: 0;
-        font-size: 9px;
-        line-height: 1.35;
-      }
-      .bill-to strong {
-        display: block;
-        font-size: 13px;
-        line-height: 1.2;
-        color: var(--text);
-      }
-      .compact-value {
-        margin-top: 5px;
-        font-size: 11px;
-        font-weight: 700;
-        line-height: 1.2;
-      }
-      table {
-        width: 100%;
-        border-collapse: collapse;
-      }
-      .items {
-        margin-top: 8px;
-        border: 1px solid var(--line);
-        border-radius: 12px;
-        overflow: hidden;
-      }
-      .items thead th {
-        background: var(--brand);
-        color: #ffffff;
-        padding: 7px 8px;
-        font-size: 9px;
-        text-align: left;
-      }
-      .items tbody td {
-        padding: 6px 8px;
-        border-bottom: 1px solid var(--line);
-        font-size: 9px;
-        vertical-align: top;
-      }
-      .items tbody tr:last-child td {
-        border-bottom: 0;
-      }
-      .product-name {
-        font-weight: 600;
-      }
-      .product-sku {
-        margin-top: 1px;
-        font-size: 8px;
-        color: var(--muted);
-      }
-      .num {
-        text-align: right;
-        white-space: nowrap;
-      }
-      .bottom-grid {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) 42mm;
-        gap: 8px;
-        margin-top: 8px;
-      }
-      .payments {
-        border: 1px solid var(--line);
-        border-radius: 10px;
-        padding: 8px 10px;
-        background: var(--panel);
-      }
-      .payment-row {
-        display: flex;
-        justify-content: space-between;
-        gap: 6px;
-        padding: 6px 0;
-        border-bottom: 1px solid var(--line);
-      }
-      .payment-row:last-child {
-        border-bottom: 0;
-      }
-      .payment-mode {
-        font-weight: 700;
-        font-size: 9px;
-      }
-      .payment-meta {
-        margin-top: 1px;
-        color: var(--muted);
-        font-size: 7px;
-      }
-      .payment-amount {
-        font-weight: 700;
-        white-space: nowrap;
-        font-size: 9px;
-      }
-      .summary {
-        border: 1px solid var(--line);
-        border-radius: 10px;
-        padding: 8px 10px;
-        background: var(--brand-soft);
-        border-color: var(--brand-border);
-      }
-      .summary-row {
-        display: flex;
-        justify-content: space-between;
-        gap: 6px;
-        margin-top: 6px;
-        font-size: 9px;
-      }
-      .summary-row.total {
-        padding-top: 6px;
-        border-top: 1px solid var(--line);
-        font-size: 10px;
-        font-weight: 700;
-      }
-      .balance {
-        margin-top: 6px;
-        display: flex;
-        justify-content: space-between;
-        gap: 6px;
-        background: var(--brand);
-        color: #ffffff;
-        border-radius: 10px;
-        padding: 7px 8px;
-        font-weight: 700;
-        font-size: 10px;
-      }
-      .thanks {
-        margin-top: 8px;
-        text-align: center;
-      }
-      .thanks strong {
-        display: block;
-        font-size: 11px;
-      }
-      .notes {
-        margin-top: 8px;
-        border: 1px solid var(--line);
-        border-radius: 10px;
-        padding: 8px 10px;
-        background: #ffffff;
-        font-size: 8px;
-        line-height: 1.3;
-      }
-      .items,
-      .payments,
-      .summary,
-      .notes,
-      .meta-grid,
-      .bottom-grid {
-        break-inside: avoid;
-      }
-      @media (max-width: 640px) {
-        body {
-          padding: 0;
-          background: #ffffff;
-        }
-        .page {
-          max-width: none;
-          border: 0;
-          border-radius: 0;
-        }
-        .header,
-        .header-top,
-        .meta-grid,
-        .bottom-grid {
-          display: block;
-        }
-        .header-details {
-          display: block;
-          margin-top: 10px;
-          width: auto;
-        }
-        .invoice-meta,
-        .header-info,
-        .summary {
-          width: auto;
-          margin-top: 10px;
-        }
-      }
-      @media print {
-        body {
-          padding: 0;
-          background: #ffffff;
-        }
-        .page {
-          max-width: none;
-          border: 0;
-          border-radius: 0;
-          box-shadow: none;
-        }
-      }
-    </style>
-  </head>
-  <body>
-    <main class="page">
-      <section class="header">
-        <div class="header-left">
-          <div class="header-top">
-            <div class="brand">
-              <div class="brand-mark">CB</div>
-              <div>
-                <div class="eyebrow">Customer Billing</div>
-                <h1 class="title">Invoice</h1>
-              </div>
-            </div>
-          </div>
-          <div class="header-details">
-            <div class="invoice-meta">
-              <div class="meta-label">Invoice Number</div>
-              <div class="meta-value">${escapePrintHtml(record.billNumber || `#${record.id}`)}</div>
-              <div class="meta-spacer">
-                <div class="meta-label">Date</div>
-                <div class="muted">${escapePrintHtml(formatPrintDate(record.billDate || billDate))}</div>
-              </div>
-            </div>
-            <div class="header-info">
-              <div class="bill-to">
-                <strong>${escapePrintHtml(record.customerName || customerName || "Cash customer")}</strong>
-                <div class="muted">Branch: ${escapePrintHtml(record.branchName || `Branch #${record.branchId}`)}</div>
-                <div class="muted">Patient: ${escapePrintHtml(record.patientName || record.prescription?.patientName || "-")}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+<head>
+<meta charset="utf-8" />
+<title>${escapePrintHtml(record.billNumber || `Bill #${record.id}`)}</title>
 
-      <section class="body">
-        <div class="meta-grid">
-          <div class="card center">
-            <div class="section-title">Date</div>
-            <div class="compact-value">${escapePrintHtml(formatPrintDate(record.billDate || billDate))}</div>
-          </div>
-        </div>
+<style>
+@page {
+  size: A5 portrait;
+  margin: 6mm;
+}
 
-        <table class="items">
-          <thead>
-            <tr>
-              <th>Product</th>
-              <th style="width: 18mm;">Quantity</th>
-              <th class="num" style="width: 26mm;">Price</th>
-              <th class="num" style="width: 28mm;">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${itemsRows || '<tr><td colspan="4">No items in this bill.</td></tr>'}
-          </tbody>
-        </table>
+:root {
+  --primary: #0f766e;
+  --accent: #14b8a6;
+  --soft: #f0fdfa;
+  --text: #0f172a;
+  --muted: #64748b;
+  --border: #e2e8f0;
+}
 
-        <div class="bottom-grid">
-          <div>
-            ${paymentsMarkup}
-            ${
-              record.notes
-                ? `<section class="notes">
-                    <div class="meta-label">Notes</div>
-                    <div style="margin-top:10px;" class="muted">${escapePrintHtml(record.notes)}</div>
-                  </section>`
-                : ""
-            }
-          </div>
+* {
+  box-sizing: border-box;
+}
 
-          <section class="summary">
-            <div class="summary-row"><span class="muted">Subtotal</span><strong>${escapePrintHtml(formatMoney(Number(record.subtotalAmount ?? 0)))}</strong></div>
-            <div class="summary-row"><span class="muted">Discount</span><strong>${escapePrintHtml(formatMoney(Number(record.discountAmount ?? 0)))}</strong></div>
-            <div class="summary-row"><span class="muted">Paid</span><strong>${escapePrintHtml(formatMoney(Number(record.paidAmount ?? 0)))}</strong></div>
-            <div class="summary-row total"><span>Total</span><span>${escapePrintHtml(formatMoney(Number(record.totalAmount ?? 0)))}</span></div>
-            <div class="balance"><span>Balance</span><span>${escapePrintHtml(formatMoney(Number(record.balanceAmount ?? 0)))}</span></div>
-            <div class="thanks">
-              <strong>Thank you</strong>
-              <div class="muted">For your business!</div>
-            </div>
-          </section>
-        </div>
-      </section>
-    </main>
-  </body>
+body {
+  margin: 0;
+  background: #edf6f5;
+  font-family: "Inter", "Segoe UI", sans-serif;
+  color: var(--text);
+}
+
+.page {
+  max-width: 136mm;
+  margin: auto;
+  background: white;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+}
+
+/* HEADER */
+.header {
+  padding: 14px 16px;
+  background: linear-gradient(135deg, var(--soft), #ffffff 70%);
+  border-bottom: 1px solid var(--border);
+}
+
+.header-top {
+  display: flex;
+  justify-content: space-between;
+}
+
+.brand {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.brand-mark {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--primary);
+  color: white;
+  font-weight: 700;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.brand-text small {
+  font-size: 8px;
+  color: var(--primary);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.brand-text h1 {
+  margin: 2px 0 0;
+  font-size: 18px;
+}
+
+.invoice-meta {
+  min-width: 38mm;
+  padding: 10px;
+  border-radius: 10px;
+  background: white;
+  border: 1px solid var(--border);
+  text-align: right;
+}
+
+.meta-label {
+  font-size: 7px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.meta-value {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.header-bottom {
+  margin-top: 12px;
+  padding: 10px;
+  border-radius: 10px;
+  background: white;
+  border: 1px solid var(--border);
+}
+
+.bill-to strong {
+  font-size: 13px;
+}
+
+.bill-to div {
+  font-size: 9px;
+  color: var(--muted);
+}
+
+/* BODY */
+.body {
+  padding: 14px 16px;
+}
+
+/* TABLE */
+.items {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.items th {
+  background: var(--primary);
+  color: white;
+  font-size: 9px;
+  padding: 7px;
+}
+
+.items td {
+  font-size: 9px;
+  padding: 7px;
+  border-bottom: 1px solid var(--border);
+}
+
+.items tr:last-child td {
+  border-bottom: none;
+}
+
+.num {
+  text-align: right;
+}
+
+/* BOTTOM */
+.bottom-grid {
+  display: grid;
+  grid-template-columns: 1fr 42mm;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+/* PAYMENTS */
+.payments {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.payment-row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 9px;
+}
+
+/* SUMMARY */
+.summary {
+  border-radius: 12px;
+  padding: 10px;
+  background: var(--soft);
+  border: 1px solid #99f6e4;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 9px;
+}
+
+.summary-row.total {
+  font-weight: 700;
+  border-top: 1px solid var(--border);
+  padding-top: 6px;
+}
+
+.balance {
+  margin-top: 8px;
+  background: var(--primary);
+  color: white;
+  padding: 8px;
+  border-radius: 10px;
+  font-weight: 700;
+  display: flex;
+  justify-content: space-between;
+}
+
+/* NOTES */
+.notes {
+  margin-top: 10px;
+  border: 1px solid var(--border);
+  padding: 10px;
+  border-radius: 10px;
+  font-size: 9px;
+}
+
+/* PRINT */
+@media print {
+  body {
+    background: white;
+  }
+  .page {
+    box-shadow: none;
+    border-radius: 0;
+    max-width: 100%;
+  }
+}
+</style>
+</head>
+
+<body>
+<main class="page">
+
+<!-- HEADER -->
+<section class="header">
+  <div class="header-top">
+    <div class="brand">
+      <div class="brand-mark">CB</div>
+      <div class="brand-text">
+        <small>Customer Billing</small>
+        <h1>Invoice</h1>
+      </div>
+    </div>
+
+    <div class="invoice-meta">
+      <div class="meta-label">Invoice</div>
+      <div class="meta-value">${escapePrintHtml(record.billNumber || `#${record.id}`)}</div>
+
+      <div style="margin-top:6px;">
+        <div class="meta-label">Date</div>
+        <div>${escapePrintHtml(formatPrintDate(record.billDate || billDate))}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="header-bottom">
+    <div class="bill-to">
+      <strong>${escapePrintHtml(record.customerName || customerName || "Cash customer")}</strong>
+      <div>Branch: ${escapePrintHtml(record.branchName || `#${record.branchId}`)}</div>
+      <div>Patient: ${escapePrintHtml(record.patientName || "-")}</div>
+    </div>
+  </div>
+</section>
+
+<!-- BODY -->
+<section class="body">
+
+<table class="items">
+<thead>
+<tr>
+  <th>Product</th>
+  <th style="width:16mm;">Qty</th>
+  <th class="num" style="width:24mm;">Price</th>
+  <th class="num" style="width:26mm;">Total</th>
+</tr>
+</thead>
+<tbody>
+${itemsRows || '<tr><td colspan="4">No items</td></tr>'}
+</tbody>
+</table>
+
+<div class="bottom-grid">
+
+  <div>
+    ${paymentsMarkup || ""}
+    
+    ${record.notes ? `
+      <div class="notes">
+        <strong>Notes</strong>
+        <div style="margin-top:5px;">${escapePrintHtml(record.notes)}</div>
+      </div>
+    ` : ""}
+  </div>
+
+  <div class="summary">
+    <div class="summary-row">
+      <span>Subtotal</span>
+      <span>${escapePrintHtml(formatMoney(Number(record.subtotalAmount ?? 0)))}</span>
+    </div>
+
+    <div class="summary-row">
+      <span>Discount</span>
+      <span>${escapePrintHtml(formatMoney(Number(record.discountAmount ?? 0)))}</span>
+    </div>
+
+    <div class="summary-row">
+      <span>Paid</span>
+      <span>${escapePrintHtml(formatMoney(Number(record.paidAmount ?? 0)))}</span>
+    </div>
+
+    <div class="summary-row total">
+      <span>Total</span>
+      <span>${escapePrintHtml(formatMoney(Number(record.totalAmount ?? 0)))}</span>
+    </div>
+
+    <div class="balance">
+      <span>Balance</span>
+      <span>${escapePrintHtml(formatMoney(Number(record.balanceAmount ?? 0)))}</span>
+    </div>
+  </div>
+
+</div>
+
+</section>
+
+</main>
+</body>
 </html>`;
 };
 

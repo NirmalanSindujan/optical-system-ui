@@ -189,8 +189,8 @@ function CustomerBillViewPage() {
             <div className="min-h-0 flex flex-1 flex-col overflow-hidden">
               <Table className="min-w-[980px] table-fixed">
                 <colgroup>
-                  <col className="w-[16%]" />
-                  <col className="w-[18%]" />
+                  <col className="w-[5%]" />
+                  <col className="w-[10%]" />
                   <col className="w-[14%]" />
                   <col className="w-[10%]" />
                   <col className="w-[10%]" />
@@ -215,8 +215,8 @@ function CustomerBillViewPage() {
               <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden border-t">
                 <Table className="min-w-[980px] table-fixed">
                   <colgroup>
-                    <col className="w-[16%]" />
-                    <col className="w-[18%]" />
+                    <col className="w-[5%]" />
+                    <col className="w-[10%]" />
                     <col className="w-[14%]" />
                     <col className="w-[10%]" />
                     <col className="w-[10%]" />
@@ -240,7 +240,7 @@ function CustomerBillViewPage() {
                           <TableCell>
                             <div className="flex flex-col">
                               <span>{item.customerName || "Cash customer"}</span>
-                              {item.customerId ? <span className="text-xs text-muted-foreground">Customer #{item.customerId}</span> : null}
+                          
                             </div>
                           </TableCell>
                           <TableCell>{item.branchName}</TableCell>
@@ -254,16 +254,11 @@ function CustomerBillViewPage() {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
-                              <Button variant="ghost" size="sm" onClick={() => {
-                                setSelectedId(item.id);
-                                setDetailOpen(true);
-                              }}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                View
-                              </Button>
+  
                               <Button
                                 variant="outline"
                                 size="sm"
+                                className="h-8 p-x-1 "
                                 onClick={() => {
                                   setSelectedId(item.id);
                                   setDetailOpen(true);
@@ -305,10 +300,9 @@ function CustomerBillViewPage() {
       </Card>
 
       <Sheet open={detailOpen} onOpenChange={setDetailOpen}>
-        <SheetContent side="right" className="w-full p-0 sm:max-w-[96vw]">
+        <SheetContent side="right" className="w-full p-0 sm:max-w-[50vw]">
           <SheetHeader className="border-b px-6 py-5">
             <SheetTitle>Bill Invoice</SheetTitle>
-            <SheetDescription>Invoice layout with item lines, settlement summary, and payment breakdown.</SheetDescription>
           </SheetHeader>
           <div className="h-[calc(100%-5rem)] overflow-y-auto p-6">
             <CustomerBillPreviewCard

@@ -66,51 +66,29 @@ function CustomerBillInvoice({
                 <ReceiptText className="h-6 w-6" />
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
-                  Customer Billing
-                </p>
-                <h2 className="text-2xl font-semibold text-foreground">Invoice</h2>
+                
+                <h2 className="text-2xl font-semibold text-foreground">Invoice  <p className="mt-1 text-xl font-semibold text-foreground">
+                {record.billNumber || `#${record.id}`}
+              </p></h2>
               </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
+               <div>
+             
+              <p className="mt-1 font-medium text-foreground">{formatDisplayDate(resolvedBillDate)}</p>
+            </div>
               {record.prescription?.id ? (
                 <Badge variant="outline" className="rounded-full border-primary/30 bg-primary/5 text-primary">
                   <FileText className="mr-1.5 h-3.5 w-3.5" />
                   Prescription
                 </Badge>
               ) : null}
-              <Badge variant="outline" className="rounded-full">
-                {record.currencyCode || "LKR"}
-              </Badge>
-              <Badge variant="outline" className="rounded-full">
-                {record.billNumber || `Bill #${record.id}`}
-              </Badge>
+             
             </div>
           </div>
 
-          <div className="flex flex-col items-start gap-3 rounded-[24px] border border-primary/15 bg-background/90 px-5 py-4 text-left shadow-sm lg:min-w-[260px] lg:items-end lg:text-right">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                Invoice Number
-              </p>
-              <p className="mt-1 text-xl font-semibold text-foreground">
-                {record.billNumber || `#${record.id}`}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                Date
-              </p>
-              <p className="mt-1 font-medium text-foreground">{formatDisplayDate(resolvedBillDate)}</p>
-            </div>
-            {onPrint ? (
-              <Button type="button" onClick={onPrint} className="rounded-full">
-                <Printer className="mr-2 h-4 w-4" />
-                Print Bill
-              </Button>
-            ) : null}
-          </div>
+          
         </div>
       </div>
 
@@ -123,36 +101,21 @@ function CustomerBillInvoice({
               <p className="text-muted-foreground">
                 Customer: {resolvedCustomerName}
               </p>
-              <p className="text-muted-foreground">
-                Invoice Number: {record.billNumber || `#${record.id}`}
-              </p>
-              <p className="text-muted-foreground">
-                Date: {formatDisplayDate(resolvedBillDate)}
-              </p>
+             
               <p className="text-muted-foreground">
                 Branch: {record.branchName || `Branch #${record.branchId}`}
               </p>
+              {onPrint ? (
+              <Button type="button" onClick={onPrint} className="rounded-full">
+                <Printer className="mr-2 h-4 w-4" />
+                Print Bill
+              </Button>
+            ) : null}
             </div>
           </div>
 
           <div className="grid gap-3">
-            <div className="rounded-[24px] border border-primary/20 bg-primary/5 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Settlement</p>
-              <div className="mt-3 space-y-2 text-sm">
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-muted-foreground">Total</span>
-                  <span className="font-semibold text-foreground">{formatMoney(record.totalAmount)}</span>
-                </div>
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-muted-foreground">Paid</span>
-                  <span className="font-semibold text-foreground">{formatMoney(record.paidAmount)}</span>
-                </div>
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-muted-foreground">Balance</span>
-                  <span className="font-semibold text-foreground">{formatMoney(record.balanceAmount)}</span>
-                </div>
-              </div>
-            </div>
+            
 
             <div className="rounded-[24px] border border-border/70 bg-card/50 p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Patient</p>
@@ -211,10 +174,10 @@ function CustomerBillInvoice({
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Payments</p>
                 <div className="mt-4 space-y-3">
                   {record.payments.map((payment) => (
-                    <div key={payment.id} className="rounded-2xl border border-border/70 bg-background px-4 py-3">
+                    payment.paymentMode !== "CREDIT" &&<div key={payment.id} className="rounded-2xl border border-border/70 bg-background px-4 py-3">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <Badge variant="secondary" className="rounded-full">
-                          {payment.paymentMode}
+                          { payment.paymentMode}
                         </Badge>
                         <span className="font-semibold text-foreground">{formatMoney(payment.amount)}</span>
                       </div>
